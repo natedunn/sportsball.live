@@ -1,0 +1,7 @@
+{
+	"functions": "src/convex",
+	"node": {
+		"nodeVersion": "22"
+	},
+	"$schema": "https://raw.githubusercontent.com/get-convex/convex-backend/main/npm-packages/convex/schemas/convex.schema.json"
+}

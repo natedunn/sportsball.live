@@ -1,0 +1,63 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  // NBA Teams with colors for the flickering grid
+  nbaTeams: defineTable({
+    teamId: v.string(), // External UID like "s:40~l:46~t:1"
+    name: v.string(),
+    slug: v.string(),
+    primaryColor: v.string(),
+    darkColor: v.string(),
+    lightColor: v.string(),
+  }).index("by_teamId", ["teamId"]),
+
+  // Cached images from external CDN
+  cachedImages: defineTable({
+    originalUrl: v.string(),
+    storageId: v.id("_storage"),
+    contentType: v.string(),
+    cachedAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_originalUrl", ["originalUrl"]),
+
+  // Users table for Better Auth
+  users: defineTable({
+    email: v.string(),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    emailVerified: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  // Sessions for Better Auth
+  sessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_token", ["token"]),
+
+  // OAuth accounts
+  accounts: defineTable({
+    userId: v.id("users"),
+    providerId: v.string(),
+    accountId: v.string(),
+    accessToken: v.optional(v.string()),
+    refreshToken: v.optional(v.string()),
+    accessTokenExpiresAt: v.optional(v.number()),
+    refreshTokenExpiresAt: v.optional(v.number()),
+    scope: v.optional(v.string()),
+    idToken: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_provider_accountId", ["providerId", "accountId"]),
+});

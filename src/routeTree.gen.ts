@@ -9,58 +9,130 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DefaultRouteRouteImport } from './routes/_default/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as NflIndexRouteImport } from './routes/nfl/index'
-import { Route as NbaIndexRouteImport } from './routes/nba/index'
+import { Route as DefaultProfileIndexRouteImport } from './routes/_default/profile/index'
+import { Route as DefaultNflIndexRouteImport } from './routes/_default/nfl/index'
+import { Route as DefaultNbaIndexRouteImport } from './routes/_default/nba/index'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DefaultProfileSettingsRouteImport } from './routes/_default/profile/settings'
+import { Route as DefaultAuthSignInRouteImport } from './routes/_default/auth/sign-in'
 
+const DefaultRouteRoute = DefaultRouteRouteImport.update({
+  id: '/_default',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NflIndexRoute = NflIndexRouteImport.update({
+const DefaultProfileIndexRoute = DefaultProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultNflIndexRoute = DefaultNflIndexRouteImport.update({
   id: '/nfl/',
   path: '/nfl/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => DefaultRouteRoute,
 } as any)
-const NbaIndexRoute = NbaIndexRouteImport.update({
+const DefaultNbaIndexRoute = DefaultNbaIndexRouteImport.update({
   id: '/nba/',
   path: '/nba/',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DefaultProfileSettingsRoute = DefaultProfileSettingsRouteImport.update({
+  id: '/profile/settings',
+  path: '/profile/settings',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultAuthSignInRoute = DefaultAuthSignInRouteImport.update({
+  id: '/auth/sign-in',
+  path: '/auth/sign-in',
+  getParentRoute: () => DefaultRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/nba/': typeof NbaIndexRoute
-  '/nfl/': typeof NflIndexRoute
+  '/auth/sign-in': typeof DefaultAuthSignInRoute
+  '/profile/settings': typeof DefaultProfileSettingsRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/nba/': typeof DefaultNbaIndexRoute
+  '/nfl/': typeof DefaultNflIndexRoute
+  '/profile/': typeof DefaultProfileIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/nba': typeof NbaIndexRoute
-  '/nfl': typeof NflIndexRoute
+  '/auth/sign-in': typeof DefaultAuthSignInRoute
+  '/profile/settings': typeof DefaultProfileSettingsRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/nba': typeof DefaultNbaIndexRoute
+  '/nfl': typeof DefaultNflIndexRoute
+  '/profile': typeof DefaultProfileIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/nba/': typeof NbaIndexRoute
-  '/nfl/': typeof NflIndexRoute
+  '/_default': typeof DefaultRouteRouteWithChildren
+  '/_default/auth/sign-in': typeof DefaultAuthSignInRoute
+  '/_default/profile/settings': typeof DefaultProfileSettingsRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_default/nba/': typeof DefaultNbaIndexRoute
+  '/_default/nfl/': typeof DefaultNflIndexRoute
+  '/_default/profile/': typeof DefaultProfileIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/nba/' | '/nfl/'
+  fullPaths:
+    | '/'
+    | '/auth/sign-in'
+    | '/profile/settings'
+    | '/api/auth/$'
+    | '/nba/'
+    | '/nfl/'
+    | '/profile/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/nba' | '/nfl'
-  id: '__root__' | '/' | '/nba/' | '/nfl/'
+  to:
+    | '/'
+    | '/auth/sign-in'
+    | '/profile/settings'
+    | '/api/auth/$'
+    | '/nba'
+    | '/nfl'
+    | '/profile'
+  id:
+    | '__root__'
+    | '/'
+    | '/_default'
+    | '/_default/auth/sign-in'
+    | '/_default/profile/settings'
+    | '/api/auth/$'
+    | '/_default/nba/'
+    | '/_default/nfl/'
+    | '/_default/profile/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  NbaIndexRoute: typeof NbaIndexRoute
-  NflIndexRoute: typeof NflIndexRoute
+  DefaultRouteRoute: typeof DefaultRouteRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_default': {
+      id: '/_default'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof DefaultRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -68,28 +140,85 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/nfl/': {
-      id: '/nfl/'
+    '/_default/profile/': {
+      id: '/_default/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof DefaultProfileIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/nfl/': {
+      id: '/_default/nfl/'
       path: '/nfl'
       fullPath: '/nfl/'
-      preLoaderRoute: typeof NflIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof DefaultNflIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
     }
-    '/nba/': {
-      id: '/nba/'
+    '/_default/nba/': {
+      id: '/_default/nba/'
       path: '/nba'
       fullPath: '/nba/'
-      preLoaderRoute: typeof NbaIndexRouteImport
+      preLoaderRoute: typeof DefaultNbaIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_default/profile/settings': {
+      id: '/_default/profile/settings'
+      path: '/profile/settings'
+      fullPath: '/profile/settings'
+      preLoaderRoute: typeof DefaultProfileSettingsRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/auth/sign-in': {
+      id: '/_default/auth/sign-in'
+      path: '/auth/sign-in'
+      fullPath: '/auth/sign-in'
+      preLoaderRoute: typeof DefaultAuthSignInRouteImport
+      parentRoute: typeof DefaultRouteRoute
     }
   }
 }
 
+interface DefaultRouteRouteChildren {
+  DefaultAuthSignInRoute: typeof DefaultAuthSignInRoute
+  DefaultProfileSettingsRoute: typeof DefaultProfileSettingsRoute
+  DefaultNbaIndexRoute: typeof DefaultNbaIndexRoute
+  DefaultNflIndexRoute: typeof DefaultNflIndexRoute
+  DefaultProfileIndexRoute: typeof DefaultProfileIndexRoute
+}
+
+const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
+  DefaultAuthSignInRoute: DefaultAuthSignInRoute,
+  DefaultProfileSettingsRoute: DefaultProfileSettingsRoute,
+  DefaultNbaIndexRoute: DefaultNbaIndexRoute,
+  DefaultNflIndexRoute: DefaultNflIndexRoute,
+  DefaultProfileIndexRoute: DefaultProfileIndexRoute,
+}
+
+const DefaultRouteRouteWithChildren = DefaultRouteRoute._addFileChildren(
+  DefaultRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  NbaIndexRoute: NbaIndexRoute,
-  NflIndexRoute: NflIndexRoute,
+  DefaultRouteRoute: DefaultRouteRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

@@ -1,24 +1,26 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
-import { resolve } from "path";
+import tsConfigPaths from "vite-tsconfig-paths";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
+import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
-  plugins: [
-    TanStackRouterVite({
-      routesDirectory: "./src/routes",
-      generatedRouteTree: "./src/routeTree.gen.ts",
-    }),
-    react(),
-    tailwindcss(),
-  ],
-  resolve: {
-    alias: {
-      "~": resolve(__dirname, "./src"),
-    },
-  },
-  server: {
-    port: 3000,
-  },
+	server: {
+		port: 3000,
+	},
+	ssr: {
+		noExternal: ["@convex-dev/better-auth"],
+	},
+	plugins: [
+		tailwindcss(),
+		tsConfigPaths({
+			projects: ["./tsconfig.json"],
+		}),
+		cloudflare({ viteEnvironment: { name: "ssr" } }),
+		tanstackStart({
+			srcDirectory: "src",
+		}),
+		viteReact(),
+	],
 });

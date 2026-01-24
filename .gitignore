@@ -9,9 +9,6 @@ dist/
 .vercel/
 .netlify/
 
-# Convex
-convex/_generated/
-
 # TanStack Router generated files (optional - can be committed for CI)
 # src/routeTree.gen.ts
 

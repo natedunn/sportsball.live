@@ -17,6 +17,7 @@ import { Route as DefaultNbaIndexRouteImport } from './routes/_default/nba/index
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DefaultProfileSettingsRouteImport } from './routes/_default/profile/settings'
 import { Route as DefaultAuthSignInRouteImport } from './routes/_default/auth/sign-in'
+import { Route as ApiNbaLogoIdRouteImport } from './routes/api/nba/logo/$id'
 
 const DefaultRouteRoute = DefaultRouteRouteImport.update({
   id: '/_default',
@@ -57,6 +58,11 @@ const DefaultAuthSignInRoute = DefaultAuthSignInRouteImport.update({
   path: '/auth/sign-in',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
+const ApiNbaLogoIdRoute = ApiNbaLogoIdRouteImport.update({
+  id: '/api/nba/logo/$id',
+  path: '/api/nba/logo/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/nba/': typeof DefaultNbaIndexRoute
   '/nfl/': typeof DefaultNflIndexRoute
   '/profile/': typeof DefaultProfileIndexRoute
+  '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/nba': typeof DefaultNbaIndexRoute
   '/nfl': typeof DefaultNflIndexRoute
   '/profile': typeof DefaultProfileIndexRoute
+  '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/_default/nba/': typeof DefaultNbaIndexRoute
   '/_default/nfl/': typeof DefaultNflIndexRoute
   '/_default/profile/': typeof DefaultProfileIndexRoute
+  '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/nba/'
     | '/nfl/'
     | '/profile/'
+    | '/api/nba/logo/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/nba'
     | '/nfl'
     | '/profile'
+    | '/api/nba/logo/$id'
   id:
     | '__root__'
     | '/'
@@ -116,12 +127,14 @@ export interface FileRouteTypes {
     | '/_default/nba/'
     | '/_default/nfl/'
     | '/_default/profile/'
+    | '/api/nba/logo/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DefaultRouteRoute: typeof DefaultRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiNbaLogoIdRoute: typeof ApiNbaLogoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -182,6 +195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultAuthSignInRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/api/nba/logo/$id': {
+      id: '/api/nba/logo/$id'
+      path: '/api/nba/logo/$id'
+      fullPath: '/api/nba/logo/$id'
+      preLoaderRoute: typeof ApiNbaLogoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -209,6 +229,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DefaultRouteRoute: DefaultRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiNbaLogoIdRoute: ApiNbaLogoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

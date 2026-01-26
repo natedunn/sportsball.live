@@ -10,6 +10,7 @@ interface DatePickerProps {
 	onChange?: (date: Date | undefined) => void;
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
+	disabled?: boolean;
 }
 
 export function DatePicker({
@@ -17,6 +18,7 @@ export function DatePicker({
 	onChange,
 	open,
 	onOpenChange,
+	disabled,
 }: DatePickerProps) {
 	return (
 		<Popover open={open} onOpenChange={onOpenChange}>
@@ -24,9 +26,11 @@ export function DatePicker({
 				<Button
 					variant="outline"
 					size="sm"
+					disabled={disabled}
 					className={cn(
 						"justify-start text-left font-normal gap-2",
 						!value && "text-muted-foreground",
+						disabled && "opacity-50 cursor-not-allowed",
 					)}
 				>
 					<CalendarIcon className="h-4 w-4" />

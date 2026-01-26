@@ -35,19 +35,17 @@ export function Competitor({ team, homeAway, classes }: CompetitorProps) {
 			/>
 			<TeamFlickeringGrid dark={team.darkColor} light={team.lightColor} />
 			<div className="z-10 flex h-full flex-col items-center justify-center gap-2">
-				{team.logo && (
-					<Image
-						src={team.logo}
-						alt={team.name ?? "Team logo"}
-						width={48}
-						height={48}
-						className={cn(
-							"w-8 sm:w-10 md:w-12",
-							classes?.logo,
-							isJazz && "dark:invert",
-						)}
-					/>
-				)}
+				<Image
+					src={team.logo}
+					alt={team.name ?? "Team logo"}
+					width={48}
+					height={48}
+					className={cn(
+						"w-8 sm:w-10 md:w-12",
+						classes?.logo,
+						isJazz && "dark:invert",
+					)}
+				/>
 				<div className="flex flex-col items-center">
 					<span className={cn("text-sm font-bold", classes?.team)}>
 						{team.name}

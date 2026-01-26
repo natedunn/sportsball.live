@@ -193,12 +193,12 @@ function extractTeamStats(stats: ApiStat[] | undefined): TeamStats {
 export const fetchGameDetails = createServerFn({ method: "GET" })
   .inputValidator((d: string) => d)
   .handler(async ({ data: gameId }): Promise<GameDetails> => {
-    const endpoint = process.env.ENDPOINT_NBA_SUMMARY;
-    if (!endpoint) {
-      throw new Error("ENDPOINT_NBA_SUMMARY not configured");
+    const baseUrl = process.env.ESPN_NBA_API_BASE;
+    if (!baseUrl) {
+      throw new Error("ESPN_NBA_API_BASE not configured");
     }
 
-    const response = await fetch(`${endpoint}?event=${gameId}`, {
+    const response = await fetch(`${baseUrl}/summary?event=${gameId}`, {
       headers: { "Content-Type": "application/json" },
     });
 

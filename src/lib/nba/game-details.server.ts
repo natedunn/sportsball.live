@@ -193,10 +193,14 @@ function extractTeamStats(stats: ApiStat[] | undefined): TeamStats {
 export const fetchGameDetails = createServerFn({ method: "GET" })
   .inputValidator((d: string) => d)
   .handler(async ({ data: gameId }): Promise<GameDetails> => {
-    const response = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${gameId}`,
-      { headers: { "Content-Type": "application/json" } }
-    );
+    const endpoint = process.env.ENDPOINT_NBA_SUMMARY;
+    if (!endpoint) {
+      throw new Error("ENDPOINT_NBA_SUMMARY not configured");
+    }
+
+    const response = await fetch(`${endpoint}?event=${gameId}`, {
+      headers: { "Content-Type": "application/json" },
+    });
 
     if (!response.ok) {
       throw new Error(`Game details API error: ${response.status}`);

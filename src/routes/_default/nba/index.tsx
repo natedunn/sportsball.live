@@ -1,12 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useAction } from "convex/react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "../../../convex/_generated/api";
+import { AnimatePresence, motion } from "motion/react";
 import { DatePagination } from "@/components/date-pagination";
 import { Scoreboard } from "@/components/scoreboard";
-import { Card } from "@/components/ui/card";
 import { formatDate } from "@/lib/date";
-import type { GameData } from "@/lib/types";
+import { nbaGamesQueryOptions } from "@/lib/nba/games.queries";
 
 interface NbaSearchParams {
 	date?: string;
@@ -18,6 +16,15 @@ export const Route = createFileRoute("/_default/nba/")({
 			date: typeof search.date === "string" ? search.date : undefined,
 		};
 	},
+	loaderDeps: ({ search: { date } }) => ({ date }),
+	loader: async ({ context, deps }) => {
+		const currentDate = deps.date ?? formatDate(new Date(), "YYYY-MM-DD");
+		const formattedDate = formatDate(currentDate, "YYYYMMDD");
+
+		await context.queryClient.ensureQueryData(
+			nbaGamesQueryOptions(formattedDate)
+		);
+	},
 	component: NbaPage,
 });
 
@@ -26,21 +33,7 @@ function NbaPage() {
 	const currentDate = date ?? formatDate(new Date(), "YYYY-MM-DD");
 	const formattedDate = formatDate(currentDate, "YYYYMMDD");
 
-	const getGamesByDate = useAction(api.nba.games.getGamesByDate);
-
-	const {
-		data: games,
-		isLoading,
-		isError,
-		error,
-	} = useQuery({
-		queryKey: ["nbaGamesByDate", formattedDate],
-		queryFn: async () => {
-			const result = await getGamesByDate({ date: formattedDate });
-			return result as GameData[];
-		},
-		refetchInterval: 10 * 1000, // Refresh every 10 seconds for live games
-	});
+	const { data: games = [], isFetching } = useQuery(nbaGamesQueryOptions(formattedDate));
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
@@ -59,34 +52,31 @@ function NbaPage() {
 					<div className="flex justify-center">
 						<DatePagination date={currentDate} />
 					</div>
-					{isLoading ? (
-						<Card
-							classNames={{
-								wrapper:
-									"text-2xl font-bold text-muted-foreground text-muted-foreground/50",
-								inner: "p-6 justify-center",
-							}}
-						>
-							Loading games...
-						</Card>
-					) : isError ? (
-						<div className="flex flex-col items-center justify-center gap-4">
-							<div className="text-red-500">Error loading games</div>
-							<div className="text-gray-500">{error?.message}</div>
-						</div>
-					) : games && games.length > 0 ? (
-						<div className="flex w-full flex-col gap-4">
-							{games.map((game) => (
-								<Scoreboard key={game.id} game={game} />
-							))}
-						</div>
-					) : (
-						<div className="flex flex-col items-center justify-center gap-4">
-							<div className="mt-4 text-lg text-muted-foreground/50">
-								No games scheduled
-							</div>
-						</div>
-					)}
+					<AnimatePresence mode="wait">
+						{!isFetching && (
+							<motion.div
+								key={formattedDate}
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								transition={{ duration: 0.15 }}
+							>
+								{games.length > 0 ? (
+									<div className="flex w-full flex-col gap-4">
+										{games.map((game) => (
+											<Scoreboard key={game.id} game={game} />
+										))}
+									</div>
+								) : (
+									<div className="flex flex-col items-center justify-center gap-4">
+										<div className="mt-4 text-lg text-muted-foreground/50">
+											No games scheduled
+										</div>
+									</div>
+								)}
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 			</div>
 		</div>

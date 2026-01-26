@@ -6,9 +6,13 @@ import { api } from "~api";
 export const Route = createFileRoute("/_default")({
 	component: RouteComponent,
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(
-			convexQuery(api.auth.getCurrentUser, {}),
-		);
+		// Only prefetch auth data if user is authenticated
+		// This prevents blocking for unauthenticated users
+		if (context.isAuthenticated) {
+			await context.queryClient.ensureQueryData(
+				convexQuery(api.auth.getCurrentUser, {}),
+			);
+		}
 	},
 });
 

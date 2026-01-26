@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Competitor } from "./competitor";
 import { Score } from "./score";
@@ -6,10 +7,9 @@ import type { GameData } from "@/lib/types";
 
 interface ScoreboardProps {
 	game: GameData;
-	showInfoLink?: boolean;
 }
 
-export function Scoreboard({ game, showInfoLink = false }: ScoreboardProps) {
+export function Scoreboard({ game }: ScoreboardProps) {
 	const homeTeam = game.home;
 	const awayTeam = game.away;
 
@@ -38,15 +38,16 @@ export function Scoreboard({ game, showInfoLink = false }: ScoreboardProps) {
 								: game.time.detail}
 						</span>
 					)}
-					{showInfoLink && (
+					{(game.state === "in" || game.state === "post") && (
 						<>
 							<span className="text-muted-foreground">|</span>
-							<a
-								href={`/nba/game/${game.id}`}
-								className="inline-flex items-center gap-2 hover:text-foreground hover:underline focus:text-foreground focus:underline"
+							<Link
+								to="/nba/game/$gameId"
+								params={{ gameId: game.id }}
+								className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground hover:underline focus:text-foreground focus:underline"
 							>
-								<span>Game info</span>
-							</a>
+								<span>Box score</span>
+							</Link>
 						</>
 					)}
 				</div>

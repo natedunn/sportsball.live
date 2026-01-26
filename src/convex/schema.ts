@@ -2,16 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // NBA Teams with colors for the flickering grid
-  nbaTeams: defineTable({
-    teamId: v.string(), // External UID like "s:40~l:46~t:1"
-    name: v.string(),
-    slug: v.string(),
-    primaryColor: v.string(),
-    darkColor: v.string(),
-    lightColor: v.string(),
-  }).index("by_teamId", ["teamId"]),
-
   // Cached images from external CDN
   cachedImages: defineTable({
     originalUrl: v.string(),

@@ -120,6 +120,19 @@ interface ApiBoxscore {
   teams?: ApiTeam[];
 }
 
+interface ApiHeaderCompetitor {
+  homeAway: "home" | "away";
+  team: {
+    id: string;
+    uid?: string;
+    name?: string;
+    abbreviation?: string;
+    logo?: string;
+  };
+  score: string;
+  winner?: boolean;
+}
+
 interface ApiHeader {
   competitions?: Array<{
     status?: {
@@ -132,6 +145,7 @@ interface ApiHeader {
       fullName?: string;
     };
     date?: string;
+    competitors?: ApiHeaderCompetitor[];
   }>;
 }
 
@@ -213,11 +227,18 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
     }
 
     const competition = apiData.header?.competitions?.[0];
-    const awayTeamData = apiData.boxscore.teams[0];
-    const homeTeamData = apiData.boxscore.teams[1];
+    const boxscoreTeams = apiData.boxscore.teams;
 
-    const awayColors = getTeamColors(awayTeamData.team.uid);
-    const homeColors = getTeamColors(homeTeamData.team.uid);
+    // Get scores and basic info from header competitors
+    const headerAway = competition?.competitors?.find(c => c.homeAway === "away");
+    const headerHome = competition?.competitors?.find(c => c.homeAway === "home");
+
+    // Match boxscore teams by team id for stats
+    const awayStats = boxscoreTeams.find(t => t.team.id === headerAway?.team.id);
+    const homeStats = boxscoreTeams.find(t => t.team.id === headerHome?.team.id);
+
+    const awayColors = getTeamColors(headerAway?.team.uid);
+    const homeColors = getTeamColors(headerHome?.team.uid);
 
     return {
       id: gameId,
@@ -226,28 +247,28 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
       venue: competition?.venue?.fullName,
       date: competition?.date,
       away: {
-        id: awayTeamData.team.id,
-        uid: awayTeamData.team.uid,
-        name: awayTeamData.team.name,
-        abbreviation: awayTeamData.team.abbreviation,
-        score: parseInt(awayTeamData.score, 10) || 0,
-        logo: getProxiedLogoUrl(awayTeamData.team.logo),
+        id: headerAway?.team.id ?? "",
+        uid: headerAway?.team.uid,
+        name: headerAway?.team.name,
+        abbreviation: headerAway?.team.abbreviation,
+        score: parseInt(headerAway?.score ?? "0", 10) || 0,
+        logo: getProxiedLogoUrl(headerAway?.team.logo),
         darkColor: awayColors.darkColor,
         lightColor: awayColors.lightColor,
-        winner: awayTeamData.winner ?? false,
-        stats: extractTeamStats(awayTeamData.statistics),
+        winner: headerAway?.winner ?? false,
+        stats: extractTeamStats(awayStats?.statistics),
       },
       home: {
-        id: homeTeamData.team.id,
-        uid: homeTeamData.team.uid,
-        name: homeTeamData.team.name,
-        abbreviation: homeTeamData.team.abbreviation,
-        score: parseInt(homeTeamData.score, 10) || 0,
-        logo: getProxiedLogoUrl(homeTeamData.team.logo),
+        id: headerHome?.team.id ?? "",
+        uid: headerHome?.team.uid,
+        name: headerHome?.team.name,
+        abbreviation: headerHome?.team.abbreviation,
+        score: parseInt(headerHome?.score ?? "0", 10) || 0,
+        logo: getProxiedLogoUrl(headerHome?.team.logo),
         darkColor: homeColors.darkColor,
         lightColor: homeColors.lightColor,
-        winner: homeTeamData.winner ?? false,
-        stats: extractTeamStats(homeTeamData.statistics),
+        winner: headerHome?.winner ?? false,
+        stats: extractTeamStats(homeStats?.statistics),
       },
     };
   });

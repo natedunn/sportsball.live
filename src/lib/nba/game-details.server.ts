@@ -43,13 +43,13 @@ function getTeamColors(teamUid: string | undefined) {
   };
 }
 
-function getProxiedLogoUrl(espnLogoUrl: string | undefined): string | undefined {
-  if (!espnLogoUrl) return undefined;
-  const slug = getTeamSlugFromLogoUrl(espnLogoUrl);
-  if (slug && NBA_TEAM_LOGOS[slug]) {
+function getProxiedLogoUrl(logoUrl: string | undefined): string | undefined {
+  if (!logoUrl) return undefined;
+  const slug = getTeamSlugFromLogoUrl(logoUrl);
+  if (slug) {
     return `/api/nba/logo/${slug}`;
   }
-  return espnLogoUrl;
+  return undefined;
 }
 
 export interface TeamStats {

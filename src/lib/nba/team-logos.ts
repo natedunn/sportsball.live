@@ -35,9 +35,19 @@ export const NBA_TEAM_LOGOS: Record<string, string> = {
   "wsh": "https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/wsh.png",
 };
 
-// Extract team slug from ESPN logo URL
+// Extract team slug from logo URL
 export function getTeamSlugFromLogoUrl(url: string): string | null {
-  // URL format: https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/sac.png
-  const match = url.match(/\/scoreboard\/([a-z]+)\.png$/i);
-  return match ? match[1].toLowerCase() : null;
+  // Handle multiple URL formats:
+  // - /scoreboard/sac.png
+  // - /nba/500/sac.png
+  // - /nba/sac.png
+  const match = url.match(/\/([a-z]+)\.png$/i);
+  if (match) {
+    const slug = match[1].toLowerCase();
+    // Verify it's a known team slug
+    if (NBA_TEAM_LOGOS[slug]) {
+      return slug;
+    }
+  }
+  return null;
 }

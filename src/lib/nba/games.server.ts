@@ -44,18 +44,13 @@ function getTeamColors(teamUid: string | undefined) {
   };
 }
 
-function getProxiedLogoUrl(espnLogoUrl: string | undefined): string | undefined {
-  if (!espnLogoUrl) return undefined;
-
-  const slug = getTeamSlugFromLogoUrl(espnLogoUrl);
-
-  // If we have a known NBA team slug, use our proxy (hides ESPN URL)
-  // Otherwise, return original URL (Convex proxy will handle it)
-  if (slug && NBA_TEAM_LOGOS[slug]) {
+function getProxiedLogoUrl(logoUrl: string | undefined): string | undefined {
+  if (!logoUrl) return undefined;
+  const slug = getTeamSlugFromLogoUrl(logoUrl);
+  if (slug) {
     return `/api/nba/logo/${slug}`;
   }
-
-  return espnLogoUrl;
+  return undefined;
 }
 
 interface ApiCompetitor {

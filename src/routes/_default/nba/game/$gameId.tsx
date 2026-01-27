@@ -52,7 +52,7 @@ function GameDetailsPage() {
 	return (
 		<div className="flex flex-col pb-12 lg:pb-20">
 			{/* Header with score */}
-			<div className="pt-6 pb-12 border-b overflow-hidden">
+			<div className="pt-6 pb-12 border-b overflow-hidden bg-card">
 				<div className="container">
 					<div className="w-full text-center">
 						<Link
@@ -184,11 +184,10 @@ function GameDetailsPage() {
 			</div>
 
 			{/* Stats Comparison */}
-			<div className="relative">
-				<div className="absolute h-64 w-full z-10 top-0 bg-linear-to-b from-muted to-transparent pt-12 dark:from-muted/50"></div>
+			<div className="relative bg-background">
+				{/* <div className="absolute h-64 w-full z-10 top-0 bg-linear-to-b from-muted to-transparent pt-12 dark:from-muted/50"></div> */}
 				<div className="mx-auto max-w-2xl z-20 relative py-12">
 					<h2 className="mb-6 text-center text-xl font-semibold">Team Stats</h2>
-
 					<div className="flex flex-col gap-8">
 						<StatComparisonGroup title="Scoring">
 							<StatComparison

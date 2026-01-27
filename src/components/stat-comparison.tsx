@@ -59,7 +59,7 @@ export function StatComparison({
           {formatValue(homeValue)}
         </span>
       </div>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div className="relative flex h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
           className="transition-all duration-300 ease-out"
           style={{
@@ -74,6 +74,7 @@ export function StatComparison({
             backgroundColor: `#${homeColor}`,
           }}
         />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
       </div>
     </div>
   );

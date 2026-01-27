@@ -2,14 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { gameDetailsQueryOptions } from "@/lib/nba/game-details.queries";
-import { StatComparison, StatComparisonGroup } from "@/components/stat-comparison";
+import {
+  StatComparison,
+  StatComparisonGroup,
+} from "@/components/stat-comparison";
 import { formatGameDate } from "@/lib/date";
-import BasketballIcon from "@/components/ui/basketball-icon";
+import { Image } from "@/components/ui/image";
 
 export const Route = createFileRoute("/_default/nba/game/$gameId")({
   loader: async ({ context, params }) => {
     await context.queryClient.ensureQueryData(
-      gameDetailsQueryOptions(params.gameId)
+      gameDetailsQueryOptions(params.gameId),
     );
   },
   pendingComponent: () => (
@@ -27,6 +30,8 @@ export const Route = createFileRoute("/_default/nba/game/$gameId")({
 function GameDetailsPage() {
   const { gameId } = Route.useParams();
   const { data: game } = useQuery(gameDetailsQueryOptions(gameId));
+
+  console.log(game);
 
   if (!game) {
     return (
@@ -69,15 +74,11 @@ function GameDetailsPage() {
                   {game.away.abbreviation}
                 </span>
               </div>
-              {game.away.logo ? (
-                <img
-                  src={game.away.logo}
-                  alt={game.away.name}
-                  className="h-16 w-16 object-contain md:h-20 md:w-20"
-                />
-              ) : (
-                <BasketballIcon className="h-16 w-16 text-muted-foreground/30 md:h-20 md:w-20" />
-              )}
+              <Image
+                src={game.away.logo}
+                alt={game.away.name ?? "Away team"}
+                className="h-16 w-16 object-contain md:h-20 md:w-20"
+              />
             </div>
 
             {/* Score */}
@@ -105,7 +106,9 @@ function GameDetailsPage() {
                 {game.statusDetail}
               </span>
               {game.venue && (
-                <span className="text-xs text-muted-foreground">{game.venue}</span>
+                <span className="text-xs text-muted-foreground">
+                  {game.venue}
+                </span>
               )}
               {game.date && (
                 <span className="text-xs text-muted-foreground">
@@ -116,15 +119,11 @@ function GameDetailsPage() {
 
             {/* Home Team */}
             <div className="flex flex-1 flex-col items-center gap-2 md:flex-row md:justify-start md:gap-4">
-              {game.home.logo ? (
-                <img
-                  src={game.home.logo}
-                  alt={game.home.name}
-                  className="h-16 w-16 object-contain md:h-20 md:w-20"
-                />
-              ) : (
-                <BasketballIcon className="h-16 w-16 text-muted-foreground/30 md:h-20 md:w-20" />
-              )}
+              <Image
+                src={game.home.logo}
+                alt={game.home.name ?? "Home team"}
+                className="h-16 w-16 object-contain md:h-20 md:w-20"
+              />
               <div className="flex flex-col items-center md:items-start">
                 <span className="text-lg font-semibold md:text-xl">
                   {game.home.name}

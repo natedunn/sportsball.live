@@ -5,5 +5,9 @@ export const gameDetailsQueryOptions = (gameId: string) =>
   queryOptions({
     queryKey: ["nba", "game", gameId],
     queryFn: () => fetchGameDetails({ data: gameId }),
-    staleTime: 30 * 1000, // 30 seconds for live games
+    staleTime: 15 * 1000,
+    refetchInterval: (query) => {
+      const state = query.state.data?.state;
+      return state === "in" ? 15 * 1000 : false;
+    },
   });

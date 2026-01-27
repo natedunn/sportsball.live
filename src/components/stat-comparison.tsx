@@ -23,8 +23,12 @@ export function StatComparison({
   const awayPercent = total > 0 ? (awayValue / total) * 100 : 50;
   const homePercent = total > 0 ? (homeValue / total) * 100 : 50;
 
-  const awayWins = higherIsBetter ? awayValue > homeValue : awayValue < homeValue;
-  const homeWins = higherIsBetter ? homeValue > awayValue : homeValue < awayValue;
+  const awayWins = higherIsBetter
+    ? awayValue > homeValue
+    : awayValue < homeValue;
+  const homeWins = higherIsBetter
+    ? homeValue > awayValue
+    : homeValue < awayValue;
   const isTied = awayValue === homeValue;
 
   const formatValue = (value: number) => {
@@ -41,7 +45,7 @@ export function StatComparison({
           className={cn(
             "font-medium tabular-nums",
             awayWins && "font-bold",
-            isTied && "text-muted-foreground"
+            isTied && "text-muted-foreground",
           )}
         >
           {formatValue(awayValue)}
@@ -53,13 +57,14 @@ export function StatComparison({
           className={cn(
             "font-medium tabular-nums",
             homeWins && "font-bold",
-            isTied && "text-muted-foreground"
+            isTied && "text-muted-foreground",
           )}
         >
           {formatValue(homeValue)}
         </span>
       </div>
-      <div className="relative flex h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div className="relative flex h-3.5 w-full overflow-hidden border-2 rounded-full bg-muted">
+        <div className="pointer-events-none z-10 absolute inset-0 bg-linear-to-b from-transparent to-black/30" />
         <div
           className="transition-all duration-300 ease-out"
           style={{
@@ -74,7 +79,6 @@ export function StatComparison({
             backgroundColor: `#${homeColor}`,
           }}
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
       </div>
     </div>
   );
@@ -85,7 +89,10 @@ interface StatComparisonGroupProps {
   children: React.ReactNode;
 }
 
-export function StatComparisonGroup({ title, children }: StatComparisonGroupProps) {
+export function StatComparisonGroup({
+  title,
+  children,
+}: StatComparisonGroupProps) {
   return (
     <div className="flex flex-col gap-4">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">

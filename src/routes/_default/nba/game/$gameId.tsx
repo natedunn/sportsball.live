@@ -63,20 +63,15 @@ function GameDetailsPage() {
           {/* Teams and Score */}
           <div className="flex items-center justify-center gap-4 md:gap-8">
             {/* Away Team */}
-            <div className="flex flex-1 flex-col items-center gap-2 md:flex-row md:justify-end md:gap-4">
-              <div className="flex flex-col items-center md:items-end">
-                <span className="text-lg font-semibold md:text-xl">
-                  {game.away.name}
-                </span>
-                <span className="text-xs text-muted-foreground md:text-sm">
-                  {game.away.abbreviation}
-                </span>
-              </div>
+            <div className="flex flex-1 flex-col items-center gap-2">
               <Image
                 src={game.away.logo}
                 alt={game.away.name ?? "Away team"}
                 className="h-16 w-16 object-contain md:h-20 md:w-20"
               />
+              <span className="text-lg font-semibold md:text-xl">
+                {game.away.name}
+              </span>
             </div>
 
             {/* Score */}
@@ -116,20 +111,15 @@ function GameDetailsPage() {
             </div>
 
             {/* Home Team */}
-            <div className="flex flex-1 flex-col items-center gap-2 md:flex-row md:justify-start md:gap-4">
+            <div className="flex flex-1 flex-col items-center gap-2">
               <Image
                 src={game.home.logo}
                 alt={game.home.name ?? "Home team"}
                 className="h-16 w-16 object-contain md:h-20 md:w-20"
               />
-              <div className="flex flex-col items-center md:items-start">
-                <span className="text-lg font-semibold md:text-xl">
-                  {game.home.name}
-                </span>
-                <span className="text-xs text-muted-foreground md:text-sm">
-                  {game.home.abbreviation}
-                </span>
-              </div>
+              <span className="text-lg font-semibold md:text-xl">
+                {game.home.name}
+              </span>
             </div>
           </div>
         </div>

@@ -31,8 +31,6 @@ function GameDetailsPage() {
   const { gameId } = Route.useParams();
   const { data: game } = useQuery(gameDetailsQueryOptions(gameId));
 
-  console.log(game);
-
   if (!game) {
     return (
       <div className="container py-12">
@@ -48,7 +46,7 @@ function GameDetailsPage() {
     <div className="flex flex-col gap-8 pb-12 lg:pb-20">
       {/* Header with score */}
       <div
-        className="pt-8 pb-6"
+        className="pt-8 pb-18 border-b"
         style={{
           background: `linear-gradient(135deg, #${awayColor}15 0%, transparent 50%, #${homeColor}15 100%)`,
         }}

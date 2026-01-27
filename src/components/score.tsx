@@ -32,12 +32,37 @@ function getTeamState(
 	return "loser";
 }
 
+function PaddedScore({
+	score,
+	maxDigits,
+}: {
+	score: number;
+	maxDigits: number;
+}) {
+	const scoreStr = score.toString();
+	const paddingCount = maxDigits - scoreStr.length;
+	const padding = "0".repeat(Math.max(0, paddingCount));
+
+	return (
+		<>
+			{padding && (
+				<span className="pointer-events-none select-none opacity-0">
+					{padding}
+				</span>
+			)}
+			{scoreStr}
+		</>
+	);
+}
+
 function TeamScore({
 	score,
+	maxDigits,
 	state,
 	className,
 }: {
 	score: number;
+	maxDigits: number;
 	state: TeamState;
 	className?: string;
 }) {
@@ -49,7 +74,7 @@ function TeamScore({
 				className,
 			)}
 		>
-			{score}
+			<PaddedScore score={score} maxDigits={maxDigits} />
 		</div>
 	);
 }
@@ -62,11 +87,16 @@ export function Score({
 }: ScoreProps) {
 	const homeState = getTeamState("home", homeScore, awayScore, gameState);
 	const awayState = getTeamState("away", homeScore, awayScore, gameState);
+	const maxDigits = Math.max(
+		homeScore.toString().length,
+		awayScore.toString().length,
+	);
 
 	return (
 		<div className={cn("flex items-center gap-2", classes?.wrapper)}>
 			<TeamScore
 				score={awayScore}
+				maxDigits={maxDigits}
 				state={awayState}
 				className={classes?.score}
 			/>
@@ -75,9 +105,13 @@ export function Score({
 			</div>
 			<TeamScore
 				score={homeScore}
+				maxDigits={maxDigits}
 				state={homeState}
 				className={classes?.score}
 			/>
 		</div>
 	);
 }
+
+// Export for use in other components
+export { PaddedScore };

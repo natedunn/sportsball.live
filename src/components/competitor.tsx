@@ -33,7 +33,11 @@ export function Competitor({ team, homeAway, classes }: CompetitorProps) {
 					homeAway === "away" && "bg-gradient-to-tl",
 				)}
 			/>
-			<TeamFlickeringGrid dark={team.darkColor} light={team.lightColor} />
+			<TeamFlickeringGrid
+				className="absolute inset-0 z-0"
+				dark={team.darkColor}
+				light={team.lightColor}
+			/>
 			<div className="z-10 flex h-full flex-col items-center justify-center gap-2">
 				<Image
 					src={team.logo}

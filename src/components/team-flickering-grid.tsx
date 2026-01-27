@@ -37,7 +37,7 @@ export function TeamFlickeringGrid({
 
 	return (
 		<FlickeringGrid
-			className={cn("absolute inset-0 z-0", className)}
+			className={cn("", className)}
 			color={color}
 			squareSize={grid.squareSize ?? 4}
 			gridGap={grid.gridGap ?? 6}

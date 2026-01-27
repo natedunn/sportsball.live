@@ -13,7 +13,7 @@ export function Card({ children, classNames }: CardProps) {
 	return (
 		<div
 			className={cn(
-				"flex gap-2 rounded-xl border border-border bg-muted/30 p-2",
+				"flex gap-2 rounded-xl border border-border/50 bg-muted/60 p-2",
 				classNames?.wrapper,
 			)}
 		>

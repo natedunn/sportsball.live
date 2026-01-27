@@ -14,7 +14,7 @@ export function Scoreboard({ game }: ScoreboardProps) {
 	const awayTeam = game.away;
 
 	const classes = {
-		wrapper: "p-4 md:min-w-[130px]",
+		wrapper: "p-4 md:min-w-32.5",
 	};
 
 	return (

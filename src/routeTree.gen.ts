@@ -18,6 +18,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DefaultProfileSettingsRouteImport } from './routes/_default/profile/settings'
 import { Route as DefaultAuthSignInRouteImport } from './routes/_default/auth/sign-in'
 import { Route as ApiNbaLogoIdRouteImport } from './routes/api/nba/logo/$id'
+import { Route as DefaultNbaGameGameIdRouteImport } from './routes/_default/nba/game/$gameId'
 
 const DefaultRouteRoute = DefaultRouteRouteImport.update({
   id: '/_default',
@@ -63,6 +64,11 @@ const ApiNbaLogoIdRoute = ApiNbaLogoIdRouteImport.update({
   path: '/api/nba/logo/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DefaultNbaGameGameIdRoute = DefaultNbaGameGameIdRouteImport.update({
+  id: '/nba/game/$gameId',
+  path: '/nba/game/$gameId',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/nba/': typeof DefaultNbaIndexRoute
   '/nfl/': typeof DefaultNflIndexRoute
   '/profile/': typeof DefaultProfileIndexRoute
+  '/nba/game/$gameId': typeof DefaultNbaGameGameIdRoute
   '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
 }
 export interface FileRoutesByTo {
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/nba': typeof DefaultNbaIndexRoute
   '/nfl': typeof DefaultNflIndexRoute
   '/profile': typeof DefaultProfileIndexRoute
+  '/nba/game/$gameId': typeof DefaultNbaGameGameIdRoute
   '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
 }
 export interface FileRoutesById {
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_default/nba/': typeof DefaultNbaIndexRoute
   '/_default/nfl/': typeof DefaultNflIndexRoute
   '/_default/profile/': typeof DefaultProfileIndexRoute
+  '/_default/nba/game/$gameId': typeof DefaultNbaGameGameIdRoute
   '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
 }
 export interface FileRouteTypes {
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/nba/'
     | '/nfl/'
     | '/profile/'
+    | '/nba/game/$gameId'
     | '/api/nba/logo/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/nba'
     | '/nfl'
     | '/profile'
+    | '/nba/game/$gameId'
     | '/api/nba/logo/$id'
   id:
     | '__root__'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_default/nba/'
     | '/_default/nfl/'
     | '/_default/profile/'
+    | '/_default/nba/game/$gameId'
     | '/api/nba/logo/$id'
   fileRoutesById: FileRoutesById
 }
@@ -202,6 +214,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiNbaLogoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_default/nba/game/$gameId': {
+      id: '/_default/nba/game/$gameId'
+      path: '/nba/game/$gameId'
+      fullPath: '/nba/game/$gameId'
+      preLoaderRoute: typeof DefaultNbaGameGameIdRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
   }
 }
 
@@ -211,6 +230,7 @@ interface DefaultRouteRouteChildren {
   DefaultNbaIndexRoute: typeof DefaultNbaIndexRoute
   DefaultNflIndexRoute: typeof DefaultNflIndexRoute
   DefaultProfileIndexRoute: typeof DefaultProfileIndexRoute
+  DefaultNbaGameGameIdRoute: typeof DefaultNbaGameGameIdRoute
 }
 
 const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
@@ -219,6 +239,7 @@ const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
   DefaultNbaIndexRoute: DefaultNbaIndexRoute,
   DefaultNflIndexRoute: DefaultNflIndexRoute,
   DefaultProfileIndexRoute: DefaultProfileIndexRoute,
+  DefaultNbaGameGameIdRoute: DefaultNbaGameGameIdRoute,
 }
 
 const DefaultRouteRouteWithChildren = DefaultRouteRoute._addFileChildren(

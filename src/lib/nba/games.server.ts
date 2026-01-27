@@ -93,12 +93,12 @@ interface ApiResponse {
 export const fetchNbaGames = createServerFn({ method: "GET" })
   .inputValidator((d: string) => d)
   .handler(async ({ data: date }): Promise<GameData[]> => {
-    const endpoint = process.env.ENDPOINT_NBA_SCOREBOARD;
-    if (!endpoint) {
-      throw new Error("ENDPOINT_NBA_SCOREBOARD not configured");
+    const baseUrl = process.env.NBA_API_BASE;
+    if (!baseUrl) {
+      throw new Error("NBA_API_BASE not configured");
     }
 
-    const response = await fetch(`${endpoint}?dates=${date}`, {
+    const response = await fetch(`${baseUrl}/scoreboard?dates=${date}`, {
       headers: { "Content-Type": "application/json" },
     });
 

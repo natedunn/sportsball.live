@@ -7,13 +7,12 @@ import {
 	StatComparisonGroup,
 } from "@/components/stat-comparison";
 import { formatGameDate } from "@/lib/date";
-import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
 import { PaddedScore } from "@/components/score";
-import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tooltip } from "@/components/ui/tooltip";
 import { PlayerBoxScore } from "@/components/player-box-score";
-import { cn } from "@/lib/utils";
+import { GameTeamHeader } from "@/components/game-team-header";
 
 interface GameSearchParams {
 	fromDate?: string;
@@ -69,53 +68,11 @@ function GameDetailsPage() {
 	return (
 		<div className="flex flex-col pb-12 lg:pb-20">
 			{/* Header with score */}
-			<div className="pt-6 pb-10 border-b overflow-hidden bg-card">
+			<div className="pt-6 pb-6 border-b overflow-hidden bg-card">
 				<div className="container">
 					{/* Teams and Score */}
 					<div className="flex items-center justify-center gap-4 md:gap-8">
-						{/* Away Team */}
-						<div
-							className="flex flex-1 flex-col items-center gap-2 relative"
-							id={game.away.uid}
-						>
-							<Image
-								src={game.away.logo}
-								alt={game.away.name ?? "Away team"}
-								className="h-16 w-16 z-20 relative object-contain md:h-20 md:w-20"
-							/>
-							<span className="text-lg relative z-20 font-semibold md:text-xl">
-								{game.away.name}
-							</span>
-							{game.away.record && (
-								<span className="relative z-20 font-mono font-bold text-foreground/75 md:text-lg">
-									{game.away.record}
-								</span>
-							)}
-							<div className="flex items-center absolute -bottom-13">
-								<div className="relative">
-									<div
-										className={
-											"absolute inset-0 z-10 from-card from-40% to-transparent bg-linear-to-br"
-										}
-									/>
-									<TeamFlickeringGrid
-										dark={game.away.darkColor}
-										light={game.away.lightColor}
-									/>
-								</div>
-								<div className="relative">
-									<div
-										className={
-											"absolute inset-0 z-10 from-card from-40% to-transparent bg-linear-to-bl"
-										}
-									/>
-									<TeamFlickeringGrid
-										dark={game.away.darkColor}
-										light={game.away.lightColor}
-									/>
-								</div>
-							</div>
-						</div>
+						<GameTeamHeader team={game.away} />
 
 						{/* Score */}
 						<div className="flex flex-col items-center gap-1 relative z-20">
@@ -138,64 +95,25 @@ function GameDetailsPage() {
 									<PaddedScore score={game.home.score} maxDigits={maxDigits} />
 								</span>
 							</div>
-							<span className="text-sm text-muted-foreground">
-								{game.statusDetail}
-							</span>
+							{game.date ? (
+								<Tooltip content={formatGameDate(new Date(game.date))}>
+									<span className="text-muted-foreground cursor-default border-b border-dashed border-muted-foreground/50">
+										{game.statusDetail}
+									</span>
+								</Tooltip>
+							) : (
+								<span className="text-sm text-muted-foreground">
+									{game.statusDetail}
+								</span>
+							)}
 							{game.venue && (
 								<span className="text-xs text-muted-foreground">
 									{game.venue}
 								</span>
 							)}
-							{game.date && (
-								<span className="text-xs text-muted-foreground">
-									{formatGameDate(new Date(game.date))}
-								</span>
-							)}
 						</div>
 
-						{/* Home Team */}
-						<div
-							className="flex flex-1 flex-col items-center gap-2 relative"
-							id={game.home.uid}
-						>
-							<Image
-								src={game.home.logo}
-								alt={game.home.name ?? "Home team"}
-								className="h-16 w-16 z-20 relative object-contain md:h-20 md:w-20"
-							/>
-							<span className="text-lg relative z-20 font-semibold md:text-xl">
-								{game.home.name}
-							</span>
-							{game.home.record && (
-								<span className="relative z-20 font-mono font-bold text-foreground/75 md:text-lg">
-									{game.home.record}
-								</span>
-							)}
-							<div className="flex items-center absolute -bottom-13">
-								<div className="relative">
-									<div
-										className={
-											"absolute inset-0 z-10 from-card from-40% to-transparent bg-linear-to-br"
-										}
-									/>
-									<TeamFlickeringGrid
-										dark={game.home.darkColor}
-										light={game.home.lightColor}
-									/>
-								</div>
-								<div className="relative">
-									<div
-										className={
-											"absolute inset-0 z-10 from-card from-40% to-transparent bg-linear-to-bl"
-										}
-									/>
-									<TeamFlickeringGrid
-										dark={game.home.darkColor}
-										light={game.home.lightColor}
-									/>
-								</div>
-							</div>
-						</div>
+						<GameTeamHeader team={game.home} />
 					</div>
 				</div>
 			</div>

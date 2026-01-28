@@ -15,7 +15,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { PlayerBoxScore } from "@/components/player-box-score";
 import { cn } from "@/lib/utils";
 
+interface GameSearchParams {
+	fromDate?: string;
+}
+
 export const Route = createFileRoute("/_default/nba/game/$gameId")({
+	validateSearch: (search: Record<string, unknown>): GameSearchParams => {
+		return {
+			fromDate:
+				typeof search.fromDate === "string" ? search.fromDate : undefined,
+		};
+	},
 	loader: async ({ context, params }) => {
 		await context.queryClient.ensureQueryData(
 			gameDetailsQueryOptions(params.gameId),
@@ -35,6 +45,7 @@ export const Route = createFileRoute("/_default/nba/game/$gameId")({
 
 function GameDetailsPage() {
 	const { gameId } = Route.useParams();
+	const { fromDate } = Route.useSearch();
 	const { data: game } = useQuery(gameDetailsQueryOptions(gameId));
 
 	if (!game) {
@@ -52,21 +63,14 @@ function GameDetailsPage() {
 		game.home.score.toString().length,
 	);
 
+	const formatMadeAttempted = (made: number, attempted: number) =>
+		`${made}-${attempted}`;
+
 	return (
 		<div className="flex flex-col pb-12 lg:pb-20">
 			{/* Header with score */}
-			<div className="pt-4 pb-10 border-b overflow-hidden bg-card">
+			<div className="pt-6 pb-10 border-b overflow-hidden bg-card">
 				<div className="container">
-					<div className="w-full text-center">
-						<Link
-							to="/nba"
-							className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-						>
-							<ArrowLeft className="h-4 w-4" />
-							Back to scores
-						</Link>
-					</div>
-
 					{/* Teams and Score */}
 					<div className="flex items-center justify-center gap-4 md:gap-8">
 						{/* Away Team */}
@@ -200,11 +204,20 @@ function GameDetailsPage() {
 			<div className="relative bg-background">
 				<div className="container py-8">
 					<Tabs defaultValue="box-score" className="w-full">
-						<div className="flex justify-center mb-8">
+						<div className="flex items-center mb-8">
+							<Link
+								to="/nba"
+								search={fromDate ? { date: fromDate } : undefined}
+								className="flex-1 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+							>
+								<ArrowLeft className="h-4 w-4" />
+								Back to scores
+							</Link>
 							<TabsList>
 								<TabsTrigger value="box-score">Box Score</TabsTrigger>
 								<TabsTrigger value="team-stats">Team Stats</TabsTrigger>
 							</TabsList>
+							<div className="flex-1" />
 						</div>
 
 						<TabsContent value="box-score">
@@ -223,7 +236,7 @@ function GameDetailsPage() {
 						</TabsContent>
 
 						<TabsContent value="team-stats">
-							<div className="mx-auto max-w-2xl">
+							<div className="mx-auto">
 								<Card classNames={{ inner: "flex-col" }}>
 									<StatComparisonGroup title="Scoring" isFirst>
 										<StatComparison
@@ -257,6 +270,14 @@ function GameDetailsPage() {
 											awayColor={game.away.darkColor}
 											homeColor={game.home.darkColor}
 											format="percent"
+											awaySubValue={formatMadeAttempted(
+												game.away.stats.fieldGoalsMade,
+												game.away.stats.fieldGoalsAttempted,
+											)}
+											homeSubValue={formatMadeAttempted(
+												game.home.stats.fieldGoalsMade,
+												game.home.stats.fieldGoalsAttempted,
+											)}
 										/>
 										<StatComparison
 											label="3P%"
@@ -265,6 +286,14 @@ function GameDetailsPage() {
 											awayColor={game.away.darkColor}
 											homeColor={game.home.darkColor}
 											format="percent"
+											awaySubValue={formatMadeAttempted(
+												game.away.stats.threePointMade,
+												game.away.stats.threePointAttempted,
+											)}
+											homeSubValue={formatMadeAttempted(
+												game.home.stats.threePointMade,
+												game.home.stats.threePointAttempted,
+											)}
 										/>
 										<StatComparison
 											label="FT%"
@@ -273,6 +302,14 @@ function GameDetailsPage() {
 											awayColor={game.away.darkColor}
 											homeColor={game.home.darkColor}
 											format="percent"
+											awaySubValue={formatMadeAttempted(
+												game.away.stats.freeThrowsMade,
+												game.away.stats.freeThrowsAttempted,
+											)}
+											homeSubValue={formatMadeAttempted(
+												game.home.stats.freeThrowsMade,
+												game.home.stats.freeThrowsAttempted,
+											)}
 										/>
 									</StatComparisonGroup>
 

@@ -140,11 +140,10 @@ function NbaPage() {
 								<div className="grid w-full grid-cols-2 gap-6">
 									{games.map((game) => (
 										<div
-											className="
-                      col-span-1
-                    "
+											key={game.id}
+											className="col-span-1"
 										>
-											<Scoreboard key={game.id} game={game} />
+											<Scoreboard game={game} currentDate={currentDate} />
 										</div>
 									))}
 								</div>

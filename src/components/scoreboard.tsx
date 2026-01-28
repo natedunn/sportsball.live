@@ -7,9 +7,10 @@ import type { GameData } from "@/lib/types";
 
 interface ScoreboardProps {
 	game: GameData;
+	currentDate?: string;
 }
 
-export function Scoreboard({ game }: ScoreboardProps) {
+export function Scoreboard({ game, currentDate }: ScoreboardProps) {
 	const homeTeam = game.home;
 	const awayTeam = game.away;
 
@@ -44,6 +45,7 @@ export function Scoreboard({ game }: ScoreboardProps) {
 							<Link
 								to="/nba/game/$gameId"
 								params={{ gameId: game.id }}
+								search={currentDate ? { fromDate: currentDate } : undefined}
 								className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground hover:underline focus:text-foreground focus:underline"
 							>
 								<span>Box score</span>

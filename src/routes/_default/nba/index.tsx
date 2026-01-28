@@ -105,7 +105,7 @@ function NbaPage() {
 					</p>
 				</div>
 			</div>
-			<div className="container">
+			<div className="mx-auto w-full max-w-180">
 				<div className="flex flex-col gap-4">
 					<div className="flex justify-center">
 						<DatePagination date={currentDate} />
@@ -137,14 +137,13 @@ function NbaPage() {
 							transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
 						>
 							{games.length > 0 ? (
-								<div className="grid w-full grid-cols-2 gap-6">
+								<div className="flex flex-col w-full gap-6">
 									{games.map((game) => (
-										<div
+										<Scoreboard
 											key={game.id}
-											className="col-span-1"
-										>
-											<Scoreboard game={game} currentDate={currentDate} />
-										</div>
+											game={game}
+											currentDate={currentDate}
+										/>
 									))}
 								</div>
 							) : (

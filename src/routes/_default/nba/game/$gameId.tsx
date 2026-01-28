@@ -8,8 +8,11 @@ import {
 } from "@/components/stat-comparison";
 import { formatGameDate } from "@/lib/date";
 import { Image } from "@/components/ui/image";
+import { Card } from "@/components/ui/card";
 import { PaddedScore } from "@/components/score";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PlayerBoxScore } from "@/components/player-box-score";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_default/nba/game/$gameId")({
@@ -52,7 +55,7 @@ function GameDetailsPage() {
 	return (
 		<div className="flex flex-col pb-12 lg:pb-20">
 			{/* Header with score */}
-			<div className="pt-6 pb-12 border-b overflow-hidden bg-card">
+			<div className="pt-4 pb-10 border-b overflow-hidden bg-card">
 				<div className="container">
 					<div className="w-full text-center">
 						<Link
@@ -79,6 +82,11 @@ function GameDetailsPage() {
 							<span className="text-lg relative z-20 font-semibold md:text-xl">
 								{game.away.name}
 							</span>
+							{game.away.record && (
+								<span className="relative z-20 font-mono font-bold text-foreground/75 md:text-lg">
+									{game.away.record}
+								</span>
+							)}
 							<div className="flex items-center absolute -bottom-13">
 								<div className="relative">
 									<div
@@ -154,6 +162,11 @@ function GameDetailsPage() {
 							<span className="text-lg relative z-20 font-semibold md:text-xl">
 								{game.home.name}
 							</span>
+							{game.home.record && (
+								<span className="relative z-20 font-mono font-bold text-foreground/75 md:text-lg">
+									{game.home.record}
+								</span>
+							)}
 							<div className="flex items-center absolute -bottom-13">
 								<div className="relative">
 									<div
@@ -183,130 +196,156 @@ function GameDetailsPage() {
 				</div>
 			</div>
 
-			{/* Stats Comparison */}
+			{/* Tabbed Content */}
 			<div className="relative bg-background">
-				{/* <div className="absolute h-64 w-full z-10 top-0 bg-linear-to-b from-muted to-transparent pt-12 dark:from-muted/50"></div> */}
-				<div className="mx-auto max-w-2xl z-20 relative py-12">
-					<h2 className="mb-6 text-center text-xl font-semibold">Team Stats</h2>
-					<div className="flex flex-col gap-8">
-						<StatComparisonGroup title="Scoring">
-							<StatComparison
-								label="Points in Paint"
-								awayValue={game.away.stats.pointsInPaint}
-								homeValue={game.home.stats.pointsInPaint}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-							<StatComparison
-								label="Fast Break Pts"
-								awayValue={game.away.stats.fastBreakPoints}
-								homeValue={game.home.stats.fastBreakPoints}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-							<StatComparison
-								label="Largest Lead"
-								awayValue={game.away.stats.largestLead}
-								homeValue={game.home.stats.largestLead}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-						</StatComparisonGroup>
+				<div className="container py-8">
+					<Tabs defaultValue="box-score" className="w-full">
+						<div className="flex justify-center mb-8">
+							<TabsList>
+								<TabsTrigger value="box-score">Box Score</TabsTrigger>
+								<TabsTrigger value="team-stats">Team Stats</TabsTrigger>
+							</TabsList>
+						</div>
 
-						<StatComparisonGroup title="Shooting">
-							<StatComparison
-								label="FG%"
-								awayValue={game.away.stats.fieldGoalPct}
-								homeValue={game.home.stats.fieldGoalPct}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-								format="percent"
-							/>
-							<StatComparison
-								label="3P%"
-								awayValue={game.away.stats.threePointPct}
-								homeValue={game.home.stats.threePointPct}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-								format="percent"
-							/>
-							<StatComparison
-								label="FT%"
-								awayValue={game.away.stats.freeThrowPct}
-								homeValue={game.home.stats.freeThrowPct}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-								format="percent"
-							/>
-						</StatComparisonGroup>
+						<TabsContent value="box-score">
+							<div className="flex flex-col gap-6">
+								<PlayerBoxScore
+									team={game.away}
+									accentColor={game.away.darkColor}
+									isLive={game.state === "in"}
+								/>
+								<PlayerBoxScore
+									team={game.home}
+									accentColor={game.home.darkColor}
+									isLive={game.state === "in"}
+								/>
+							</div>
+						</TabsContent>
 
-						<StatComparisonGroup title="Rebounding">
-							<StatComparison
-								label="Total Rebounds"
-								awayValue={game.away.stats.totalRebounds}
-								homeValue={game.home.stats.totalRebounds}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-							<StatComparison
-								label="Offensive Reb"
-								awayValue={game.away.stats.offensiveRebounds}
-								homeValue={game.home.stats.offensiveRebounds}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-							<StatComparison
-								label="Defensive Reb"
-								awayValue={game.away.stats.defensiveRebounds}
-								homeValue={game.home.stats.defensiveRebounds}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-						</StatComparisonGroup>
+						<TabsContent value="team-stats">
+							<div className="mx-auto max-w-2xl">
+								<Card classNames={{ inner: "flex-col" }}>
+									<StatComparisonGroup title="Scoring" isFirst>
+										<StatComparison
+											label="Points in Paint"
+											awayValue={game.away.stats.pointsInPaint}
+											homeValue={game.home.stats.pointsInPaint}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+										<StatComparison
+											label="Fast Break Pts"
+											awayValue={game.away.stats.fastBreakPoints}
+											homeValue={game.home.stats.fastBreakPoints}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+										<StatComparison
+											label="Largest Lead"
+											awayValue={game.away.stats.largestLead}
+											homeValue={game.home.stats.largestLead}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+									</StatComparisonGroup>
 
-						<StatComparisonGroup title="Playmaking">
-							<StatComparison
-								label="Assists"
-								awayValue={game.away.stats.assists}
-								homeValue={game.home.stats.assists}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-							<StatComparison
-								label="Turnovers"
-								awayValue={game.away.stats.turnovers}
-								homeValue={game.home.stats.turnovers}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-								higherIsBetter={false}
-							/>
-						</StatComparisonGroup>
+									<StatComparisonGroup title="Shooting">
+										<StatComparison
+											label="FG%"
+											awayValue={game.away.stats.fieldGoalPct}
+											homeValue={game.home.stats.fieldGoalPct}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+											format="percent"
+										/>
+										<StatComparison
+											label="3P%"
+											awayValue={game.away.stats.threePointPct}
+											homeValue={game.home.stats.threePointPct}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+											format="percent"
+										/>
+										<StatComparison
+											label="FT%"
+											awayValue={game.away.stats.freeThrowPct}
+											homeValue={game.home.stats.freeThrowPct}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+											format="percent"
+										/>
+									</StatComparisonGroup>
 
-						<StatComparisonGroup title="Defense">
-							<StatComparison
-								label="Steals"
-								awayValue={game.away.stats.steals}
-								homeValue={game.home.stats.steals}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-							<StatComparison
-								label="Blocks"
-								awayValue={game.away.stats.blocks}
-								homeValue={game.home.stats.blocks}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-							/>
-							<StatComparison
-								label="Fouls"
-								awayValue={game.away.stats.fouls}
-								homeValue={game.home.stats.fouls}
-								awayColor={game.away.darkColor}
-								homeColor={game.home.darkColor}
-								higherIsBetter={false}
-							/>
-						</StatComparisonGroup>
-					</div>
+									<StatComparisonGroup title="Rebounding">
+										<StatComparison
+											label="Total Rebounds"
+											awayValue={game.away.stats.totalRebounds}
+											homeValue={game.home.stats.totalRebounds}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+										<StatComparison
+											label="Offensive Reb"
+											awayValue={game.away.stats.offensiveRebounds}
+											homeValue={game.home.stats.offensiveRebounds}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+										<StatComparison
+											label="Defensive Reb"
+											awayValue={game.away.stats.defensiveRebounds}
+											homeValue={game.home.stats.defensiveRebounds}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+									</StatComparisonGroup>
+
+									<StatComparisonGroup title="Playmaking">
+										<StatComparison
+											label="Assists"
+											awayValue={game.away.stats.assists}
+											homeValue={game.home.stats.assists}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+										<StatComparison
+											label="Turnovers"
+											awayValue={game.away.stats.turnovers}
+											homeValue={game.home.stats.turnovers}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+											higherIsBetter={false}
+										/>
+									</StatComparisonGroup>
+
+									<StatComparisonGroup title="Defense">
+										<StatComparison
+											label="Steals"
+											awayValue={game.away.stats.steals}
+											homeValue={game.home.stats.steals}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+										<StatComparison
+											label="Blocks"
+											awayValue={game.away.stats.blocks}
+											homeValue={game.home.stats.blocks}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+										/>
+										<StatComparison
+											label="Fouls"
+											awayValue={game.away.stats.fouls}
+											homeValue={game.home.stats.fouls}
+											awayColor={game.away.darkColor}
+											homeColor={game.home.darkColor}
+											higherIsBetter={false}
+										/>
+									</StatComparisonGroup>
+								</Card>
+							</div>
+						</TabsContent>
+					</Tabs>
 				</div>
 			</div>
 		</div>

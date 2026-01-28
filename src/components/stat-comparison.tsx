@@ -8,6 +8,10 @@ interface StatComparisonProps {
 	homeColor: string;
 	format?: "number" | "percent";
 	higherIsBetter?: boolean;
+	awayDisplay?: string;
+	homeDisplay?: string;
+	awaySubValue?: string;
+	homeSubValue?: string;
 }
 
 export function StatComparison({
@@ -18,6 +22,10 @@ export function StatComparison({
 	homeColor,
 	format = "number",
 	higherIsBetter = true,
+	awayDisplay,
+	homeDisplay,
+	awaySubValue,
+	homeSubValue,
 }: StatComparisonProps) {
 	const total = awayValue + homeValue;
 	const awayPercent = total > 0 ? (awayValue / total) * 100 : 50;
@@ -41,29 +49,43 @@ export function StatComparison({
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex items-center justify-between">
-				<span
-					className={cn(
-						"font-medium tabular-nums px-2 rounded-full border",
-						awayWins && "font-bold bg-foreground/10 border-foreground/20",
-						isTied && "text-muted-foreground border-transparent",
-						!awayWins && !isTied && "border-transparent",
+				<div className="flex flex-col items-start">
+					<span
+						className={cn(
+							"font-medium tabular-nums px-2 rounded-full border",
+							awayWins && "font-bold bg-foreground/10 border-foreground/20",
+							isTied && "text-muted-foreground border-transparent",
+							!awayWins && !isTied && "border-transparent",
+						)}
+					>
+						{awayDisplay ?? formatValue(awayValue)}
+					</span>
+					{awaySubValue && (
+						<span className="text-xs text-muted-foreground tabular-nums px-2">
+							{awaySubValue}
+						</span>
 					)}
-				>
-					{formatValue(awayValue)}
-				</span>
+				</div>
 				<span className="text-foreground text-sm uppercase tracking-wide">
 					{label}
 				</span>
-				<span
-					className={cn(
-						"font-medium tabular-nums px-2 rounded-full border",
-						homeWins && "font-bold bg-foreground/10 border-foreground/20",
-						isTied && "text-muted-foreground border-transparent",
-						!homeWins && !isTied && "border-transparent",
+				<div className="flex flex-col items-end">
+					<span
+						className={cn(
+							"font-medium tabular-nums px-2 rounded-full border",
+							homeWins && "font-bold bg-foreground/10 border-foreground/20",
+							isTied && "text-muted-foreground border-transparent",
+							!homeWins && !isTied && "border-transparent",
+						)}
+					>
+						{homeDisplay ?? formatValue(homeValue)}
+					</span>
+					{homeSubValue && (
+						<span className="text-xs text-muted-foreground tabular-nums px-2">
+							{homeSubValue}
+						</span>
 					)}
-				>
-					{formatValue(homeValue)}
-				</span>
+				</div>
 			</div>
 			<div className="relative flex h-4 w-full overflow-hidden border-border/30 border-2 rounded-full bg-muted">
 				<div className="pointer-events-none z-10 absolute inset-0 bg-linear-to-b from-transparent dark:to-black/40 to-white/30" />

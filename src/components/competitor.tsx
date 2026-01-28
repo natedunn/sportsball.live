@@ -42,10 +42,10 @@ export function Competitor({ team, homeAway, classes }: CompetitorProps) {
 				<Image
 					src={team.logo}
 					alt={team.name ?? "Team logo"}
-					width={48}
-					height={48}
+					width={40}
+					height={40}
 					className={cn(
-						"w-8 sm:w-10 md:w-12",
+						"w-7 sm:w-8 md:w-10",
 						classes?.logo,
 						isJazz && "dark:invert",
 					)}

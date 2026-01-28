@@ -69,7 +69,7 @@ function TeamScore({
 	return (
 		<div
 			className={cn(
-				"flex items-center gap-2 font-mono text-2xl font-bold sm:text-3xl md:text-4xl",
+				"flex items-center gap-2 font-mono text-xl font-bold sm:text-2xl md:text-3xl",
 				state === "loser" && "opacity-50",
 				className,
 			)}
@@ -100,7 +100,7 @@ export function Score({
 				state={awayState}
 				className={classes?.score}
 			/>
-			<div className="text-xl font-bold opacity-50 sm:text-2xl md:text-3xl">
+			<div className="text-lg font-bold opacity-50 sm:text-xl md:text-2xl">
 				—
 			</div>
 			<TeamScore

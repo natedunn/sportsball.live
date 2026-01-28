@@ -40,24 +40,26 @@ export function StatComparison({
 
 	return (
 		<div className="flex flex-col gap-1">
-			<div className="flex items-center justify-between text-sm">
+			<div className="flex items-center justify-between">
 				<span
 					className={cn(
-						"font-medium tabular-nums",
-						awayWins && "font-bold",
-						isTied && "text-muted-foreground",
+						"font-medium tabular-nums px-2 rounded-full border",
+						awayWins && "font-bold bg-foreground/10 border-foreground/20",
+						isTied && "text-muted-foreground border-transparent",
+						!awayWins && !isTied && "border-transparent",
 					)}
 				>
 					{formatValue(awayValue)}
 				</span>
-				<span className="text-muted-foreground text-xs uppercase tracking-wide">
+				<span className="text-foreground text-sm uppercase tracking-wide">
 					{label}
 				</span>
 				<span
 					className={cn(
-						"font-medium tabular-nums",
-						homeWins && "font-bold",
-						isTied && "text-muted-foreground",
+						"font-medium tabular-nums px-2 rounded-full border",
+						homeWins && "font-bold bg-foreground/10 border-foreground/20",
+						isTied && "text-muted-foreground border-transparent",
+						!homeWins && !isTied && "border-transparent",
 					)}
 				>
 					{formatValue(homeValue)}
@@ -66,7 +68,7 @@ export function StatComparison({
 			<div className="relative flex h-4 w-full overflow-hidden border-border/30 border-2 rounded-full bg-muted">
 				<div className="pointer-events-none z-10 absolute inset-0 bg-linear-to-b from-transparent dark:to-black/40 to-white/30" />
 				<div
-					className="transition-all duration-300 ease-out"
+					className="transition-all duration-300 ease-out border-r-2 border-background"
 					style={{
 						width: `${awayPercent}%`,
 						backgroundColor: `#${awayColor}`,
@@ -87,18 +89,25 @@ export function StatComparison({
 interface StatComparisonGroupProps {
 	title: string;
 	children: React.ReactNode;
+	isFirst?: boolean;
 }
 
 export function StatComparisonGroup({
 	title,
 	children,
+	isFirst,
 }: StatComparisonGroupProps) {
 	return (
-		<div className="flex flex-col gap-4">
-			<h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+		<div className="flex flex-col">
+			<h3
+				className={cn(
+					"px-4 pb-3 pt-3.5 text-xs font-medium uppercase tracking-wider text-muted-foreground bg-muted/30 border-border/50",
+					isFirst ? "border-b" : "border-y",
+				)}
+			>
 				{title}
 			</h3>
-			<div className="flex flex-col gap-3">{children}</div>
+			<div className="flex flex-col gap-3 p-4">{children}</div>
 		</div>
 	);
 }

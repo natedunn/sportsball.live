@@ -24,6 +24,33 @@ export interface TeamStats {
   largestLead: number;
 }
 
+export interface PlayerStats {
+  minutes: string;
+  fieldGoals: string;
+  threePointers: string;
+  freeThrows: string;
+  offensiveRebounds: number;
+  defensiveRebounds: number;
+  totalRebounds: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+  turnovers: number;
+  fouls: number;
+  plusMinus: string;
+  points: number;
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  jersey: string;
+  position: string;
+  starter: boolean;
+  active: boolean;
+  stats: PlayerStats;
+}
+
 export interface GameDetailsTeam {
   id: string;
   uid: string | undefined;
@@ -34,7 +61,9 @@ export interface GameDetailsTeam {
   darkColor: string;
   lightColor: string;
   winner: boolean;
+  record: string | undefined;
   stats: TeamStats;
+  players: Player[];
 }
 
 export interface GameDetails {
@@ -65,8 +94,39 @@ interface ApiTeam {
   statistics?: ApiStat[];
 }
 
+interface ApiAthlete {
+  id: string;
+  displayName?: string;
+  jersey?: string;
+  position?: {
+    abbreviation?: string;
+  };
+  starter?: boolean;
+}
+
+interface ApiPlayerStats {
+  athlete: ApiAthlete;
+  stats: string[];
+  starter?: boolean;
+  active?: boolean;
+}
+
+interface ApiPlayerStatCategory {
+  names: string[];
+  keys: string[];
+  athletes: ApiPlayerStats[];
+}
+
+interface ApiBoxscorePlayers {
+  team: {
+    id: string;
+  };
+  statistics: ApiPlayerStatCategory[];
+}
+
 interface ApiBoxscore {
   teams?: ApiTeam[];
+  players?: ApiBoxscorePlayers[];
 }
 
 interface ApiHeaderCompetitor {
@@ -80,6 +140,11 @@ interface ApiHeaderCompetitor {
   };
   score: string;
   winner?: boolean;
+  record?: Array<{
+    type: string;
+    summary?: string;
+    displayValue?: string;
+  }>;
 }
 
 interface ApiHeader {
@@ -153,6 +218,67 @@ function extractTeamStats(stats: ApiStat[] | undefined): TeamStats {
   };
 }
 
+function extractPlayers(boxscorePlayers: ApiBoxscorePlayers | undefined): Player[] {
+  if (!boxscorePlayers?.statistics?.[0]) return [];
+
+  const statCategory = boxscorePlayers.statistics[0];
+  const statNames = statCategory.names;
+
+  // Map stat names to indices
+  const getStatIndex = (name: string): number => statNames.indexOf(name);
+
+  return statCategory.athletes.map((playerData): Player => {
+    const stats = playerData.stats ?? [];
+    const minIdx = getStatIndex("MIN");
+    const fgIdx = getStatIndex("FG");
+    const tpIdx = getStatIndex("3PT");
+    const ftIdx = getStatIndex("FT");
+    const orebIdx = getStatIndex("OREB");
+    const drebIdx = getStatIndex("DREB");
+    const rebIdx = getStatIndex("REB");
+    const astIdx = getStatIndex("AST");
+    const stlIdx = getStatIndex("STL");
+    const blkIdx = getStatIndex("BLK");
+    const toIdx = getStatIndex("TO");
+    const pfIdx = getStatIndex("PF");
+    const pmIdx = getStatIndex("+/-");
+    const ptsIdx = getStatIndex("PTS");
+
+    const getStat = (idx: number, fallback: string): string => {
+      return idx >= 0 && stats[idx] != null ? stats[idx] : fallback;
+    };
+
+    const getStatNum = (idx: number): number => {
+      return idx >= 0 && stats[idx] != null ? parseInt(stats[idx], 10) || 0 : 0;
+    };
+
+    return {
+      id: playerData.athlete.id,
+      name: playerData.athlete.displayName ?? "Unknown",
+      jersey: playerData.athlete.jersey ?? "",
+      position: playerData.athlete.position?.abbreviation ?? "",
+      starter: playerData.starter ?? false,
+      active: playerData.active ?? false,
+      stats: {
+        minutes: getStat(minIdx, "0"),
+        fieldGoals: getStat(fgIdx, "0-0"),
+        threePointers: getStat(tpIdx, "0-0"),
+        freeThrows: getStat(ftIdx, "0-0"),
+        offensiveRebounds: getStatNum(orebIdx),
+        defensiveRebounds: getStatNum(drebIdx),
+        totalRebounds: getStatNum(rebIdx),
+        assists: getStatNum(astIdx),
+        steals: getStatNum(stlIdx),
+        blocks: getStatNum(blkIdx),
+        turnovers: getStatNum(toIdx),
+        fouls: getStatNum(pfIdx),
+        plusMinus: getStat(pmIdx, "0"),
+        points: getStatNum(ptsIdx),
+      },
+    };
+  });
+}
+
 export const fetchGameDetails = createServerFn({ method: "GET" })
   .inputValidator((d: string) => d)
   .handler(async ({ data: gameId }): Promise<GameDetails> => {
@@ -177,6 +303,7 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
 
     const competition = apiData.header?.competitions?.[0];
     const boxscoreTeams = apiData.boxscore.teams;
+    const boxscorePlayers = apiData.boxscore.players;
 
     // Get scores and basic info from header competitors
     const headerAway = competition?.competitors?.find(c => c.homeAway === "away");
@@ -185,6 +312,10 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
     // Match boxscore teams by team id for stats
     const awayStats = boxscoreTeams.find(t => t.team.id === headerAway?.team.id);
     const homeStats = boxscoreTeams.find(t => t.team.id === headerHome?.team.id);
+
+    // Match boxscore players by team id
+    const awayPlayers = boxscorePlayers?.find(p => p.team.id === headerAway?.team.id);
+    const homePlayers = boxscorePlayers?.find(p => p.team.id === headerHome?.team.id);
 
     const awayColors = getTeamColors(headerAway?.team.uid);
     const homeColors = getTeamColors(headerHome?.team.uid);
@@ -205,7 +336,9 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
         darkColor: awayColors.darkColor,
         lightColor: awayColors.lightColor,
         winner: headerAway?.winner ?? false,
+        record: headerAway?.record?.find(r => r.type === "total")?.summary,
         stats: extractTeamStats(awayStats?.statistics),
+        players: extractPlayers(awayPlayers),
       },
       home: {
         id: headerHome?.team.id ?? "",
@@ -217,7 +350,9 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
         darkColor: homeColors.darkColor,
         lightColor: homeColors.lightColor,
         winner: headerHome?.winner ?? false,
+        record: headerHome?.record?.find(r => r.type === "total")?.summary,
         stats: extractTeamStats(homeStats?.statistics),
+        players: extractPlayers(homePlayers),
       },
     };
   });

@@ -4,13 +4,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { api } from "~api";
 import { convexQuery } from "@convex-dev/react-query";
-import {
-	Newspaper,
-	BarChart3,
-	Trophy,
-	Users,
-	ChevronDown,
-} from "lucide-react";
+import { Newspaper, BarChart3, Trophy, Users, ChevronDown } from "lucide-react";
 
 function NavLink(props: NavigationMenu.Link.Props) {
 	return (
@@ -41,30 +35,96 @@ const navItems = [
 		label: "NBA",
 		href: "/nba",
 		children: [
-			{ label: "News", href: "/nba", icon: Newspaper, description: "Latest NBA news and updates" },
-			{ label: "Scores", href: "/nba/scores", icon: BarChart3, description: "Live and recent game scores" },
-			{ label: "Standings", href: "/nba/standings", icon: Trophy, description: "League standings", disabled: true },
-			{ label: "Players", href: "/nba/players", icon: Users, description: "Player stats and profiles", disabled: true },
+			{
+				label: "News",
+				href: "/nba",
+				icon: Newspaper,
+				description: "Latest NBA news and updates",
+			},
+			{
+				label: "Scores",
+				href: "/nba/scores",
+				icon: BarChart3,
+				description: "Live and recent game scores",
+			},
+			{
+				label: "Standings",
+				href: "/nba/standings",
+				icon: Trophy,
+				description: "League standings",
+				disabled: true,
+			},
+			{
+				label: "Players",
+				href: "/nba/players",
+				icon: Users,
+				description: "Player stats and profiles",
+				disabled: true,
+			},
 		],
 	},
 	{
 		label: "WNBA",
 		href: "/wnba",
 		children: [
-			{ label: "News", href: "/wnba", icon: Newspaper, description: "Latest WNBA news and updates" },
-			{ label: "Scores", href: "/wnba/scores", icon: BarChart3, description: "Live and recent game scores" },
-			{ label: "Standings", href: "/wnba/standings", icon: Trophy, description: "League standings", disabled: true },
-			{ label: "Players", href: "/wnba/players", icon: Users, description: "Player stats and profiles", disabled: true },
+			{
+				label: "News",
+				href: "/wnba",
+				icon: Newspaper,
+				description: "Latest WNBA news and updates",
+			},
+			{
+				label: "Scores",
+				href: "/wnba/scores",
+				icon: BarChart3,
+				description: "Live and recent game scores",
+			},
+			{
+				label: "Standings",
+				href: "/wnba/standings",
+				icon: Trophy,
+				description: "League standings",
+				disabled: true,
+			},
+			{
+				label: "Players",
+				href: "/wnba/players",
+				icon: Users,
+				description: "Player stats and profiles",
+				disabled: true,
+			},
 		],
 	},
 	{
 		label: "G League",
 		href: "/gleague",
 		children: [
-			{ label: "News", href: "/gleague", icon: Newspaper, description: "Latest G League news and updates" },
-			{ label: "Scores", href: "/gleague/scores", icon: BarChart3, description: "Live and recent game scores" },
-			{ label: "Standings", href: "/gleague/standings", icon: Trophy, description: "League standings", disabled: true },
-			{ label: "Players", href: "/gleague/players", icon: Users, description: "Player stats and profiles", disabled: true },
+			{
+				label: "News",
+				href: "/gleague",
+				icon: Newspaper,
+				description: "Latest G League news and updates",
+			},
+			{
+				label: "Scores",
+				href: "/gleague/scores",
+				icon: BarChart3,
+				description: "Live and recent game scores",
+			},
+			{
+				label: "Standings",
+				href: "/gleague/standings",
+				icon: Trophy,
+				description: "League standings",
+				disabled: true,
+			},
+			{
+				label: "Players",
+				href: "/gleague/players",
+				icon: Users,
+				description: "Player stats and profiles",
+				disabled: true,
+			},
 		],
 	},
 ];
@@ -79,13 +139,12 @@ const popupClassName =
 	"relative h-[var(--popup-height)] w-[var(--popup-width)] origin-[var(--transform-origin)] rounded-lg border border-border bg-background shadow-lg transition-[opacity,transform,width,height,scale,translate] duration-[var(--duration)] ease-[var(--easing)] data-[ending-style]:scale-90 data-[ending-style]:opacity-0 data-[ending-style]:duration-150 data-[starting-style]:scale-90 data-[starting-style]:opacity-0";
 
 const arrowClassName =
-	"flex transition-[left] duration-[var(--duration)] ease-[var(--easing)] data-[side=bottom]:top-[-8px] data-[side=top]:bottom-[-8px] data-[side=top]:rotate-180";
+	"flex transition-[left] duration-(--duration) ease-(--easing) data-[side=bottom]:-top-2 data-[side=top]:-bottom-2 data-[side=top]:rotate-180";
 
-const viewportClassName =
-	"relative h-full w-full overflow-hidden";
+const viewportClassName = "relative h-full w-full overflow-hidden";
 
 const contentClassName =
-	"h-full p-2 w-[420px] transition-[opacity,transform,translate] duration-[var(--duration)] ease-[var(--easing)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[starting-style]:data-[activation-direction=left]:-translate-x-1/2 data-[starting-style]:data-[activation-direction=right]:translate-x-1/2 data-[ending-style]:data-[activation-direction=left]:translate-x-1/2 data-[ending-style]:data-[activation-direction=right]:-translate-x-1/2";
+	"h-full p-2 w-105 transition-[opacity,transform,translate] duration-(--duration) ease-(--easing) data-starting-style:opacity-0 data-ending-style:opacity-0 data-starting-style:data-[activation-direction=left]:-translate-x-1/2 data-starting-style:data-[activation-direction=right]:translate-x-1/2 data-ending-style:data-[activation-direction=left]:translate-x-1/2 data-ending-style:data-[activation-direction=right]:-translate-x-1/2";
 
 export function Header() {
 	const { data: user } = useSuspenseQuery(
@@ -93,7 +152,7 @@ export function Header() {
 	);
 
 	return (
-		<nav className="relative z-50 border-b border-border bg-background py-2">
+		<nav className="relative z-50 border-b border-border/50 bg-background/20 py-2 backdrop-blur-xl">
 			<div className="container flex items-center justify-between">
 				<div className="flex items-center gap-4">
 					<Link
@@ -115,7 +174,7 @@ export function Header() {
 								<NavigationMenu.Item key={item.label}>
 									<NavigationMenu.Trigger className={triggerClassName}>
 										{item.label}
-										<NavigationMenu.Icon className="transition-transform duration-200 ease-out data-[popup-open]:rotate-180">
+										<NavigationMenu.Icon className="transition-transform duration-200 ease-out data-popup-open:rotate-180">
 											<ChevronDown className="h-4 w-4" />
 										</NavigationMenu.Icon>
 									</NavigationMenu.Trigger>
@@ -142,7 +201,9 @@ export function Header() {
 														>
 															<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 															<div className="flex flex-col gap-0.5">
-																<span className="text-sm font-medium">{child.label}</span>
+																<span className="text-sm font-medium">
+																	{child.label}
+																</span>
 																<span className="text-xs text-muted-foreground">
 																	{child.description}
 																</span>
@@ -161,10 +222,12 @@ export function Header() {
 							<NavigationMenu.Positioner
 								sideOffset={8}
 								className={positionerClassName}
-								style={{
-									"--duration": "0.35s",
-									"--easing": "cubic-bezier(0.22, 1, 0.36, 1)",
-								} as React.CSSProperties}
+								style={
+									{
+										"--duration": "0.35s",
+										"--easing": "cubic-bezier(0.22, 1, 0.36, 1)",
+									} as React.CSSProperties
+								}
 							>
 								<NavigationMenu.Popup className={popupClassName}>
 									<NavigationMenu.Arrow className={arrowClassName}>

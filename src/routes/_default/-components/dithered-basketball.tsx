@@ -66,7 +66,8 @@ function Basketball() {
 			// Tilted rotation - angled like a spinning basketball
 			meshRef.current.rotation.y = state.clock.elapsedTime * 0.3;
 			meshRef.current.rotation.x = 0.4; // Fixed tilt angle
-			meshRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.15) * 0.1;
+			meshRef.current.rotation.z =
+				Math.sin(state.clock.elapsedTime * 0.15) * 0.1;
 		}
 	});
 
@@ -78,8 +79,11 @@ function Basketball() {
 	);
 }
 
-function Effects() {
-	const effect = useMemo(() => new DitheringEffect({ colorFront: "#f97316", pixelSize: 3 }), []);
+function Effects({ color }: { color: string }) {
+	const effect = useMemo(
+		() => new DitheringEffect({ colorFront: color, pixelSize: 6 }),
+		[color],
+	);
 
 	return (
 		<EffectComposer>
@@ -91,9 +95,14 @@ function Effects() {
 interface DitheredBasketballProps {
 	className?: string;
 	style?: React.CSSProperties;
+	color?: string;
 }
 
-export function DitheredBasketball({ className, style }: DitheredBasketballProps) {
+export function DitheredBasketball({
+	className,
+	style,
+	color = "#f97316",
+}: DitheredBasketballProps) {
 	return (
 		<div className={className} style={style}>
 			<Canvas
@@ -105,7 +114,7 @@ export function DitheredBasketball({ className, style }: DitheredBasketballProps
 				<directionalLight position={[5, 5, 5]} intensity={0.8} />
 				<Suspense fallback={null}>
 					<Basketball />
-					<Effects />
+					<Effects color={color} />
 				</Suspense>
 			</Canvas>
 		</div>

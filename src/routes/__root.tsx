@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { QueryClient } from "@tanstack/react-query";
@@ -15,9 +16,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { DefaultCatchBoundary } from "@/components/_default-catch-boundary";
 import { authClient } from "@/lib/auth/auth-client";
 import { getToken } from "@/lib/auth/auth-server-utils";
+import { initThemeObserver } from "@/lib/store";
 
 import appCss from "../styles/app.css?url";
 import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 // import { Devtools } from "./-components/devtools";
 
 const getAuth = createServerFn({ method: "GET" }).handler(async () => {
@@ -45,6 +48,11 @@ export const Route = createRootRouteWithContext<{
 			},
 		],
 		links: [
+			{
+				rel: "icon",
+				href: "/favicon.svg",
+				type: "image/svg+xml",
+			},
 			{
 				rel: "stylesheet",
 				href: appCss,
@@ -116,19 +124,24 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+	useEffect(() => {
+		initThemeObserver();
+	}, []);
+
 	return (
 		<html suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
-			<body>
+			<body className="flex min-h-screen flex-col">
 				<ScriptOnce>
 					{`document.documentElement.classList.toggle(
 						'dark',
 						localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
 					)`}
 				</ScriptOnce>
-				{children}
+				<div className="flex-1">{children}</div>
+				<Footer />
 				{/* {process.env.NODE_ENV === "development" && <Devtools />}s */}
 				<Scripts />
 			</body>

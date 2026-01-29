@@ -1,160 +1,72 @@
-import { useEffect, useRef } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "motion/react";
-import { DatePagination } from "@/components/date-pagination";
-import { Scoreboard } from "@/components/scoreboard";
-import { formatDate, moveDate } from "@/lib/date";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight } from "lucide-react";
 import { nbaGamesQueryOptions } from "@/lib/nba/games.queries";
-
-interface NbaSearchParams {
-	date?: string;
-}
+import { nbaNewsQueryOptions } from "@/lib/nba/news.queries";
+import { formatDate } from "@/lib/date";
+import { Card } from "@/components/ui/card";
+import { ScoreTicker } from "@/components/score-ticker";
+import { NewsCard } from "@/components/news-card";
 
 export const Route = createFileRoute("/_default/nba/")({
-	validateSearch: (search: Record<string, unknown>): NbaSearchParams => {
-		return {
-			date: typeof search.date === "string" ? search.date : undefined,
-		};
+	loader: async ({ context }) => {
+		const today = formatDate(new Date(), "YYYYMMDD");
+		await Promise.all([
+			context.queryClient.ensureQueryData(nbaGamesQueryOptions(today)),
+			context.queryClient.ensureQueryData(nbaNewsQueryOptions()),
+		]);
 	},
-	loaderDeps: ({ search: { date } }) => ({ date }),
-	loader: async ({ context, deps }) => {
-		const currentDate = deps.date ?? formatDate(new Date(), "YYYY-MM-DD");
-		const formattedDate = formatDate(currentDate, "YYYYMMDD");
-
-		await context.queryClient.ensureQueryData(
-			nbaGamesQueryOptions(formattedDate),
-		);
-	},
-	pendingComponent: () => (
-		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
-			<div className="bg-linear-to-b from-muted/70 to-transparent pt-12 dark:from-muted/30">
-				<div className="flex flex-col items-center justify-between gap-2">
-					<h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-4xl">
-						Daily NBA scores
-					</h1>
-					<p className="text-muted-foreground/50">
-						View current, upcoming, and past games for the NBA.
-					</p>
-				</div>
-			</div>
-		</div>
-	),
-	component: NbaPage,
+	component: NbaHomePage,
 });
 
-function NbaPage() {
-	const { date } = Route.useSearch();
-	const currentDate = date ?? formatDate(new Date(), "YYYY-MM-DD");
-	const formattedDate = formatDate(currentDate, "YYYYMMDD");
-
-	const prevDateRef = useRef<string>(formattedDate);
-	const directionRef = useRef<"next" | "previous">("next");
-
-	if (prevDateRef.current !== formattedDate) {
-		directionRef.current =
-			formattedDate > prevDateRef.current ? "next" : "previous";
-	}
-
-	useEffect(() => {
-		prevDateRef.current = formattedDate;
-	}, [formattedDate]);
-
-	const direction = directionRef.current;
-
-	const queryClient = useQueryClient();
-
-	useEffect(() => {
-		// Stagger prefetching: prioritize ±1 day, then ±2, etc.
-		// This prevents hammering the server and lets initial data load first
-		const prefetchWithDelay = (date: string, delayMs: number) => {
-			const formatted = formatDate(date, "YYYYMMDD");
-			// Only prefetch if not already in cache
-			const cached = queryClient.getQueryData(["nba", "games", formatted]);
-			if (!cached) {
-				setTimeout(() => {
-					queryClient.prefetchQuery(nbaGamesQueryOptions(formatted));
-				}, delayMs);
-			}
-		};
-
-		let nextDate = currentDate;
-		let prevDate = currentDate;
-
-		for (let i = 0; i < 5; i++) {
-			nextDate = moveDate(nextDate, "next");
-			prevDate = moveDate(prevDate, "prev");
-			// Stagger: 100ms delay per distance from current date
-			const delay = (i + 1) * 100;
-			prefetchWithDelay(nextDate, delay);
-			prefetchWithDelay(prevDate, delay);
-		}
-	}, [currentDate, queryClient]);
-
-	const { data: games = [] } = useQuery(nbaGamesQueryOptions(formattedDate));
+function NbaHomePage() {
+	const today = formatDate(new Date(), "YYYYMMDD");
+	const { data: games = [] } = useQuery(nbaGamesQueryOptions(today));
+	const { data: news = [] } = useQuery(nbaNewsQueryOptions());
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
-			<div className="bg-linear-to-b from-muted/70 to-transparent pt-12 dark:from-muted/30">
-				<div className="flex flex-col items-center justify-between gap-2">
-					<h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-4xl">
-						Daily NBA scores
+			<div className="bg-gradient-to-b from-muted/70 to-transparent pt-12 dark:from-muted/30">
+				<div className="flex flex-col items-center justify-between gap-4">
+					<h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl">
+						NBA
 					</h1>
-					<p className="text-muted-foreground/50">
-						View current, upcoming, and past games for the NBA.
+					<p className="text-center text-muted-foreground/50">
+						News, scores, and stats for the National Basketball Association
 					</p>
 				</div>
 			</div>
-			<div className="mx-auto w-full max-w-180">
-				<div className="flex flex-col gap-4">
-					<div className="flex justify-center">
-						<DatePagination date={currentDate} />
-					</div>
-					<AnimatePresence mode="wait" custom={direction} initial={false}>
-						<motion.div
-							key={formattedDate}
-							custom={direction}
-							variants={{
-								initial: (dir: "next" | "previous") => ({
-									opacity: 0,
-									scale: dir === "next" ? 0.98 : 1.02,
-									y: dir === "next" ? 12 : -12,
-								}),
-								animate: {
-									opacity: 1,
-									scale: 1,
-									y: 0,
-								},
-								exit: (dir: "next" | "previous") => ({
-									opacity: 0,
-									scale: dir === "previous" ? 0.98 : 1.02,
-									y: dir === "previous" ? 12 : -12,
-								}),
-							}}
-							initial="initial"
-							animate="animate"
-							exit="exit"
-							transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-						>
-							{games.length > 0 ? (
-								<div className="flex flex-col w-full gap-6">
-									{games.map((game) => (
-										<Scoreboard
-											key={game.id}
-											game={game}
-											currentDate={currentDate}
-										/>
-									))}
-								</div>
-							) : (
-								<div className="flex flex-col items-center justify-center gap-4">
-									<div className="mt-4 text-lg text-muted-foreground/50">
-										No games scheduled
-									</div>
-								</div>
+
+			<div className="container">
+				<div className="flex flex-col gap-8">
+					{/* Today's Games */}
+					<section className="flex flex-col gap-4">
+						<div className="flex items-center justify-between">
+							<h2 className="text-xl font-bold">Today's Games</h2>
+							<Link
+								to="/nba/scores"
+								className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+							>
+								All scores <ArrowRight className="h-4 w-4" />
+							</Link>
+						</div>
+						<Card classNames={{ inner: "flex-col gap-3" }}>
+							<ScoreTicker games={games} league="nba" />
+						</Card>
+					</section>
+
+					{/* News Section */}
+					<section className="flex flex-col gap-4">
+						<h2 className="text-xl font-bold">Latest News</h2>
+						<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+							{news.slice(0, 6).map((article) => (
+								<NewsCard key={article.id} article={article} />
+							))}
+							{news.length === 0 && (
+								<p className="text-sm text-muted-foreground">No news available</p>
 							)}
-						</motion.div>
-					</AnimatePresence>
+						</div>
+					</section>
 				</div>
 			</div>
 		</div>

@@ -1,18 +1,23 @@
+import { Link } from "@tanstack/react-router";
+
 export function Footer() {
-  return (
-    <footer className="mt-auto border-t border-border bg-background py-4">
-      <div className="container">
-        <div>
-          <div className="inline">
-            <span className="py-0.5 text-lg leading-none">◍</span>
-            <span> Sportsball</span>
-          </div>
-          {" is a project by "}
-          <a className="underline" href="https://github.com/natedunn">
-            Nate Dunn
-          </a>
-        </div>
-      </div>
-    </footer>
-  );
+	const currentYear = new Date().getFullYear();
+
+	return (
+		<footer className="border-t border-border bg-background py-6">
+			<div className="container flex flex-col items-center justify-between gap-4 sm:flex-row">
+				<div className="text-sm text-muted-foreground">
+					Sportsball™ © {currentYear}
+				</div>
+				<div className="flex items-center gap-4">
+					<Link
+						to="/about"
+						className="text-sm text-muted-foreground hover:underline"
+					>
+						About
+					</Link>
+				</div>
+			</div>
+		</footer>
+	);
 }

@@ -317,8 +317,8 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
     const awayPlayers = boxscorePlayers?.find(p => p.team.id === headerAway?.team.id);
     const homePlayers = boxscorePlayers?.find(p => p.team.id === headerHome?.team.id);
 
-    const awayColors = getTeamColors(headerAway?.team.uid);
-    const homeColors = getTeamColors(headerHome?.team.uid);
+    const awayColors = getTeamColors(headerAway?.team.uid, headerAway?.team.id);
+    const homeColors = getTeamColors(headerHome?.team.uid, headerHome?.team.id);
 
     return {
       id: gameId,
@@ -332,7 +332,7 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
         name: headerAway?.team.name,
         abbreviation: headerAway?.team.abbreviation,
         score: parseInt(headerAway?.score ?? "0", 10) || 0,
-        logo: getProxiedLogoUrl(awayStats?.team.logo),
+        logo: getProxiedLogoUrl(awayStats?.team.logo, headerAway?.team.id),
         darkColor: awayColors.darkColor,
         lightColor: awayColors.lightColor,
         winner: headerAway?.winner ?? false,
@@ -346,7 +346,7 @@ export const fetchGameDetails = createServerFn({ method: "GET" })
         name: headerHome?.team.name,
         abbreviation: headerHome?.team.abbreviation,
         score: parseInt(headerHome?.score ?? "0", 10) || 0,
-        logo: getProxiedLogoUrl(homeStats?.team.logo),
+        logo: getProxiedLogoUrl(homeStats?.team.logo, headerHome?.team.id),
         darkColor: homeColors.darkColor,
         lightColor: homeColors.lightColor,
         winner: headerHome?.winner ?? false,

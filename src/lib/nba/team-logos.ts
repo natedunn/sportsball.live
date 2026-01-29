@@ -1,5 +1,4 @@
-// Static mapping of team slugs to ESPN logo URLs
-// This keeps the ESPN URLs completely server-side
+// Static mapping of NBA team slugs to logo URLs
 
 export const NBA_TEAM_LOGOS: Record<string, string> = {
   // Using team abbreviations as IDs

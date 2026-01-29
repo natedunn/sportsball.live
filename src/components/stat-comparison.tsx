@@ -1,11 +1,14 @@
 import { cn } from "@/lib/utils";
+import { useIsDarkMode } from "@/lib/use-is-dark-mode";
 
 interface StatComparisonProps {
 	label: string;
 	awayValue: number;
 	homeValue: number;
-	awayColor: string;
-	homeColor: string;
+	awayDarkColor: string;
+	awayLightColor: string;
+	homeDarkColor: string;
+	homeLightColor: string;
 	format?: "number" | "percent";
 	higherIsBetter?: boolean;
 	awayDisplay?: string;
@@ -18,8 +21,10 @@ export function StatComparison({
 	label,
 	awayValue,
 	homeValue,
-	awayColor,
-	homeColor,
+	awayDarkColor,
+	awayLightColor,
+	homeDarkColor,
+	homeLightColor,
 	format = "number",
 	higherIsBetter = true,
 	awayDisplay,
@@ -27,6 +32,9 @@ export function StatComparison({
 	awaySubValue,
 	homeSubValue,
 }: StatComparisonProps) {
+	const isDark = useIsDarkMode();
+	const awayColor = isDark ? awayDarkColor : awayLightColor;
+	const homeColor = isDark ? homeDarkColor : homeLightColor;
 	const total = awayValue + homeValue;
 	const awayPercent = total > 0 ? (awayValue / total) * 100 : 50;
 	const homePercent = total > 0 ? (homeValue / total) * 100 : 50;

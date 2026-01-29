@@ -1,39 +1,205 @@
 import { Link } from "@tanstack/react-router";
+import { NavigationMenu } from "@base-ui/react/navigation-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { api } from "~api";
 import { convexQuery } from "@convex-dev/react-query";
+import {
+	Newspaper,
+	BarChart3,
+	Trophy,
+	Users,
+	ChevronDown,
+} from "lucide-react";
+
+function NavLink(props: NavigationMenu.Link.Props) {
+	return (
+		<NavigationMenu.Link
+			render={<Link to={props.href as string} />}
+			{...props}
+		/>
+	);
+}
+
+function ArrowSvg(props: React.ComponentProps<"svg">) {
+	return (
+		<svg width="20" height="10" viewBox="0 0 20 10" fill="none" {...props}>
+			<path
+				d="M9.66437 2.60207L4.80758 6.97318C4.07308 7.63423 3.11989 8 2.13172 8H0V10H20V8H18.5349C17.5468 8 16.5936 7.63423 15.8591 6.97318L11.0023 2.60207C10.622 2.2598 10.0447 2.25979 9.66437 2.60207Z"
+				className="fill-background"
+			/>
+			<path
+				d="M8.99542 1.85876C9.75604 1.17425 10.9106 1.17422 11.6713 1.85878L16.5281 6.22989C17.0789 6.72568 17.7938 7.00001 18.5349 7.00001L15.89 7L11.0023 2.60207C10.622 2.2598 10.0447 2.2598 9.66436 2.60207L4.77734 7L2.13171 7.00001C2.87284 7.00001 3.58774 6.72568 4.13861 6.22989L8.99542 1.85876Z"
+				className="fill-border"
+			/>
+		</svg>
+	);
+}
+
+const navItems = [
+	{
+		label: "NBA",
+		href: "/nba",
+		children: [
+			{ label: "News", href: "/nba", icon: Newspaper, description: "Latest NBA news and updates" },
+			{ label: "Scores", href: "/nba/scores", icon: BarChart3, description: "Live and recent game scores" },
+			{ label: "Standings", href: "/nba/standings", icon: Trophy, description: "League standings", disabled: true },
+			{ label: "Players", href: "/nba/players", icon: Users, description: "Player stats and profiles", disabled: true },
+		],
+	},
+	{
+		label: "WNBA",
+		href: "/wnba",
+		children: [
+			{ label: "News", href: "/wnba", icon: Newspaper, description: "Latest WNBA news and updates" },
+			{ label: "Scores", href: "/wnba/scores", icon: BarChart3, description: "Live and recent game scores" },
+			{ label: "Standings", href: "/wnba/standings", icon: Trophy, description: "League standings", disabled: true },
+			{ label: "Players", href: "/wnba/players", icon: Users, description: "Player stats and profiles", disabled: true },
+		],
+	},
+	{
+		label: "G League",
+		href: "/gleague",
+		children: [
+			{ label: "News", href: "/gleague", icon: Newspaper, description: "Latest G League news and updates" },
+			{ label: "Scores", href: "/gleague/scores", icon: BarChart3, description: "Live and recent game scores" },
+			{ label: "Standings", href: "/gleague/standings", icon: Trophy, description: "League standings", disabled: true },
+			{ label: "Players", href: "/gleague/players", icon: Users, description: "Player stats and profiles", disabled: true },
+		],
+	},
+];
+
+const triggerClassName =
+	"inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-accent";
+
+const positionerClassName =
+	"z-[9999] box-border h-[var(--positioner-height)] w-[var(--positioner-width)] max-w-[var(--available-width)] transition-[top,left,right,bottom] duration-[var(--duration)] ease-[var(--easing)] data-[instant]:transition-none";
+
+const popupClassName =
+	"relative h-[var(--popup-height)] w-[var(--popup-width)] origin-[var(--transform-origin)] rounded-lg border border-border bg-background shadow-lg transition-[opacity,transform,width,height,scale,translate] duration-[var(--duration)] ease-[var(--easing)] data-[ending-style]:scale-90 data-[ending-style]:opacity-0 data-[ending-style]:duration-150 data-[starting-style]:scale-90 data-[starting-style]:opacity-0";
+
+const arrowClassName =
+	"flex transition-[left] duration-[var(--duration)] ease-[var(--easing)] data-[side=bottom]:top-[-8px] data-[side=top]:bottom-[-8px] data-[side=top]:rotate-180";
+
+const viewportClassName =
+	"relative h-full w-full overflow-hidden";
+
+const contentClassName =
+	"h-full p-2 w-[420px] transition-[opacity,transform,translate] duration-[var(--duration)] ease-[var(--easing)] data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 data-[starting-style]:data-[activation-direction=left]:-translate-x-1/2 data-[starting-style]:data-[activation-direction=right]:translate-x-1/2 data-[ending-style]:data-[activation-direction=left]:translate-x-1/2 data-[ending-style]:data-[activation-direction=right]:-translate-x-1/2";
 
 export function Header() {
 	const { data: user } = useSuspenseQuery(
 		convexQuery(api.auth.getCurrentUser, {}),
 	);
+
 	return (
-		<nav className="border-b border-border bg-background py-2">
+		<nav className="relative z-50 border-b border-border bg-background py-2">
 			<div className="container flex items-center justify-between">
-				<Link
-					to="/"
-					className="group inline-flex justify-center gap-2 px-2 py-2"
-				>
-					<span className="py-0.5 text-lg leading-none">◍</span>
-					<span className="group-hover:underline group-focus:underline">
-						Sportsball
-					</span>
-				</Link>
+				<div className="flex items-center gap-4">
+					<Link
+						to="/"
+						className="group inline-flex items-center justify-center gap-2 px-2 py-2"
+					>
+						<span className="py-0.5 text-lg leading-none">◍</span>
+						<span className="group-hover:underline group-focus:underline">
+							Sportsball™
+						</span>
+						<span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+							BETA
+						</span>
+					</Link>
+
+					<NavigationMenu.Root className="hidden sm:block">
+						<NavigationMenu.List className="flex items-center gap-1">
+							{navItems.map((item) => (
+								<NavigationMenu.Item key={item.label}>
+									<NavigationMenu.Trigger className={triggerClassName}>
+										{item.label}
+										<NavigationMenu.Icon className="transition-transform duration-200 ease-out data-[popup-open]:rotate-180">
+											<ChevronDown className="h-4 w-4" />
+										</NavigationMenu.Icon>
+									</NavigationMenu.Trigger>
+									<NavigationMenu.Content className={contentClassName}>
+										<ul className="grid grid-cols-2 gap-1">
+											{item.children.map((child) => (
+												<li key={child.href}>
+													{child.disabled ? (
+														<div className="flex items-start gap-3 rounded-md p-3 opacity-50 cursor-not-allowed">
+															<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+															<div className="flex flex-col gap-0.5">
+																<span className="text-sm font-medium">
+																	{child.label}
+																</span>
+																<span className="text-xs text-muted-foreground">
+																	{child.description}
+																</span>
+															</div>
+														</div>
+													) : (
+														<NavLink
+															href={child.href}
+															className="flex items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
+														>
+															<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+															<div className="flex flex-col gap-0.5">
+																<span className="text-sm font-medium">{child.label}</span>
+																<span className="text-xs text-muted-foreground">
+																	{child.description}
+																</span>
+															</div>
+														</NavLink>
+													)}
+												</li>
+											))}
+										</ul>
+									</NavigationMenu.Content>
+								</NavigationMenu.Item>
+							))}
+						</NavigationMenu.List>
+
+						<NavigationMenu.Portal>
+							<NavigationMenu.Positioner
+								sideOffset={8}
+								className={positionerClassName}
+								style={{
+									"--duration": "0.35s",
+									"--easing": "cubic-bezier(0.22, 1, 0.36, 1)",
+								} as React.CSSProperties}
+							>
+								<NavigationMenu.Popup className={popupClassName}>
+									<NavigationMenu.Arrow className={arrowClassName}>
+										<ArrowSvg />
+									</NavigationMenu.Arrow>
+									<NavigationMenu.Viewport className={viewportClassName} />
+								</NavigationMenu.Popup>
+							</NavigationMenu.Positioner>
+						</NavigationMenu.Portal>
+					</NavigationMenu.Root>
+				</div>
+
 				<div className="flex items-center gap-3">
-					<Link
-						to="/nba"
-						className="inline-flex px-2 py-2 hover:underline focus:underline"
-					>
-						NBA
-					</Link>
-					<Link
-						to="/nfl"
-						className="pointer-events-none inline-flex px-2 py-2 text-muted-foreground"
-					>
-						NFL (Coming soon)
-					</Link>
-					<div className="text-muted-foreground/50">|</div>
+					{/* Mobile nav links */}
+					<div className="flex items-center gap-2 sm:hidden">
+						<Link
+							to="/nba"
+							className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
+						>
+							NBA
+						</Link>
+						<Link
+							to="/wnba"
+							className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
+						>
+							WNBA
+						</Link>
+						<Link
+							to="/gleague"
+							className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
+						>
+							G League
+						</Link>
+					</div>
+					<div className="hidden text-muted-foreground/50 sm:block">|</div>
 					<ThemeToggle />
 					<div className="text-muted-foreground/50">|</div>
 					{user ? (

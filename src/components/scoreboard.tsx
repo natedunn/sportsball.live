@@ -8,9 +8,10 @@ import type { GameData } from "@/lib/types";
 interface ScoreboardProps {
 	game: GameData;
 	currentDate?: string;
+	league?: "nba" | "wnba" | "gleague";
 }
 
-export function Scoreboard({ game, currentDate }: ScoreboardProps) {
+export function Scoreboard({ game, currentDate, league = "nba" }: ScoreboardProps) {
 	const homeTeam = game.home;
 	const awayTeam = game.away;
 
@@ -43,7 +44,13 @@ export function Scoreboard({ game, currentDate }: ScoreboardProps) {
 						<>
 							<span className="text-muted-foreground">|</span>
 							<Link
-								to="/nba/game/$gameId"
+								to={
+									league === "wnba"
+										? "/wnba/game/$gameId"
+										: league === "gleague"
+											? "/gleague/game/$gameId"
+											: "/nba/game/$gameId"
+								}
 								params={{ gameId: game.id }}
 								search={currentDate ? { fromDate: currentDate } : undefined}
 								className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground hover:underline focus:text-foreground focus:underline"

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { FlickeringGrid, type FlickeringGridProps } from "./flickering-grid";
 import { cn } from "@/lib/utils";
+import { useIsDarkMode } from "@/lib/use-is-dark-mode";
 
 interface TeamFlickeringGridProps {
 	dark: string;
@@ -15,24 +15,7 @@ export function TeamFlickeringGrid({
 	grid = {},
 	className,
 }: TeamFlickeringGridProps) {
-	const [isDark, setIsDark] = useState(false);
-
-	useEffect(() => {
-		const checkDarkMode = () => {
-			setIsDark(document.documentElement.classList.contains("dark"));
-		};
-
-		checkDarkMode();
-
-		const observer = new MutationObserver(checkDarkMode);
-		observer.observe(document.documentElement, {
-			attributes: true,
-			attributeFilter: ["class"],
-		});
-
-		return () => observer.disconnect();
-	}, []);
-
+	const isDark = useIsDarkMode();
 	const color = `#${isDark ? dark : light}`;
 
 	return (

@@ -22,4 +22,5 @@ export const nbaGamesQueryOptions = (date: string) =>
     queryKey: ["nba", "games", date],
     queryFn: () => fetchNbaGames({ data: date }),
     staleTime: getStaleTime(date),
+    gcTime: 10 * 60 * 1000, // 10 minutes - keep completed scores cached longer
   });

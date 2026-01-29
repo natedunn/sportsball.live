@@ -10,33 +10,42 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as DefaultRouteRouteImport } from './routes/_default/route'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as DefaultIndexRouteImport } from './routes/_default/index'
+import { Route as DefaultWnbaIndexRouteImport } from './routes/_default/wnba/index'
 import { Route as DefaultProfileIndexRouteImport } from './routes/_default/profile/index'
-import { Route as DefaultNflIndexRouteImport } from './routes/_default/nfl/index'
 import { Route as DefaultNbaIndexRouteImport } from './routes/_default/nba/index'
+import { Route as DefaultGleagueIndexRouteImport } from './routes/_default/gleague/index'
+import { Route as DefaultAboutIndexRouteImport } from './routes/_default/about/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DefaultWnbaScoresRouteImport } from './routes/_default/wnba/scores'
 import { Route as DefaultProfileSettingsRouteImport } from './routes/_default/profile/settings'
+import { Route as DefaultNbaScoresRouteImport } from './routes/_default/nba/scores'
+import { Route as DefaultGleagueScoresRouteImport } from './routes/_default/gleague/scores'
 import { Route as DefaultAuthSignInRouteImport } from './routes/_default/auth/sign-in'
+import { Route as ApiWnbaLogoIdRouteImport } from './routes/api/wnba/logo/$id'
 import { Route as ApiNbaLogoIdRouteImport } from './routes/api/nba/logo/$id'
+import { Route as ApiGleagueLogoIdRouteImport } from './routes/api/gleague/logo/$id'
+import { Route as DefaultWnbaGameGameIdRouteImport } from './routes/_default/wnba/game/$gameId'
 import { Route as DefaultNbaGameGameIdRouteImport } from './routes/_default/nba/game/$gameId'
+import { Route as DefaultGleagueGameGameIdRouteImport } from './routes/_default/gleague/game/$gameId'
 
 const DefaultRouteRoute = DefaultRouteRouteImport.update({
   id: '/_default',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const DefaultIndexRoute = DefaultIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultWnbaIndexRoute = DefaultWnbaIndexRouteImport.update({
+  id: '/wnba/',
+  path: '/wnba/',
+  getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultProfileIndexRoute = DefaultProfileIndexRouteImport.update({
   id: '/profile/',
   path: '/profile/',
-  getParentRoute: () => DefaultRouteRoute,
-} as any)
-const DefaultNflIndexRoute = DefaultNflIndexRouteImport.update({
-  id: '/nfl/',
-  path: '/nfl/',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultNbaIndexRoute = DefaultNbaIndexRouteImport.update({
@@ -44,14 +53,39 @@ const DefaultNbaIndexRoute = DefaultNbaIndexRouteImport.update({
   path: '/nba/',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
+const DefaultGleagueIndexRoute = DefaultGleagueIndexRouteImport.update({
+  id: '/gleague/',
+  path: '/gleague/',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultAboutIndexRoute = DefaultAboutIndexRouteImport.update({
+  id: '/about/',
+  path: '/about/',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DefaultWnbaScoresRoute = DefaultWnbaScoresRouteImport.update({
+  id: '/wnba/scores',
+  path: '/wnba/scores',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
 const DefaultProfileSettingsRoute = DefaultProfileSettingsRouteImport.update({
   id: '/profile/settings',
   path: '/profile/settings',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultNbaScoresRoute = DefaultNbaScoresRouteImport.update({
+  id: '/nba/scores',
+  path: '/nba/scores',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultGleagueScoresRoute = DefaultGleagueScoresRouteImport.update({
+  id: '/gleague/scores',
+  path: '/gleague/scores',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultAuthSignInRoute = DefaultAuthSignInRouteImport.update({
@@ -59,94 +93,170 @@ const DefaultAuthSignInRoute = DefaultAuthSignInRouteImport.update({
   path: '/auth/sign-in',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
+const ApiWnbaLogoIdRoute = ApiWnbaLogoIdRouteImport.update({
+  id: '/api/wnba/logo/$id',
+  path: '/api/wnba/logo/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiNbaLogoIdRoute = ApiNbaLogoIdRouteImport.update({
   id: '/api/nba/logo/$id',
   path: '/api/nba/logo/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGleagueLogoIdRoute = ApiGleagueLogoIdRouteImport.update({
+  id: '/api/gleague/logo/$id',
+  path: '/api/gleague/logo/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DefaultWnbaGameGameIdRoute = DefaultWnbaGameGameIdRouteImport.update({
+  id: '/wnba/game/$gameId',
+  path: '/wnba/game/$gameId',
+  getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultNbaGameGameIdRoute = DefaultNbaGameGameIdRouteImport.update({
   id: '/nba/game/$gameId',
   path: '/nba/game/$gameId',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
+const DefaultGleagueGameGameIdRoute =
+  DefaultGleagueGameGameIdRouteImport.update({
+    id: '/gleague/game/$gameId',
+    path: '/gleague/game/$gameId',
+    getParentRoute: () => DefaultRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof DefaultIndexRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
+  '/gleague/scores': typeof DefaultGleagueScoresRoute
+  '/nba/scores': typeof DefaultNbaScoresRoute
   '/profile/settings': typeof DefaultProfileSettingsRoute
+  '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/about/': typeof DefaultAboutIndexRoute
+  '/gleague/': typeof DefaultGleagueIndexRoute
   '/nba/': typeof DefaultNbaIndexRoute
-  '/nfl/': typeof DefaultNflIndexRoute
   '/profile/': typeof DefaultProfileIndexRoute
+  '/wnba/': typeof DefaultWnbaIndexRoute
+  '/gleague/game/$gameId': typeof DefaultGleagueGameGameIdRoute
   '/nba/game/$gameId': typeof DefaultNbaGameGameIdRoute
+  '/wnba/game/$gameId': typeof DefaultWnbaGameGameIdRoute
+  '/api/gleague/logo/$id': typeof ApiGleagueLogoIdRoute
   '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
+  '/api/wnba/logo/$id': typeof ApiWnbaLogoIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof DefaultIndexRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
+  '/gleague/scores': typeof DefaultGleagueScoresRoute
+  '/nba/scores': typeof DefaultNbaScoresRoute
   '/profile/settings': typeof DefaultProfileSettingsRoute
+  '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/about': typeof DefaultAboutIndexRoute
+  '/gleague': typeof DefaultGleagueIndexRoute
   '/nba': typeof DefaultNbaIndexRoute
-  '/nfl': typeof DefaultNflIndexRoute
   '/profile': typeof DefaultProfileIndexRoute
+  '/wnba': typeof DefaultWnbaIndexRoute
+  '/gleague/game/$gameId': typeof DefaultGleagueGameGameIdRoute
   '/nba/game/$gameId': typeof DefaultNbaGameGameIdRoute
+  '/wnba/game/$gameId': typeof DefaultWnbaGameGameIdRoute
+  '/api/gleague/logo/$id': typeof ApiGleagueLogoIdRoute
   '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
+  '/api/wnba/logo/$id': typeof ApiWnbaLogoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_default': typeof DefaultRouteRouteWithChildren
+  '/_default/': typeof DefaultIndexRoute
   '/_default/auth/sign-in': typeof DefaultAuthSignInRoute
+  '/_default/gleague/scores': typeof DefaultGleagueScoresRoute
+  '/_default/nba/scores': typeof DefaultNbaScoresRoute
   '/_default/profile/settings': typeof DefaultProfileSettingsRoute
+  '/_default/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_default/about/': typeof DefaultAboutIndexRoute
+  '/_default/gleague/': typeof DefaultGleagueIndexRoute
   '/_default/nba/': typeof DefaultNbaIndexRoute
-  '/_default/nfl/': typeof DefaultNflIndexRoute
   '/_default/profile/': typeof DefaultProfileIndexRoute
+  '/_default/wnba/': typeof DefaultWnbaIndexRoute
+  '/_default/gleague/game/$gameId': typeof DefaultGleagueGameGameIdRoute
   '/_default/nba/game/$gameId': typeof DefaultNbaGameGameIdRoute
+  '/_default/wnba/game/$gameId': typeof DefaultWnbaGameGameIdRoute
+  '/api/gleague/logo/$id': typeof ApiGleagueLogoIdRoute
   '/api/nba/logo/$id': typeof ApiNbaLogoIdRoute
+  '/api/wnba/logo/$id': typeof ApiWnbaLogoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth/sign-in'
+    | '/gleague/scores'
+    | '/nba/scores'
     | '/profile/settings'
+    | '/wnba/scores'
     | '/api/auth/$'
+    | '/about/'
+    | '/gleague/'
     | '/nba/'
-    | '/nfl/'
     | '/profile/'
+    | '/wnba/'
+    | '/gleague/game/$gameId'
     | '/nba/game/$gameId'
+    | '/wnba/game/$gameId'
+    | '/api/gleague/logo/$id'
     | '/api/nba/logo/$id'
+    | '/api/wnba/logo/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth/sign-in'
+    | '/gleague/scores'
+    | '/nba/scores'
     | '/profile/settings'
+    | '/wnba/scores'
     | '/api/auth/$'
+    | '/about'
+    | '/gleague'
     | '/nba'
-    | '/nfl'
     | '/profile'
+    | '/wnba'
+    | '/gleague/game/$gameId'
     | '/nba/game/$gameId'
+    | '/wnba/game/$gameId'
+    | '/api/gleague/logo/$id'
     | '/api/nba/logo/$id'
+    | '/api/wnba/logo/$id'
   id:
     | '__root__'
-    | '/'
     | '/_default'
+    | '/_default/'
     | '/_default/auth/sign-in'
+    | '/_default/gleague/scores'
+    | '/_default/nba/scores'
     | '/_default/profile/settings'
+    | '/_default/wnba/scores'
     | '/api/auth/$'
+    | '/_default/about/'
+    | '/_default/gleague/'
     | '/_default/nba/'
-    | '/_default/nfl/'
     | '/_default/profile/'
+    | '/_default/wnba/'
+    | '/_default/gleague/game/$gameId'
     | '/_default/nba/game/$gameId'
+    | '/_default/wnba/game/$gameId'
+    | '/api/gleague/logo/$id'
     | '/api/nba/logo/$id'
+    | '/api/wnba/logo/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   DefaultRouteRoute: typeof DefaultRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiGleagueLogoIdRoute: typeof ApiGleagueLogoIdRoute
   ApiNbaLogoIdRoute: typeof ApiNbaLogoIdRoute
+  ApiWnbaLogoIdRoute: typeof ApiWnbaLogoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,25 +268,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_default/': {
+      id: '/_default/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof DefaultIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/wnba/': {
+      id: '/_default/wnba/'
+      path: '/wnba'
+      fullPath: '/wnba/'
+      preLoaderRoute: typeof DefaultWnbaIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
     }
     '/_default/profile/': {
       id: '/_default/profile/'
       path: '/profile'
       fullPath: '/profile/'
       preLoaderRoute: typeof DefaultProfileIndexRouteImport
-      parentRoute: typeof DefaultRouteRoute
-    }
-    '/_default/nfl/': {
-      id: '/_default/nfl/'
-      path: '/nfl'
-      fullPath: '/nfl/'
-      preLoaderRoute: typeof DefaultNflIndexRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
     '/_default/nba/': {
@@ -186,6 +296,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultNbaIndexRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/_default/gleague/': {
+      id: '/_default/gleague/'
+      path: '/gleague'
+      fullPath: '/gleague/'
+      preLoaderRoute: typeof DefaultGleagueIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/about/': {
+      id: '/_default/about/'
+      path: '/about'
+      fullPath: '/about/'
+      preLoaderRoute: typeof DefaultAboutIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -193,11 +317,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_default/wnba/scores': {
+      id: '/_default/wnba/scores'
+      path: '/wnba/scores'
+      fullPath: '/wnba/scores'
+      preLoaderRoute: typeof DefaultWnbaScoresRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
     '/_default/profile/settings': {
       id: '/_default/profile/settings'
       path: '/profile/settings'
       fullPath: '/profile/settings'
       preLoaderRoute: typeof DefaultProfileSettingsRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/nba/scores': {
+      id: '/_default/nba/scores'
+      path: '/nba/scores'
+      fullPath: '/nba/scores'
+      preLoaderRoute: typeof DefaultNbaScoresRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/gleague/scores': {
+      id: '/_default/gleague/scores'
+      path: '/gleague/scores'
+      fullPath: '/gleague/scores'
+      preLoaderRoute: typeof DefaultGleagueScoresRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
     '/_default/auth/sign-in': {
@@ -207,12 +352,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultAuthSignInRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/api/wnba/logo/$id': {
+      id: '/api/wnba/logo/$id'
+      path: '/api/wnba/logo/$id'
+      fullPath: '/api/wnba/logo/$id'
+      preLoaderRoute: typeof ApiWnbaLogoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/nba/logo/$id': {
       id: '/api/nba/logo/$id'
       path: '/api/nba/logo/$id'
       fullPath: '/api/nba/logo/$id'
       preLoaderRoute: typeof ApiNbaLogoIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/gleague/logo/$id': {
+      id: '/api/gleague/logo/$id'
+      path: '/api/gleague/logo/$id'
+      fullPath: '/api/gleague/logo/$id'
+      preLoaderRoute: typeof ApiGleagueLogoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_default/wnba/game/$gameId': {
+      id: '/_default/wnba/game/$gameId'
+      path: '/wnba/game/$gameId'
+      fullPath: '/wnba/game/$gameId'
+      preLoaderRoute: typeof DefaultWnbaGameGameIdRouteImport
+      parentRoute: typeof DefaultRouteRoute
     }
     '/_default/nba/game/$gameId': {
       id: '/_default/nba/game/$gameId'
@@ -221,25 +387,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultNbaGameGameIdRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/_default/gleague/game/$gameId': {
+      id: '/_default/gleague/game/$gameId'
+      path: '/gleague/game/$gameId'
+      fullPath: '/gleague/game/$gameId'
+      preLoaderRoute: typeof DefaultGleagueGameGameIdRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
   }
 }
 
 interface DefaultRouteRouteChildren {
+  DefaultIndexRoute: typeof DefaultIndexRoute
   DefaultAuthSignInRoute: typeof DefaultAuthSignInRoute
+  DefaultGleagueScoresRoute: typeof DefaultGleagueScoresRoute
+  DefaultNbaScoresRoute: typeof DefaultNbaScoresRoute
   DefaultProfileSettingsRoute: typeof DefaultProfileSettingsRoute
+  DefaultWnbaScoresRoute: typeof DefaultWnbaScoresRoute
+  DefaultAboutIndexRoute: typeof DefaultAboutIndexRoute
+  DefaultGleagueIndexRoute: typeof DefaultGleagueIndexRoute
   DefaultNbaIndexRoute: typeof DefaultNbaIndexRoute
-  DefaultNflIndexRoute: typeof DefaultNflIndexRoute
   DefaultProfileIndexRoute: typeof DefaultProfileIndexRoute
+  DefaultWnbaIndexRoute: typeof DefaultWnbaIndexRoute
+  DefaultGleagueGameGameIdRoute: typeof DefaultGleagueGameGameIdRoute
   DefaultNbaGameGameIdRoute: typeof DefaultNbaGameGameIdRoute
+  DefaultWnbaGameGameIdRoute: typeof DefaultWnbaGameGameIdRoute
 }
 
 const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
+  DefaultIndexRoute: DefaultIndexRoute,
   DefaultAuthSignInRoute: DefaultAuthSignInRoute,
+  DefaultGleagueScoresRoute: DefaultGleagueScoresRoute,
+  DefaultNbaScoresRoute: DefaultNbaScoresRoute,
   DefaultProfileSettingsRoute: DefaultProfileSettingsRoute,
+  DefaultWnbaScoresRoute: DefaultWnbaScoresRoute,
+  DefaultAboutIndexRoute: DefaultAboutIndexRoute,
+  DefaultGleagueIndexRoute: DefaultGleagueIndexRoute,
   DefaultNbaIndexRoute: DefaultNbaIndexRoute,
-  DefaultNflIndexRoute: DefaultNflIndexRoute,
   DefaultProfileIndexRoute: DefaultProfileIndexRoute,
+  DefaultWnbaIndexRoute: DefaultWnbaIndexRoute,
+  DefaultGleagueGameGameIdRoute: DefaultGleagueGameGameIdRoute,
   DefaultNbaGameGameIdRoute: DefaultNbaGameGameIdRoute,
+  DefaultWnbaGameGameIdRoute: DefaultWnbaGameGameIdRoute,
 }
 
 const DefaultRouteRouteWithChildren = DefaultRouteRoute._addFileChildren(
@@ -247,10 +436,11 @@ const DefaultRouteRouteWithChildren = DefaultRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   DefaultRouteRoute: DefaultRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiGleagueLogoIdRoute: ApiGleagueLogoIdRoute,
   ApiNbaLogoIdRoute: ApiNbaLogoIdRoute,
+  ApiWnbaLogoIdRoute: ApiWnbaLogoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

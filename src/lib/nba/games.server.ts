@@ -68,8 +68,8 @@ export const fetchNbaGames = createServerFn({ method: "GET" })
         throw new Error("Invalid data from scoreboard API");
       }
 
-      const homeColors = getTeamColors(homeTeam.team.uid);
-      const awayColors = getTeamColors(awayTeam.team.uid);
+      const homeColors = getTeamColors(homeTeam.team.uid, homeTeam.team.id);
+      const awayColors = getTeamColors(awayTeam.team.uid, awayTeam.team.id);
 
       return {
         id: event.id,
@@ -84,7 +84,7 @@ export const fetchNbaGames = createServerFn({ method: "GET" })
           uid: awayTeam.team.uid,
           name: awayTeam.team.name,
           score: awayTeam.score,
-          logo: getProxiedLogoUrl(awayTeam.team.logo),
+          logo: getProxiedLogoUrl(awayTeam.team.logo, awayTeam.team.id),
           primaryColor: awayTeam.team.color,
           darkColor: awayColors.darkColor,
           lightColor: awayColors.lightColor,
@@ -96,7 +96,7 @@ export const fetchNbaGames = createServerFn({ method: "GET" })
           uid: homeTeam.team.uid,
           name: homeTeam.team.name,
           score: homeTeam.score,
-          logo: getProxiedLogoUrl(homeTeam.team.logo),
+          logo: getProxiedLogoUrl(homeTeam.team.logo, homeTeam.team.id),
           primaryColor: homeTeam.team.color,
           darkColor: homeColors.darkColor,
           lightColor: homeColors.lightColor,

@@ -10,11 +10,12 @@ import { DatePicker } from "@/components/ui/date-picker";
 interface DatePaginationProps {
 	date: string;
 	className?: string;
+	league?: "nba" | "wnba" | "gleague";
 }
 
 type NavigatingTo = "prev" | "next" | "today" | "picker" | null;
 
-export function DatePagination({ date, className }: DatePaginationProps) {
+export function DatePagination({ date, className, league = "nba" }: DatePaginationProps) {
 	const navigate = useNavigate();
 	const [datePickerOpen, setDatePickerOpen] = useState(false);
 	const [navigatingTo, setNavigatingTo] = useState<NavigatingTo>(null);
@@ -46,17 +47,24 @@ export function DatePagination({ date, className }: DatePaginationProps) {
 
 	const dateValue = date ? parse(date, "yyyy-MM-dd", new Date()) : undefined;
 
+	const leaguePaths = {
+		nba: "/nba/scores",
+		wnba: "/wnba/scores",
+		gleague: "/gleague/scores",
+	};
+	const leaguePath = leaguePaths[league];
+
 	const handleNavigate = (targetDate: string, target: NavigatingTo) => {
 		if (isDisabled) return;
 		setNavigatingTo(target);
-		navigate({ to: "/nba", search: { date: targetDate } });
+		navigate({ to: leaguePath, search: { date: targetDate } });
 	};
 
 	const handleDateChange = (newDate: Date | undefined) => {
 		if (newDate && !isDisabled) {
 			const formatted = format(newDate, "yyyy-MM-dd");
 			setNavigatingTo("picker");
-			navigate({ to: "/nba", search: { date: formatted } });
+			navigate({ to: leaguePath, search: { date: formatted } });
 			setDatePickerOpen(false);
 		}
 	};

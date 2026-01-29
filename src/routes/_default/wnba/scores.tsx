@@ -5,7 +5,7 @@ import { wnbaGamesQueryOptions } from "@/lib/wnba/games.queries";
 import {
 	ScoresPageLayout,
 	ScoresPagePending,
-} from "@/components/scores-page-layout";
+} from "@/components/scores/scores-page-layout";
 
 const TITLE = "Daily WNBA scores";
 const DESCRIPTION = "View current, upcoming, and past games for the WNBA.";

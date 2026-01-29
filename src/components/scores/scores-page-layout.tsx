@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient, type FetchQueryOptions } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
-import { DatePagination } from "@/components/date-pagination";
-import { Scoreboard } from "@/components/scoreboard";
+import { DatePagination } from "./date-pagination";
+import { Scoreboard } from "./scoreboard";
+import { SeasonalNotice } from "./seasonal-notice";
 import { formatDate, moveDate } from "@/lib/date";
 import type { GameData } from "@/lib/types";
 
@@ -82,7 +83,8 @@ export function ScoresPageLayout({
 					<p className="text-muted-foreground/50">{description}</p>
 				</div>
 			</div>
-			<div className="mx-auto w-full max-w-180">
+			<div className="mx-auto w-full max-w-180 px-4">
+				<SeasonalNotice league={league} className="mb-4" />
 				<div className="flex flex-col gap-4">
 					<div className="flex justify-center">
 						<DatePagination date={currentDate} league={league} />

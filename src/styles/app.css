@@ -192,3 +192,7 @@
 .zoom-in-95 {
 	animation-name: zoom-in-95;
 }
+
+.link-text {
+	@apply underline decoration-current/50 decoration-2 underline-offset-2 hover:underline hover:decoration-current/75;
+}

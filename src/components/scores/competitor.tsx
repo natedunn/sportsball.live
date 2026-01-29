@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
-import { TeamFlickeringGrid } from "./team-flickering-grid";
-import { Image } from "./ui/image";
+import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
+import { Image } from "@/components/ui/image";
 import type { GameData } from "@/lib/types";
 
 type Team = GameData["home"] | GameData["away"];

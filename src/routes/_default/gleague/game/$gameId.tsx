@@ -1,13 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { gleagueGameDetailsQueryOptions } from "@/lib/gleague/game-details.queries";
 import {
 	GameDetailsLayout,
 	GameDetailsPending,
-} from "@/components/game-details-layout";
+} from "@/components/game-details/game-details-layout";
 
 interface GameSearchParams {
 	fromDate?: string;
+	tab?: string;
 }
 
 export const Route = createFileRoute("/_default/gleague/game/$gameId")({
@@ -15,6 +17,7 @@ export const Route = createFileRoute("/_default/gleague/game/$gameId")({
 		return {
 			fromDate:
 				typeof search.fromDate === "string" ? search.fromDate : undefined,
+			tab: typeof search.tab === "string" ? search.tab : undefined,
 		};
 	},
 	loader: async ({ context, params }) => {
@@ -28,8 +31,29 @@ export const Route = createFileRoute("/_default/gleague/game/$gameId")({
 
 function GLeagueGameDetailsPage() {
 	const { gameId } = Route.useParams();
-	const { fromDate } = Route.useSearch();
+	const { fromDate, tab } = Route.useSearch();
+	const navigate = useNavigate();
 	const { data: game } = useQuery(gleagueGameDetailsQueryOptions(gameId));
+
+	// Local state for immediate UI feedback
+	const [activeTab, setActiveTab] = useState(tab || "box-score");
+
+	// Sync local state when URL changes (e.g., browser back/forward)
+	useEffect(() => {
+		setActiveTab(tab || "box-score");
+	}, [tab]);
+
+	const handleTabChange = (newTab: string) => {
+		// Immediate UI update
+		setActiveTab(newTab);
+		// Async URL update
+		navigate({
+			to: "/gleague/game/$gameId",
+			params: { gameId },
+			search: { fromDate, tab: newTab },
+			replace: true,
+		});
+	};
 
 	if (!game) {
 		return (
@@ -39,5 +63,13 @@ function GLeagueGameDetailsPage() {
 		);
 	}
 
-	return <GameDetailsLayout game={game} league="gleague" fromDate={fromDate} />;
+	return (
+		<GameDetailsLayout
+			game={game}
+			league="gleague"
+			fromDate={fromDate}
+			activeTab={activeTab}
+			onTabChange={handleTabChange}
+		/>
+	);
 }

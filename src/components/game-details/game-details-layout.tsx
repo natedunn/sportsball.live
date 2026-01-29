@@ -1,13 +1,40 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { formatGameDate } from "@/lib/date";
-import { PaddedScore } from "@/components/score";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { PlayerBoxScore } from "@/components/player-box-score";
-import { GameTeamHeader } from "@/components/game-team-header";
-import { TeamStatsCard } from "@/components/team-stats-card";
-import type { GameDetails } from "@/lib/nba/game-details.server";
+import { PlayerBoxScore } from "./player-box-score";
+import { GameTeamHeader } from "./game-team-header";
+import { TeamStatsCard } from "./team-stats-card";
+import { SeriesMatchupTable } from "./series-matchup-table";
+import type { SeasonSeries } from "@/lib/nba/game-details.server";
+
+// Local type that works across all leagues
+interface GameDetailsTeam {
+	id: string;
+	uid: string | undefined;
+	name: string | undefined;
+	abbreviation: string | undefined;
+	score: number;
+	logo: string | undefined;
+	darkColor: string;
+	lightColor: string;
+	winner: boolean;
+	record: string | undefined;
+	stats: any;
+	players: any[];
+}
+
+interface GameDetails {
+	id: string;
+	state: "pre" | "in" | "post";
+	statusDetail: string | undefined;
+	venue: string | undefined;
+	date: string | undefined;
+	away: GameDetailsTeam;
+	home: GameDetailsTeam;
+	allSeries?: SeasonSeries[];
+}
 
 type League = "nba" | "wnba" | "gleague";
 
@@ -21,18 +48,18 @@ interface GameDetailsLayoutProps {
 	game: GameDetails;
 	league: League;
 	fromDate: string | undefined;
+	activeTab?: string;
+	onTabChange?: (tab: string) => void;
 }
 
 export function GameDetailsLayout({
 	game,
 	league,
 	fromDate,
+	activeTab,
+	onTabChange,
 }: GameDetailsLayoutProps) {
-	const maxDigits = Math.max(
-		game.away.score.toString().length,
-		game.home.score.toString().length,
-	);
-
+	const currentTab = activeTab || "box-score";
 	return (
 		<div className="flex flex-col pb-12 lg:pb-20">
 			{/* Header with score */}
@@ -44,26 +71,36 @@ export function GameDetailsLayout({
 
 						{/* Score */}
 						<div className="flex flex-col items-center gap-1 relative z-20">
-							<div className="flex items-center gap-2 md:gap-4">
-								<span
-									className={`text-4xl font-bold tabular-nums md:text-5xl ${
-										game.away.winner ? "" : "text-muted-foreground"
-									}`}
-								>
-									<PaddedScore score={game.away.score} maxDigits={maxDigits} />
-								</span>
-								<span className="text-2xl text-muted-foreground md:text-3xl">
-									—
-								</span>
-								<span
-									className={`text-4xl font-bold tabular-nums md:text-5xl ${
-										game.home.winner ? "" : "text-muted-foreground"
-									}`}
-								>
-									<PaddedScore score={game.home.score} maxDigits={maxDigits} />
-								</span>
-							</div>
-							{game.date ? (
+							{game.state !== "pre" && (
+								<div className="flex items-center gap-2 md:gap-4">
+									<span
+										className={`text-4xl font-bold tabular-nums md:text-5xl ${
+											game.state === "post"
+												? game.away.winner
+													? ""
+													: "text-muted-foreground"
+												: "text-foreground"
+										}`}
+									>
+										{game.away.score}
+									</span>
+									<span className="text-2xl text-muted-foreground md:text-3xl">
+										—
+									</span>
+									<span
+										className={`text-4xl font-bold tabular-nums md:text-5xl ${
+											game.state === "post"
+												? game.home.winner
+													? ""
+													: "text-muted-foreground"
+												: "text-foreground"
+										}`}
+									>
+										{game.home.score}
+									</span>
+								</div>
+							)}
+							{game.state === "post" && game.date ? (
 								<Tooltip content={formatGameDate(new Date(game.date))}>
 									<span className="text-muted-foreground cursor-default border-b border-dashed border-muted-foreground/50">
 										{game.statusDetail}
@@ -89,7 +126,11 @@ export function GameDetailsLayout({
 			{/* Tabbed Content */}
 			<div className="relative bg-background">
 				<div className="container py-8">
-					<Tabs defaultValue="box-score" className="w-full">
+					<Tabs
+						value={currentTab}
+						onValueChange={onTabChange}
+						className="w-full"
+					>
 						<div className="flex items-center justify-between mb-8">
 							<Link
 								to={leagueScoresRoutes[league]}
@@ -100,8 +141,11 @@ export function GameDetailsLayout({
 								Back to scores
 							</Link>
 							<TabsList>
-								<TabsTrigger value="box-score">Box Score</TabsTrigger>
+								<TabsTrigger value="box-score">Game Details</TabsTrigger>
 								<TabsTrigger value="team-stats">Team Stats</TabsTrigger>
+								{game.allSeries && game.allSeries.length > 0 && (
+									<TabsTrigger value="matchups">Matchups</TabsTrigger>
+								)}
 							</TabsList>
 							<div className="w-[108px]" />
 						</div>
@@ -126,12 +170,22 @@ export function GameDetailsLayout({
 								<TeamStatsCard away={game.away} home={game.home} />
 							</div>
 						</TabsContent>
+
+						{game.allSeries && game.allSeries.length > 0 && (
+							<TabsContent value="matchups">
+								<SeriesMatchupTable
+									allSeries={game.allSeries}
+									league={league}
+								/>
+							</TabsContent>
+						)}
 					</Tabs>
 				</div>
 			</div>
 		</div>
 	);
 }
+
 
 export function GameDetailsPending() {
 	return (

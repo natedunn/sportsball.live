@@ -1,4 +1,4 @@
-import { FlickeringGrid, type FlickeringGridProps } from "./flickering-grid";
+import { FlickeringGrid, type FlickeringGridProps } from "./ui/flickering-grid";
 import { cn } from "@/lib/utils";
 import { useIsDarkMode } from "@/lib/use-is-dark-mode";
 

@@ -5,7 +5,7 @@ import { gleagueGamesQueryOptions } from "@/lib/gleague/games.queries";
 import {
 	ScoresPageLayout,
 	ScoresPagePending,
-} from "@/components/scores-page-layout";
+} from "@/components/scores/scores-page-layout";
 
 const TITLE = "Daily G League scores";
 const DESCRIPTION = "View current, upcoming, and past games for the G League.";

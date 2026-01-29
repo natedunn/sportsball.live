@@ -15,6 +15,7 @@ import { Route as DefaultWnbaIndexRouteImport } from './routes/_default/wnba/ind
 import { Route as DefaultProfileIndexRouteImport } from './routes/_default/profile/index'
 import { Route as DefaultNbaIndexRouteImport } from './routes/_default/nba/index'
 import { Route as DefaultGleagueIndexRouteImport } from './routes/_default/gleague/index'
+import { Route as DefaultAdminIndexRouteImport } from './routes/_default/admin/index'
 import { Route as DefaultAboutIndexRouteImport } from './routes/_default/about/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DefaultWnbaScoresRouteImport } from './routes/_default/wnba/scores'
@@ -56,6 +57,11 @@ const DefaultNbaIndexRoute = DefaultNbaIndexRouteImport.update({
 const DefaultGleagueIndexRoute = DefaultGleagueIndexRouteImport.update({
   id: '/gleague/',
   path: '/gleague/',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultAdminIndexRoute = DefaultAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultAboutIndexRoute = DefaultAboutIndexRouteImport.update({
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/about/': typeof DefaultAboutIndexRoute
+  '/admin/': typeof DefaultAdminIndexRoute
   '/gleague/': typeof DefaultGleagueIndexRoute
   '/nba/': typeof DefaultNbaIndexRoute
   '/profile/': typeof DefaultProfileIndexRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/about': typeof DefaultAboutIndexRoute
+  '/admin': typeof DefaultAdminIndexRoute
   '/gleague': typeof DefaultGleagueIndexRoute
   '/nba': typeof DefaultNbaIndexRoute
   '/profile': typeof DefaultProfileIndexRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/_default/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_default/about/': typeof DefaultAboutIndexRoute
+  '/_default/admin/': typeof DefaultAdminIndexRoute
   '/_default/gleague/': typeof DefaultGleagueIndexRoute
   '/_default/nba/': typeof DefaultNbaIndexRoute
   '/_default/profile/': typeof DefaultProfileIndexRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/wnba/scores'
     | '/api/auth/$'
     | '/about/'
+    | '/admin/'
     | '/gleague/'
     | '/nba/'
     | '/profile/'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/wnba/scores'
     | '/api/auth/$'
     | '/about'
+    | '/admin'
     | '/gleague'
     | '/nba'
     | '/profile'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/_default/wnba/scores'
     | '/api/auth/$'
     | '/_default/about/'
+    | '/_default/admin/'
     | '/_default/gleague/'
     | '/_default/nba/'
     | '/_default/profile/'
@@ -301,6 +313,13 @@ declare module '@tanstack/react-router' {
       path: '/gleague'
       fullPath: '/gleague/'
       preLoaderRoute: typeof DefaultGleagueIndexRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/admin/': {
+      id: '/_default/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof DefaultAdminIndexRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
     '/_default/about/': {
@@ -405,6 +424,7 @@ interface DefaultRouteRouteChildren {
   DefaultProfileSettingsRoute: typeof DefaultProfileSettingsRoute
   DefaultWnbaScoresRoute: typeof DefaultWnbaScoresRoute
   DefaultAboutIndexRoute: typeof DefaultAboutIndexRoute
+  DefaultAdminIndexRoute: typeof DefaultAdminIndexRoute
   DefaultGleagueIndexRoute: typeof DefaultGleagueIndexRoute
   DefaultNbaIndexRoute: typeof DefaultNbaIndexRoute
   DefaultProfileIndexRoute: typeof DefaultProfileIndexRoute
@@ -422,6 +442,7 @@ const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
   DefaultProfileSettingsRoute: DefaultProfileSettingsRoute,
   DefaultWnbaScoresRoute: DefaultWnbaScoresRoute,
   DefaultAboutIndexRoute: DefaultAboutIndexRoute,
+  DefaultAdminIndexRoute: DefaultAdminIndexRoute,
   DefaultGleagueIndexRoute: DefaultGleagueIndexRoute,
   DefaultNbaIndexRoute: DefaultNbaIndexRoute,
   DefaultProfileIndexRoute: DefaultProfileIndexRoute,

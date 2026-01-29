@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Score } from "@/components/score";
+import { Score } from "@/components/scores/score";
 
 describe("Score component", () => {
 	it("renders both scores", () => {

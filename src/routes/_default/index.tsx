@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { DitheredBasketball } from "@/components/dithered-basketball";
+import { DitheredBasketball } from "./-components/dithered-basketball";
 
 export const Route = createFileRoute("/_default/")({
 	component: HomePage,

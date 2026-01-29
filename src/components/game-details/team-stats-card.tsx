@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import {
 	StatComparison,
 	StatComparisonGroup,
-} from "@/components/stat-comparison";
+} from "./stat-comparison";
 
 interface TeamStats {
 	pointsInPaint: number;

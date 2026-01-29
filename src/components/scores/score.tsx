@@ -57,12 +57,10 @@ function PaddedScore({
 
 function TeamScore({
 	score,
-	maxDigits,
 	state,
 	className,
 }: {
 	score: number;
-	maxDigits: number;
 	state: TeamState;
 	className?: string;
 }) {
@@ -74,7 +72,7 @@ function TeamScore({
 				className,
 			)}
 		>
-			<PaddedScore score={score} maxDigits={maxDigits} />
+			{score}
 		</div>
 	);
 }
@@ -87,16 +85,11 @@ export function Score({
 }: ScoreProps) {
 	const homeState = getTeamState("home", homeScore, awayScore, gameState);
 	const awayState = getTeamState("away", homeScore, awayScore, gameState);
-	const maxDigits = Math.max(
-		homeScore.toString().length,
-		awayScore.toString().length,
-	);
 
 	return (
 		<div className={cn("flex items-center gap-2", classes?.wrapper)}>
 			<TeamScore
 				score={awayScore}
-				maxDigits={maxDigits}
 				state={awayState}
 				className={classes?.score}
 			/>
@@ -105,7 +98,6 @@ export function Score({
 			</div>
 			<TeamScore
 				score={homeScore}
-				maxDigits={maxDigits}
 				state={homeState}
 				className={classes?.score}
 			/>

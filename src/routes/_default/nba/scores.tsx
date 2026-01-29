@@ -5,7 +5,7 @@ import { nbaGamesQueryOptions } from "@/lib/nba/games.queries";
 import {
 	ScoresPageLayout,
 	ScoresPagePending,
-} from "@/components/scores-page-layout";
+} from "@/components/scores/scores-page-layout";
 
 const TITLE = "Daily NBA scores";
 const DESCRIPTION = "View current, upcoming, and past games for the NBA.";

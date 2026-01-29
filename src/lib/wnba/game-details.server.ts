@@ -66,6 +66,33 @@ export interface GameDetailsTeam {
   players: Player[];
 }
 
+export interface MatchupGame {
+  id: string;
+  date: string;
+  statusDetail: string;
+  isCurrent: boolean;
+  homeTeam: {
+    id: string;
+    abbreviation: string;
+    score: number;
+    winner: boolean;
+  };
+  awayTeam: {
+    id: string;
+    abbreviation: string;
+    score: number;
+    winner: boolean;
+  };
+}
+
+export interface SeasonSeries {
+  type: "season" | "playoff";
+  title: string;
+  summary: string;
+  completed: boolean;
+  games: MatchupGame[];
+}
+
 export interface GameDetails {
   id: string;
   state: "pre" | "in" | "post";
@@ -74,6 +101,7 @@ export interface GameDetails {
   date: string | undefined;
   away: GameDetailsTeam;
   home: GameDetailsTeam;
+  allSeries: SeasonSeries[];
 }
 
 interface ApiStat {
@@ -163,9 +191,37 @@ interface ApiHeader {
   }>;
 }
 
+interface ApiSeasonSeriesCompetitor {
+  homeAway: "home" | "away";
+  winner: boolean;
+  team: {
+    id: string;
+    abbreviation?: string;
+  };
+  score: string;
+}
+
+interface ApiSeasonSeriesEvent {
+  id: string;
+  date: string;
+  statusType?: {
+    detail?: string;
+  };
+  competitors: ApiSeasonSeriesCompetitor[];
+}
+
+interface ApiSeasonSeries {
+  type?: string;
+  title?: string;
+  summary?: string;
+  completed?: boolean;
+  events?: ApiSeasonSeriesEvent[];
+}
+
 interface ApiResponse {
   boxscore?: ApiBoxscore;
   header?: ApiHeader;
+  seasonseries?: ApiSeasonSeries[];
 }
 
 function parseStatValue(stats: ApiStat[] | undefined, name: string): number {
@@ -215,6 +271,49 @@ function extractTeamStats(stats: ApiStat[] | undefined): TeamStats {
     fastBreakPoints: parseStatValue(stats, "fastBreakPoints"),
     largestLead: parseStatValue(stats, "largestLead"),
   };
+}
+
+function extractAllSeries(
+  seasonseries: ApiSeasonSeries[] | undefined,
+  currentGameId: string
+): SeasonSeries[] {
+  if (!seasonseries || seasonseries.length === 0) return [];
+
+  return seasonseries
+    .filter(series => series.events && series.events.length > 0)
+    .map((series): SeasonSeries => {
+      const games: MatchupGame[] = (series.events ?? []).map((event) => {
+        const homeCompetitor = event.competitors.find((c) => c.homeAway === "home");
+        const awayCompetitor = event.competitors.find((c) => c.homeAway === "away");
+
+        return {
+          id: event.id,
+          date: event.date,
+          statusDetail: event.statusType?.detail ?? "Final",
+          isCurrent: event.id === currentGameId,
+          homeTeam: {
+            id: homeCompetitor?.team.id ?? "",
+            abbreviation: homeCompetitor?.team.abbreviation ?? "",
+            score: parseInt(homeCompetitor?.score ?? "0", 10),
+            winner: homeCompetitor?.winner ?? false,
+          },
+          awayTeam: {
+            id: awayCompetitor?.team.id ?? "",
+            abbreviation: awayCompetitor?.team.abbreviation ?? "",
+            score: parseInt(awayCompetitor?.score ?? "0", 10),
+            winner: awayCompetitor?.winner ?? false,
+          },
+        };
+      });
+
+      return {
+        type: series.type === "playoff" ? "playoff" : "season",
+        title: series.title ?? (series.type === "playoff" ? "Playoff Series" : "Regular Season Series"),
+        summary: series.summary ?? "",
+        completed: series.completed ?? false,
+        games,
+      };
+    });
 }
 
 function extractPlayers(boxscorePlayers: ApiBoxscorePlayers | undefined): Player[] {
@@ -321,6 +420,7 @@ export const fetchWnbaGameDetails = createServerFn({ method: "GET" })
       statusDetail: competition?.status?.type?.detail,
       venue: competition?.venue?.fullName,
       date: competition?.date,
+      allSeries: extractAllSeries(apiData.seasonseries, gameId),
       away: {
         id: headerAway?.team.id ?? "",
         uid: headerAway?.team.uid,

@@ -1,27 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// League types supported by the app
-const leagueValidator = v.union(
-  v.literal("nba"),
-  v.literal("wnba"),
-  v.literal("gleague")
-);
-
 export default defineSchema({
-  // Season configuration for each league
-  seasons: defineTable({
-    league: leagueValidator,
-    name: v.string(), // e.g., "2024-25"
-    startDate: v.string(), // ISO date string YYYY-MM-DD
-    endDate: v.string(), // ISO date string YYYY-MM-DD
-    isActive: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_league", ["league"])
-    .index("by_league_active", ["league", "isActive"]),
-
   // Cached images from external CDN
   cachedImages: defineTable({
     originalUrl: v.string(),

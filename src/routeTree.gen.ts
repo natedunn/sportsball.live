@@ -17,6 +17,7 @@ import { Route as DefaultNbaIndexRouteImport } from './routes/_default/nba/index
 import { Route as DefaultGleagueIndexRouteImport } from './routes/_default/gleague/index'
 import { Route as DefaultAdminIndexRouteImport } from './routes/_default/admin/index'
 import { Route as DefaultAboutIndexRouteImport } from './routes/_default/about/index'
+import { Route as ApiHeadshotPlayerIdRouteImport } from './routes/api/headshot/$playerId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DefaultWnbaStandingsRouteImport } from './routes/_default/wnba/standings'
 import { Route as DefaultWnbaScoresRouteImport } from './routes/_default/wnba/scores'
@@ -71,6 +72,11 @@ const DefaultAboutIndexRoute = DefaultAboutIndexRouteImport.update({
   id: '/about/',
   path: '/about/',
   getParentRoute: () => DefaultRouteRoute,
+} as any)
+const ApiHeadshotPlayerIdRoute = ApiHeadshotPlayerIdRouteImport.update({
+  id: '/api/headshot/$playerId',
+  path: '/api/headshot/$playerId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -160,6 +166,7 @@ export interface FileRoutesByFullPath {
   '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/wnba/standings': typeof DefaultWnbaStandingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/headshot/$playerId': typeof ApiHeadshotPlayerIdRoute
   '/about/': typeof DefaultAboutIndexRoute
   '/admin/': typeof DefaultAdminIndexRoute
   '/gleague/': typeof DefaultGleagueIndexRoute
@@ -184,6 +191,7 @@ export interface FileRoutesByTo {
   '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/wnba/standings': typeof DefaultWnbaStandingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/headshot/$playerId': typeof ApiHeadshotPlayerIdRoute
   '/about': typeof DefaultAboutIndexRoute
   '/admin': typeof DefaultAdminIndexRoute
   '/gleague': typeof DefaultGleagueIndexRoute
@@ -210,6 +218,7 @@ export interface FileRoutesById {
   '/_default/wnba/scores': typeof DefaultWnbaScoresRoute
   '/_default/wnba/standings': typeof DefaultWnbaStandingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/headshot/$playerId': typeof ApiHeadshotPlayerIdRoute
   '/_default/about/': typeof DefaultAboutIndexRoute
   '/_default/admin/': typeof DefaultAdminIndexRoute
   '/_default/gleague/': typeof DefaultGleagueIndexRoute
@@ -236,6 +245,7 @@ export interface FileRouteTypes {
     | '/wnba/scores'
     | '/wnba/standings'
     | '/api/auth/$'
+    | '/api/headshot/$playerId'
     | '/about/'
     | '/admin/'
     | '/gleague/'
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/wnba/scores'
     | '/wnba/standings'
     | '/api/auth/$'
+    | '/api/headshot/$playerId'
     | '/about'
     | '/admin'
     | '/gleague'
@@ -285,6 +296,7 @@ export interface FileRouteTypes {
     | '/_default/wnba/scores'
     | '/_default/wnba/standings'
     | '/api/auth/$'
+    | '/api/headshot/$playerId'
     | '/_default/about/'
     | '/_default/admin/'
     | '/_default/gleague/'
@@ -302,6 +314,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   DefaultRouteRoute: typeof DefaultRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiHeadshotPlayerIdRoute: typeof ApiHeadshotPlayerIdRoute
   ApiGleagueLogoIdRoute: typeof ApiGleagueLogoIdRoute
   ApiNbaLogoIdRoute: typeof ApiNbaLogoIdRoute
   ApiWnbaLogoIdRoute: typeof ApiWnbaLogoIdRoute
@@ -364,6 +377,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/about/'
       preLoaderRoute: typeof DefaultAboutIndexRouteImport
       parentRoute: typeof DefaultRouteRoute
+    }
+    '/api/headshot/$playerId': {
+      id: '/api/headshot/$playerId'
+      path: '/api/headshot/$playerId'
+      fullPath: '/api/headshot/$playerId'
+      preLoaderRoute: typeof ApiHeadshotPlayerIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -522,6 +542,7 @@ const DefaultRouteRouteWithChildren = DefaultRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   DefaultRouteRoute: DefaultRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiHeadshotPlayerIdRoute: ApiHeadshotPlayerIdRoute,
   ApiGleagueLogoIdRoute: ApiGleagueLogoIdRoute,
   ApiNbaLogoIdRoute: ApiNbaLogoIdRoute,
   ApiWnbaLogoIdRoute: ApiWnbaLogoIdRoute,

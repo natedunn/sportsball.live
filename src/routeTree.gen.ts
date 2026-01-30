@@ -18,9 +18,12 @@ import { Route as DefaultGleagueIndexRouteImport } from './routes/_default/gleag
 import { Route as DefaultAdminIndexRouteImport } from './routes/_default/admin/index'
 import { Route as DefaultAboutIndexRouteImport } from './routes/_default/about/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DefaultWnbaStandingsRouteImport } from './routes/_default/wnba/standings'
 import { Route as DefaultWnbaScoresRouteImport } from './routes/_default/wnba/scores'
 import { Route as DefaultProfileSettingsRouteImport } from './routes/_default/profile/settings'
+import { Route as DefaultNbaStandingsRouteImport } from './routes/_default/nba/standings'
 import { Route as DefaultNbaScoresRouteImport } from './routes/_default/nba/scores'
+import { Route as DefaultGleagueStandingsRouteImport } from './routes/_default/gleague/standings'
 import { Route as DefaultGleagueScoresRouteImport } from './routes/_default/gleague/scores'
 import { Route as DefaultAuthSignInRouteImport } from './routes/_default/auth/sign-in'
 import { Route as ApiWnbaLogoIdRouteImport } from './routes/api/wnba/logo/$id'
@@ -74,6 +77,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DefaultWnbaStandingsRoute = DefaultWnbaStandingsRouteImport.update({
+  id: '/wnba/standings',
+  path: '/wnba/standings',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
 const DefaultWnbaScoresRoute = DefaultWnbaScoresRouteImport.update({
   id: '/wnba/scores',
   path: '/wnba/scores',
@@ -84,9 +92,19 @@ const DefaultProfileSettingsRoute = DefaultProfileSettingsRouteImport.update({
   path: '/profile/settings',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
+const DefaultNbaStandingsRoute = DefaultNbaStandingsRouteImport.update({
+  id: '/nba/standings',
+  path: '/nba/standings',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
 const DefaultNbaScoresRoute = DefaultNbaScoresRouteImport.update({
   id: '/nba/scores',
   path: '/nba/scores',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultGleagueStandingsRoute = DefaultGleagueStandingsRouteImport.update({
+  id: '/gleague/standings',
+  path: '/gleague/standings',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultGleagueScoresRoute = DefaultGleagueScoresRouteImport.update({
@@ -135,9 +153,12 @@ export interface FileRoutesByFullPath {
   '/': typeof DefaultIndexRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
   '/gleague/scores': typeof DefaultGleagueScoresRoute
+  '/gleague/standings': typeof DefaultGleagueStandingsRoute
   '/nba/scores': typeof DefaultNbaScoresRoute
+  '/nba/standings': typeof DefaultNbaStandingsRoute
   '/profile/settings': typeof DefaultProfileSettingsRoute
   '/wnba/scores': typeof DefaultWnbaScoresRoute
+  '/wnba/standings': typeof DefaultWnbaStandingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/about/': typeof DefaultAboutIndexRoute
   '/admin/': typeof DefaultAdminIndexRoute
@@ -156,9 +177,12 @@ export interface FileRoutesByTo {
   '/': typeof DefaultIndexRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
   '/gleague/scores': typeof DefaultGleagueScoresRoute
+  '/gleague/standings': typeof DefaultGleagueStandingsRoute
   '/nba/scores': typeof DefaultNbaScoresRoute
+  '/nba/standings': typeof DefaultNbaStandingsRoute
   '/profile/settings': typeof DefaultProfileSettingsRoute
   '/wnba/scores': typeof DefaultWnbaScoresRoute
+  '/wnba/standings': typeof DefaultWnbaStandingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/about': typeof DefaultAboutIndexRoute
   '/admin': typeof DefaultAdminIndexRoute
@@ -179,9 +203,12 @@ export interface FileRoutesById {
   '/_default/': typeof DefaultIndexRoute
   '/_default/auth/sign-in': typeof DefaultAuthSignInRoute
   '/_default/gleague/scores': typeof DefaultGleagueScoresRoute
+  '/_default/gleague/standings': typeof DefaultGleagueStandingsRoute
   '/_default/nba/scores': typeof DefaultNbaScoresRoute
+  '/_default/nba/standings': typeof DefaultNbaStandingsRoute
   '/_default/profile/settings': typeof DefaultProfileSettingsRoute
   '/_default/wnba/scores': typeof DefaultWnbaScoresRoute
+  '/_default/wnba/standings': typeof DefaultWnbaStandingsRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_default/about/': typeof DefaultAboutIndexRoute
   '/_default/admin/': typeof DefaultAdminIndexRoute
@@ -202,9 +229,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/sign-in'
     | '/gleague/scores'
+    | '/gleague/standings'
     | '/nba/scores'
+    | '/nba/standings'
     | '/profile/settings'
     | '/wnba/scores'
+    | '/wnba/standings'
     | '/api/auth/$'
     | '/about/'
     | '/admin/'
@@ -223,9 +253,12 @@ export interface FileRouteTypes {
     | '/'
     | '/auth/sign-in'
     | '/gleague/scores'
+    | '/gleague/standings'
     | '/nba/scores'
+    | '/nba/standings'
     | '/profile/settings'
     | '/wnba/scores'
+    | '/wnba/standings'
     | '/api/auth/$'
     | '/about'
     | '/admin'
@@ -245,9 +278,12 @@ export interface FileRouteTypes {
     | '/_default/'
     | '/_default/auth/sign-in'
     | '/_default/gleague/scores'
+    | '/_default/gleague/standings'
     | '/_default/nba/scores'
+    | '/_default/nba/standings'
     | '/_default/profile/settings'
     | '/_default/wnba/scores'
+    | '/_default/wnba/standings'
     | '/api/auth/$'
     | '/_default/about/'
     | '/_default/admin/'
@@ -336,6 +372,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_default/wnba/standings': {
+      id: '/_default/wnba/standings'
+      path: '/wnba/standings'
+      fullPath: '/wnba/standings'
+      preLoaderRoute: typeof DefaultWnbaStandingsRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
     '/_default/wnba/scores': {
       id: '/_default/wnba/scores'
       path: '/wnba/scores'
@@ -350,11 +393,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultProfileSettingsRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/_default/nba/standings': {
+      id: '/_default/nba/standings'
+      path: '/nba/standings'
+      fullPath: '/nba/standings'
+      preLoaderRoute: typeof DefaultNbaStandingsRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
     '/_default/nba/scores': {
       id: '/_default/nba/scores'
       path: '/nba/scores'
       fullPath: '/nba/scores'
       preLoaderRoute: typeof DefaultNbaScoresRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/gleague/standings': {
+      id: '/_default/gleague/standings'
+      path: '/gleague/standings'
+      fullPath: '/gleague/standings'
+      preLoaderRoute: typeof DefaultGleagueStandingsRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
     '/_default/gleague/scores': {
@@ -420,9 +477,12 @@ interface DefaultRouteRouteChildren {
   DefaultIndexRoute: typeof DefaultIndexRoute
   DefaultAuthSignInRoute: typeof DefaultAuthSignInRoute
   DefaultGleagueScoresRoute: typeof DefaultGleagueScoresRoute
+  DefaultGleagueStandingsRoute: typeof DefaultGleagueStandingsRoute
   DefaultNbaScoresRoute: typeof DefaultNbaScoresRoute
+  DefaultNbaStandingsRoute: typeof DefaultNbaStandingsRoute
   DefaultProfileSettingsRoute: typeof DefaultProfileSettingsRoute
   DefaultWnbaScoresRoute: typeof DefaultWnbaScoresRoute
+  DefaultWnbaStandingsRoute: typeof DefaultWnbaStandingsRoute
   DefaultAboutIndexRoute: typeof DefaultAboutIndexRoute
   DefaultAdminIndexRoute: typeof DefaultAdminIndexRoute
   DefaultGleagueIndexRoute: typeof DefaultGleagueIndexRoute
@@ -438,9 +498,12 @@ const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
   DefaultIndexRoute: DefaultIndexRoute,
   DefaultAuthSignInRoute: DefaultAuthSignInRoute,
   DefaultGleagueScoresRoute: DefaultGleagueScoresRoute,
+  DefaultGleagueStandingsRoute: DefaultGleagueStandingsRoute,
   DefaultNbaScoresRoute: DefaultNbaScoresRoute,
+  DefaultNbaStandingsRoute: DefaultNbaStandingsRoute,
   DefaultProfileSettingsRoute: DefaultProfileSettingsRoute,
   DefaultWnbaScoresRoute: DefaultWnbaScoresRoute,
+  DefaultWnbaStandingsRoute: DefaultWnbaStandingsRoute,
   DefaultAboutIndexRoute: DefaultAboutIndexRoute,
   DefaultAdminIndexRoute: DefaultAdminIndexRoute,
   DefaultGleagueIndexRoute: DefaultGleagueIndexRoute,

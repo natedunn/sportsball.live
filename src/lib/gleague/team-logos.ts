@@ -16,6 +16,7 @@ export const GLEAGUE_TEAM_LOGOS: Record<string, string> = {
   "mhu": "https://a.espncdn.com/i/teamlogos/nba-development/500/mhu.png",
   "mxc": "https://a.espncdn.com/i/teamlogos/nba-development/500/mxc.png",
   "mcc": "https://a.espncdn.com/i/teamlogos/nba-development/500/mcc.png",
+  // "nob" - Noblesville Boom (rebranded from Mad Ants in 2025) - not yet on ESPN CDN
   "okl": "https://a.espncdn.com/i/teamlogos/nba-development/500/okl.png",
   "osc": "https://a.espncdn.com/i/teamlogos/nba-development/500/osc.png",
   "rap": "https://a.espncdn.com/i/teamlogos/nba-development/500/rap.png",

@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { nbaGamesQueryOptions } from "@/lib/nba/games.queries";
 import { nbaNewsQueryOptions } from "@/lib/nba/news.queries";
+import { nbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
-import { Card } from "@/components/ui/card";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
+import { LeagueLeaders } from "@/components/leaders/league-leaders";
 
 export const Route = createFileRoute("/_default/nba/")({
 	loader: async ({ context }) => {
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_default/nba/")({
 		await Promise.all([
 			context.queryClient.ensureQueryData(nbaGamesQueryOptions(today)),
 			context.queryClient.ensureQueryData(nbaNewsQueryOptions()),
+			context.queryClient.ensureQueryData(nbaLeadersQueryOptions()),
 		]);
 	},
 	component: NbaHomePage,
@@ -23,6 +25,7 @@ function NbaHomePage() {
 	const today = formatDate(new Date(), "YYYYMMDD");
 	const { data: games = [] } = useQuery(nbaGamesQueryOptions(today));
 	const { data: news = [] } = useQuery(nbaNewsQueryOptions());
+	const { data: leaders } = useQuery(nbaLeadersQueryOptions());
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
@@ -43,16 +46,22 @@ function NbaHomePage() {
 					<section className="flex flex-col gap-4">
 						<div className="flex items-center justify-between">
 							<h2 className="text-xl font-bold">Today's Games</h2>
-							<Link
-								to="/nba/scores"
-								className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
-							>
-								All scores <ArrowRight className="h-4 w-4" />
-							</Link>
+							<div className="flex items-center gap-4">
+								<Link
+									to="/nba/standings"
+									className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+								>
+									Standings <ArrowRight className="h-4 w-4" />
+								</Link>
+								<Link
+									to="/nba/scores"
+									className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+								>
+									All scores <ArrowRight className="h-4 w-4" />
+								</Link>
+							</div>
 						</div>
-						<Card classNames={{ inner: "flex-col gap-3" }}>
-							<ScoreTicker games={games} league="nba" />
-						</Card>
+						<ScoreTicker games={games} league="nba" />
 					</section>
 
 					{/* News Section */}
@@ -67,6 +76,19 @@ function NbaHomePage() {
 							)}
 						</div>
 					</section>
+
+					{/* League Leaders */}
+					{leaders && (
+						<section className="flex flex-col gap-4">
+							<h2 className="text-xl font-bold">League Leaders</h2>
+							<LeagueLeaders
+								points={leaders.points}
+								assists={leaders.assists}
+								rebounds={leaders.rebounds}
+								stocks={leaders.stocks}
+							/>
+						</section>
+					)}
 				</div>
 			</div>
 		</div>

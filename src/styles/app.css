@@ -196,3 +196,19 @@
 .link-text {
 	@apply underline decoration-current/50 decoration-2 underline-offset-2 hover:underline hover:decoration-current/75;
 }
+
+.bg-halftone {
+	background-image:
+		radial-gradient(circle at center, #00000015 0.05rem, transparent 0),
+		radial-gradient(circle at center, #00000030 0.05rem, transparent 0);
+	background-size: 0.2rem 0.2rem;
+	background-position:
+		0 0,
+		0.1rem 0.1rem;
+}
+
+.dark .bg-halftone {
+	background-image:
+		radial-gradient(circle at center, #00000075 0.05rem, transparent 0),
+		radial-gradient(circle at center, #ffffff25 0.05rem, transparent 0);
+}

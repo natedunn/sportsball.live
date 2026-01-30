@@ -52,7 +52,6 @@ const navItems = [
 				href: "/nba/standings",
 				icon: Trophy,
 				description: "League standings",
-				disabled: true,
 			},
 			{
 				label: "Players",
@@ -84,7 +83,6 @@ const navItems = [
 				href: "/wnba/standings",
 				icon: Trophy,
 				description: "League standings",
-				disabled: true,
 			},
 			{
 				label: "Players",
@@ -116,7 +114,6 @@ const navItems = [
 				href: "/gleague/standings",
 				icon: Trophy,
 				description: "League standings",
-				disabled: true,
 			},
 			{
 				label: "Players",

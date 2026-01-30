@@ -72,8 +72,14 @@ export function Image({
 
 	// Show fallback icon if no src or on error
 	if ((!hasSrc || error) && showFallbackIcon) {
-		const containerSize = width || height || 24;
-		return <BasketballIcon size="36px" />;
+		const size = width || height || 24;
+		return (
+			<BasketballIcon
+				size={`${size}px`}
+				className={className}
+				style={style}
+			/>
+		);
 	}
 
 	return (

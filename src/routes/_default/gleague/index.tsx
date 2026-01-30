@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { gleagueGamesQueryOptions } from "@/lib/gleague/games.queries";
 import { gleagueNewsQueryOptions } from "@/lib/gleague/news.queries";
+import { gleagueLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
-import { Card } from "@/components/ui/card";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
+import { LeagueLeaders } from "@/components/leaders/league-leaders";
 
 export const Route = createFileRoute("/_default/gleague/")({
 	loader: async ({ context }) => {
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/_default/gleague/")({
 		await Promise.all([
 			context.queryClient.ensureQueryData(gleagueGamesQueryOptions(today)),
 			context.queryClient.ensureQueryData(gleagueNewsQueryOptions()),
+			context.queryClient.ensureQueryData(gleagueLeadersQueryOptions()),
 		]);
 	},
 	component: GLeagueHomePage,
@@ -23,6 +25,7 @@ function GLeagueHomePage() {
 	const today = formatDate(new Date(), "YYYYMMDD");
 	const { data: games = [] } = useQuery(gleagueGamesQueryOptions(today));
 	const { data: news = [] } = useQuery(gleagueNewsQueryOptions());
+	const { data: leaders } = useQuery(gleagueLeadersQueryOptions());
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
@@ -50,9 +53,7 @@ function GLeagueHomePage() {
 								All scores <ArrowRight className="h-4 w-4" />
 							</Link>
 						</div>
-						<Card classNames={{ inner: "flex-col gap-3" }}>
-							<ScoreTicker games={games} league="gleague" />
-						</Card>
+						<ScoreTicker games={games} league="gleague" />
 					</section>
 
 					{/* News Section */}
@@ -67,6 +68,19 @@ function GLeagueHomePage() {
 							)}
 						</div>
 					</section>
+
+					{/* League Leaders */}
+					{leaders && leaders.points.leaders.length > 0 && (
+						<section className="flex flex-col gap-4">
+							<h2 className="text-xl font-bold">League Leaders</h2>
+							<LeagueLeaders
+								points={leaders.points}
+								assists={leaders.assists}
+								rebounds={leaders.rebounds}
+								stocks={leaders.stocks}
+							/>
+						</section>
+					)}
 				</div>
 			</div>
 		</div>

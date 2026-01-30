@@ -233,28 +233,43 @@ function HomePage() {
 					<TodayGames />
 				</div>
 
-				<div className="mt-16 pt-8">
-					<p className="text-sm text-muted-foreground">
-						Free and open source. Built by a solo dev who just loves hoops.
-					</p>
-					<div className="mt-4 flex flex-wrap items-center justify-center gap-4">
-						<a
-							href="https://github.com/sportsball-live"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-						>
-							GitHub
-						</a>
-						<span className="text-muted-foreground/50">·</span>
-						<a
-							href="https://ko-fi.com/natedunn"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-sm text-muted-foreground hover:text-foreground hover:underline"
-						>
-							Buy me a coffee
-						</a>
+				<div className="px-4 text-left w-full mt-24">
+					<h2>
+						A project by
+						<img
+							className="mx-4 inline-block aspect-square size-12 -rotate-6 rounded-lg bg-center object-cover"
+							src={`https://pbs.twimg.com/profile_images/1658990770299232260/lqSKQU6d_400x400.jpg`}
+							alt=""
+							height={150}
+							width={150}
+							aria-hidden
+						/>
+						Nate Dunn
+					</h2>
+					<div className="mt-2 space-y-2 text-muted-foreground">
+						<p>
+							Sportsball is a free and open source project maybe by a single
+							indie developer.
+						</p>
+						<div className="flex items-center gap-2">
+							<a
+								href="https://github.com/sportsball-live"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="link-text"
+							>
+								GitHub
+							</a>
+							<span className="text-muted-foreground/50">·</span>
+							<a
+								href="https://ko-fi.com/natedunn"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="link-text"
+							>
+								Buy me a coffee
+							</a>
+						</div>
 					</div>
 				</div>
 			</div>

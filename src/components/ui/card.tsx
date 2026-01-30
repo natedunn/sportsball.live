@@ -21,7 +21,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
 			>
 				<div
 					className={cn(
-						"relative flex w-full justify-between gap-2 overflow-hidden rounded-lg border border-border/75 bg-card",
+						"relative flex w-full justify-between overflow-hidden rounded-lg border border-border/75 bg-card",
 						classNames?.inner,
 					)}
 				>

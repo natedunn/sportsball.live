@@ -154,20 +154,20 @@ export function Header() {
 	return (
 		<nav className="relative z-50 border-b border-border/50 bg-background/20 py-2 backdrop-blur-xl">
 			<div className="container flex items-center justify-between">
-				<div className="flex items-center gap-4">
-					<Link
-						to="/"
-						className="group inline-flex items-center justify-center gap-2 px-2 py-2"
-					>
-						<span className="py-0.5 text-lg leading-none">◍</span>
-						<span className="group-hover:underline group-focus:underline">
-							Sportsball™
-						</span>
-						<span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-							BETA
-						</span>
-					</Link>
+				<Link
+					to="/"
+					className="group inline-flex items-center justify-center gap-2 px-2 py-2"
+				>
+					<span className="py-0.5 text-lg leading-none">◍</span>
+					<span className="group-hover:underline group-focus:underline">
+						Sportsball™
+					</span>
+					<span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
+						BETA
+					</span>
+				</Link>
 
+				<div className="flex items-center gap-3">
 					<NavigationMenu.Root className="hidden sm:block">
 						<NavigationMenu.List className="flex items-center gap-1">
 							{navItems.map((item) => (
@@ -238,9 +238,7 @@ export function Header() {
 							</NavigationMenu.Positioner>
 						</NavigationMenu.Portal>
 					</NavigationMenu.Root>
-				</div>
 
-				<div className="flex items-center gap-3">
 					{/* Mobile nav links */}
 					<div className="flex items-center gap-2 sm:hidden">
 						<Link
@@ -262,7 +260,8 @@ export function Header() {
 							G League
 						</Link>
 					</div>
-					<div className="hidden text-muted-foreground/50 sm:block">|</div>
+
+					<div className="text-muted-foreground/50">|</div>
 					<ThemeToggle />
 					<div className="text-muted-foreground/50">|</div>
 					{user ? (

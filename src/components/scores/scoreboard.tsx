@@ -9,9 +9,21 @@ interface ScoreboardProps {
 	game: GameData;
 	currentDate?: string;
 	league?: "nba" | "wnba" | "gleague";
+	showLeagueTag?: boolean;
 }
 
-export function Scoreboard({ game, currentDate, league = "nba" }: ScoreboardProps) {
+const leagueLabels: Record<"nba" | "wnba" | "gleague", string> = {
+	nba: "NBA",
+	wnba: "WNBA",
+	gleague: "G League",
+};
+
+export function Scoreboard({
+	game,
+	currentDate,
+	league = "nba",
+	showLeagueTag = false,
+}: ScoreboardProps) {
 	const homeTeam = game.home;
 	const awayTeam = game.away;
 
@@ -21,6 +33,11 @@ export function Scoreboard({ game, currentDate, league = "nba" }: ScoreboardProp
 
 	return (
 		<Card>
+			{showLeagueTag && (
+				<span className="absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-b bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+					{leagueLabels[league]}
+				</span>
+			)}
 			<Competitor homeAway="away" classes={classes} team={awayTeam} />
 			<div className="flex flex-col items-center justify-center gap-2">
 				<div>

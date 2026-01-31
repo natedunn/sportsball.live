@@ -1,7 +1,36 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const leagueValidator = v.union(
+	v.literal("nba"),
+	v.literal("wnba"),
+	v.literal("gleague"),
+);
+
 export default defineSchema({
+	// Team stats with calculated ratings (updated nightly)
+	// NOTE: Static data (logos, colors) comes from src/lib/teams registry - not stored here
+	teamStats: defineTable({
+		league: leagueValidator,
+		teamId: v.string(),
+		teamName: v.string(),
+		abbreviation: v.string(),
+		wins: v.number(),
+		losses: v.number(),
+		// Per-game stats
+		pointsFor: v.number(), // PPG
+		pointsAgainst: v.number(), // OPP PPG
+		// Calculated advanced stats
+		pace: v.number(), // Possessions per game
+		offensiveRating: v.number(), // Points per 100 possessions
+		defensiveRating: v.number(), // Points allowed per 100 possessions
+		netRating: v.number(), // ORTG - DRTG
+		// Metadata
+		updatedAt: v.number(),
+	})
+		.index("by_league", ["league"])
+		.index("by_league_team", ["league", "teamId"]),
+
   // Cached images from external CDN
   cachedImages: defineTable({
     originalUrl: v.string(),

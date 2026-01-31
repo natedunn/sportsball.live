@@ -10,8 +10,10 @@
 
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
+import type * as teamStats from "../teamStats.js";
 
 import type {
   ApiFromModules,
@@ -22,8 +24,10 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  crons: typeof crons;
   http: typeof http;
   images: typeof images;
+  teamStats: typeof teamStats;
 }>;
 
 /**

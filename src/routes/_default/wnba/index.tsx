@@ -4,10 +4,12 @@ import { ArrowRight } from "lucide-react";
 import { wnbaGamesQueryOptions } from "@/lib/wnba/games.queries";
 import { wnbaNewsQueryOptions } from "@/lib/wnba/news.queries";
 import { wnbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
+import { wnbaStandingsQueryOptions } from "@/lib/wnba/standings.queries";
 import { formatDate } from "@/lib/date";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
-import { LeagueLeaders } from "@/components/leaders/league-leaders";
+import { PlayerLeaders } from "@/components/leaders/player-leaders";
+import { SmartTeamRankings } from "@/components/leaders/smart-team-rankings";
 
 export const Route = createFileRoute("/_default/wnba/")({
 	loader: async ({ context }) => {
@@ -16,6 +18,7 @@ export const Route = createFileRoute("/_default/wnba/")({
 			context.queryClient.ensureQueryData(wnbaGamesQueryOptions(today)),
 			context.queryClient.ensureQueryData(wnbaNewsQueryOptions()),
 			context.queryClient.ensureQueryData(wnbaLeadersQueryOptions()),
+			context.queryClient.ensureQueryData(wnbaStandingsQueryOptions()),
 		]);
 	},
 	component: WnbaHomePage,
@@ -26,6 +29,7 @@ function WnbaHomePage() {
 	const { data: games = [] } = useQuery(wnbaGamesQueryOptions(today));
 	const { data: news = [] } = useQuery(wnbaNewsQueryOptions());
 	const { data: leaders } = useQuery(wnbaLeadersQueryOptions());
+	const { data: standings } = useQuery(wnbaStandingsQueryOptions());
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
@@ -69,11 +73,11 @@ function WnbaHomePage() {
 						</div>
 					</section>
 
-					{/* League Leaders */}
+					{/* Player Leaders */}
 					{leaders && (
 						<section className="flex flex-col gap-4">
-							<h2 className="text-xl font-bold">League Leaders</h2>
-							<LeagueLeaders
+							<h2 className="text-xl font-bold">Player Leaders</h2>
+							<PlayerLeaders
 								points={leaders.points}
 								assists={leaders.assists}
 								rebounds={leaders.rebounds}
@@ -81,6 +85,12 @@ function WnbaHomePage() {
 							/>
 						</section>
 					)}
+
+					{/* Team Rankings */}
+					<section className="flex flex-col gap-4">
+						<h2 className="text-xl font-bold">Team Rankings</h2>
+						<SmartTeamRankings league="wnba" />
+					</section>
 				</div>
 			</div>
 		</div>

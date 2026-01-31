@@ -145,7 +145,7 @@ function CategoryCard({
 	);
 }
 
-export function LeagueLeaders({
+export function PlayerLeaders({
 	points,
 	assists,
 	rebounds,

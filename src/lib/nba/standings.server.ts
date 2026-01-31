@@ -63,9 +63,9 @@ function mapTeamEntry(entry: ApiTeamEntry): StandingTeam {
 		divisionRecord: getStatDisplay(stats, "vs. Div."),
 		conferenceRecord: getStatDisplay(stats, "vs. Conf."),
 		last10: getStatDisplay(stats, "Last Ten Games"),
-		pointsFor: getStat(stats, "pointsFor"),
-		pointsAgainst: getStat(stats, "pointsAgainst"),
-		differential: getStat(stats, "pointDifferential"),
+		pointsFor: getStat(stats, "avgPointsFor"),
+		pointsAgainst: getStat(stats, "avgPointsAgainst"),
+		differential: getStat(stats, "differential"),
 	};
 }
 

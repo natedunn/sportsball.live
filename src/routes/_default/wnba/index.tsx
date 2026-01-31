@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { wnbaGamesQueryOptions } from "@/lib/wnba/games.queries";
 import { wnbaNewsQueryOptions } from "@/lib/wnba/news.queries";
 import { wnbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
-import { wnbaStandingsQueryOptions } from "@/lib/wnba/standings.queries";
 import { formatDate } from "@/lib/date";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/_default/wnba/")({
 			context.queryClient.ensureQueryData(wnbaGamesQueryOptions(today)),
 			context.queryClient.ensureQueryData(wnbaNewsQueryOptions()),
 			context.queryClient.ensureQueryData(wnbaLeadersQueryOptions()),
-			context.queryClient.ensureQueryData(wnbaStandingsQueryOptions()),
 		]);
 	},
 	component: WnbaHomePage,
@@ -29,7 +27,6 @@ function WnbaHomePage() {
 	const { data: games = [] } = useQuery(wnbaGamesQueryOptions(today));
 	const { data: news = [] } = useQuery(wnbaNewsQueryOptions());
 	const { data: leaders } = useQuery(wnbaLeadersQueryOptions());
-	const { data: standings } = useQuery(wnbaStandingsQueryOptions());
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">

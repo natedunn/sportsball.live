@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { nbaGamesQueryOptions } from "@/lib/nba/games.queries";
 import { nbaNewsQueryOptions } from "@/lib/nba/news.queries";
 import { nbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
-import { nbaStandingsQueryOptions } from "@/lib/nba/standings.queries";
 import { formatDate } from "@/lib/date";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/_default/nba/")({
 			context.queryClient.ensureQueryData(nbaGamesQueryOptions(today)),
 			context.queryClient.ensureQueryData(nbaNewsQueryOptions()),
 			context.queryClient.ensureQueryData(nbaLeadersQueryOptions()),
-			context.queryClient.ensureQueryData(nbaStandingsQueryOptions()),
 		]);
 	},
 	component: NbaHomePage,
@@ -29,7 +27,6 @@ function NbaHomePage() {
 	const { data: games = [] } = useQuery(nbaGamesQueryOptions(today));
 	const { data: news = [] } = useQuery(nbaNewsQueryOptions());
 	const { data: leaders } = useQuery(nbaLeadersQueryOptions());
-	const { data: standings } = useQuery(nbaStandingsQueryOptions());
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">

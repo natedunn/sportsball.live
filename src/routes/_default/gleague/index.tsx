@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { gleagueGamesQueryOptions } from "@/lib/gleague/games.queries";
 import { gleagueNewsQueryOptions } from "@/lib/gleague/news.queries";
 import { gleagueLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
-import { gleagueStandingsQueryOptions } from "@/lib/gleague/standings.queries";
 import { formatDate } from "@/lib/date";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/_default/gleague/")({
 			context.queryClient.ensureQueryData(gleagueGamesQueryOptions(today)),
 			context.queryClient.ensureQueryData(gleagueNewsQueryOptions()),
 			context.queryClient.ensureQueryData(gleagueLeadersQueryOptions()),
-			context.queryClient.ensureQueryData(gleagueStandingsQueryOptions()),
 		]);
 	},
 	component: GLeagueHomePage,
@@ -29,7 +27,6 @@ function GLeagueHomePage() {
 	const { data: games = [] } = useQuery(gleagueGamesQueryOptions(today));
 	const { data: news = [] } = useQuery(gleagueNewsQueryOptions());
 	const { data: leaders } = useQuery(gleagueLeadersQueryOptions());
-	const { data: standings } = useQuery(gleagueStandingsQueryOptions());
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">

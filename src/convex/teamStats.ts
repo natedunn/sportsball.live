@@ -41,7 +41,7 @@ interface StandingsResponse {
 
 type League = "nba" | "wnba" | "gleague";
 
-// Site API env var names by league (site.api.espn.com)
+// Site API env var names by league
 const SITE_API_VARS: Record<League, string> = {
 	nba: "NBA_SITE_API",
 	wnba: "WNBA_SITE_API",
@@ -50,6 +50,10 @@ const SITE_API_VARS: Record<League, string> = {
 
 function getSiteApi(league: League): string | undefined {
 	return process.env[SITE_API_VARS[league]];
+}
+
+function getGLeagueStatsApi(): string | undefined {
+	return process.env.GLEAGUE_STATS_API;
 }
 
 // Get league slug for ESPN API paths
@@ -338,15 +342,20 @@ function getCurrentGLeagueSeason(): string {
 }
 
 async function fetchGLeagueStandings(): Promise<StandingsTeamEntry[]> {
+	const baseUrl = getGLeagueStatsApi();
+	if (!baseUrl) {
+		console.error("GLEAGUE_STATS_API not configured");
+		return [];
+	}
 	const season = getCurrentGLeagueSeason();
-	const url = `https://stats.gleague.nba.com/stats/leaguestandingsv3?LeagueID=20&Season=${season}&SeasonType=Regular%20Season`;
+	const url = `${baseUrl}/leaguestandingsv3?LeagueID=20&Season=${season}&SeasonType=Regular%20Season`;
 
 	try {
 		const response = await fetch(url, {
 			headers: {
 				"Content-Type": "application/json",
 				"User-Agent": "Mozilla/5.0",
-				Referer: "https://stats.gleague.nba.com/",
+				Referer: baseUrl,
 			},
 		});
 

@@ -75,7 +75,7 @@ Each league (NBA, WNBA, G-League) follows the same pattern:
 Required variables (see `.env.example`):
 - `VITE_CONVEX_URL` - Convex deployment URL
 - ESPN API endpoints (per league: NBA, WNBA, GLEAGUE):
-  - `*_SITE_API` - site.api.espn.com (scoreboard, games, teams, news)
-  - `*_CORE_API` - sports.core.api.espn.com (detailed injuries)
-  - `*_COMMON_API` - site.web.api.espn.com (roster with player stats)
+  - `*_SITE_API` - Main site API (scoreboard, games, teams, news)
+  - `*_CORE_API` - Core API (detailed injuries)
+  - `*_COMMON_API` - Common API (roster with player stats)
 - `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - Auth config

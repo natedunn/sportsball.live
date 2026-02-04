@@ -6,7 +6,7 @@ import type {
 	LeaderPlayer,
 } from "./types";
 
-type League = "nba" | "wnba" | "gleague";
+import { getLeagueSiteApi, type League } from "@/lib/shared/league";
 
 interface ApiAthlete {
 	id: string;
@@ -46,15 +46,10 @@ interface ApiLeadersResponse {
 	};
 }
 
-function getLeagueEndpoint(league: League): string {
-	switch (league) {
-		case "nba":
-			return "https://site.api.espn.com/apis/site/v3/sports/basketball/nba/leaders";
-		case "wnba":
-			return "https://site.api.espn.com/apis/site/v3/sports/basketball/wnba/leaders";
-		case "gleague":
-			return "https://site.api.espn.com/apis/site/v3/sports/basketball/nba-g-league/leaders";
-	}
+function getLeadersEndpoint(league: League): string {
+	const siteApi = getLeagueSiteApi(league);
+	// Leaders endpoint uses /v3/ path instead of /v2/
+	return siteApi.replace("/v2/", "/v3/") + "/leaders";
 }
 
 function mapPlayer(entry: ApiLeaderEntry): LeaderPlayer {
@@ -165,7 +160,7 @@ function emptyLeadersResponse(): LeagueLeadersResponse {
 }
 
 async function fetchLeaders(league: League): Promise<LeagueLeadersResponse> {
-	const endpoint = getLeagueEndpoint(league);
+	const endpoint = getLeadersEndpoint(league);
 
 	const response = await fetch(endpoint, {
 		headers: {
@@ -225,7 +220,7 @@ export const fetchWnbaLeaders = createServerFn({ method: "GET" }).handler(
 	},
 );
 
-// G-League uses a different API (stats.gleague.nba.com)
+// G-League leaders use the stats API (GLEAGUE_STATS_API)
 interface GLeagueLeaderRow {
 	playerId: string;
 	rank: number;
@@ -261,7 +256,7 @@ async function fetchGLeagueLeadersByCategory(
 		{
 			headers: {
 				"User-Agent": "Mozilla/5.0",
-				Referer: "https://stats.gleague.nba.com/",
+				Referer: baseUrl,
 			},
 		},
 	);

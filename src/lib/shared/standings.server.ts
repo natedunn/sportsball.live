@@ -4,18 +4,18 @@ import type {
 	ConferenceStandings,
 	StandingsResponse,
 } from "@/lib/types/standings";
-import type { League } from "./league";
+import { type League, getLeagueSiteApi } from "./league";
 import { getTeamColors, getProxiedLogoUrl } from "./team-utils";
 import type { ApiStandingsTeamEntry, ApiStandingsGroup, ApiStandingsResponse } from "./api-types";
 
 // Re-export types for convenience
 export type { StandingTeam, ConferenceStandings, StandingsResponse };
 
-// Standings API URLs by league
-const STANDINGS_API_URLS: Record<"nba" | "wnba", string> = {
-	nba: "https://site.api.espn.com/apis/v2/sports/basketball/nba/standings",
-	wnba: "https://site.api.espn.com/apis/v2/sports/basketball/wnba/standings",
-};
+// Get standings URL from SITE_API (uses /v2/ path instead of /site/v2/)
+function getStandingsUrl(league: "nba" | "wnba"): string {
+	const siteApi = getLeagueSiteApi(league);
+	return siteApi.replace("/site/v2/", "/v2/") + "/standings";
+}
 
 // Shared stat extraction utilities
 export function getStat(stats: ApiStandingsTeamEntry["stats"], name: string): number {
@@ -61,7 +61,7 @@ function mapTeamEntry(league: League, entry: ApiStandingsTeamEntry): MappedTeamW
 
 // Fetch standings using ESPN v2 API (works for NBA and WNBA)
 async function fetchStandingsForLeague(league: "nba" | "wnba"): Promise<StandingsResponse> {
-	const response = await fetch(STANDINGS_API_URLS[league], {
+	const response = await fetch(getStandingsUrl(league), {
 		headers: { "Content-Type": "application/json" },
 	});
 

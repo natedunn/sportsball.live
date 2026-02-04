@@ -38,7 +38,7 @@ function getLeagueSlug(league: League): string {
 	}
 }
 
-// Common API env var names by league (site.web.api.espn.com)
+// Common API env var names by league
 const COMMON_API_VARS: Record<League, string> = {
 	nba: "NBA_COMMON_API",
 	wnba: "WNBA_COMMON_API",

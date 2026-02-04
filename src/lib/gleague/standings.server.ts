@@ -83,7 +83,7 @@ export const fetchGLeagueStandings = createServerFn({ method: "GET" }).handler(
 				headers: {
 					"Content-Type": "application/json",
 					"User-Agent": "Mozilla/5.0",
-					Referer: "https://stats.gleague.nba.com/",
+					Referer: baseUrl,
 				},
 			},
 		);

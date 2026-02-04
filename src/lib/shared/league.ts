@@ -2,9 +2,9 @@
 export type League = "nba" | "wnba" | "gleague";
 
 // Environment variable names for ESPN API endpoints
-// SITE_API: site.api.espn.com - Main site API (scoreboard, games, teams, news, standings, leaders)
-// CORE_API: sports.core.api.espn.com - Core API (detailed injuries)
-// COMMON_API: site.web.api.espn.com - Common API (roster with player stats)
+// SITE_API: Main site API (scoreboard, games, teams, news, standings, leaders)
+// CORE_API: Core API (detailed injuries)
+// COMMON_API: Common API (roster with player stats)
 
 export const LEAGUE_SITE_API_VARS: Record<League, string> = {
 	nba: "NBA_SITE_API",
@@ -24,7 +24,7 @@ export const LEAGUE_COMMON_API_VARS: Record<League, string> = {
 	gleague: "GLEAGUE_COMMON_API",
 };
 
-// Get the Site API base URL for a league (site.api.espn.com)
+// Get the Site API base URL for a league
 export function getLeagueSiteApi(league: League): string {
 	const envVar = LEAGUE_SITE_API_VARS[league];
 	const baseUrl = process.env[envVar];
@@ -34,7 +34,7 @@ export function getLeagueSiteApi(league: League): string {
 	return baseUrl;
 }
 
-// Get the Core API base URL for a league (sports.core.api.espn.com)
+// Get the Core API base URL for a league
 export function getLeagueCoreApi(league: League): string {
 	const envVar = LEAGUE_CORE_API_VARS[league];
 	const baseUrl = process.env[envVar];
@@ -44,7 +44,7 @@ export function getLeagueCoreApi(league: League): string {
 	return baseUrl;
 }
 
-// Get the Common API base URL for a league (site.web.api.espn.com)
+// Get the Common API base URL for a league
 export function getLeagueCommonApi(league: League): string {
 	const envVar = LEAGUE_COMMON_API_VARS[league];
 	const baseUrl = process.env[envVar];

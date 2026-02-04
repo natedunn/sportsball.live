@@ -38,13 +38,13 @@ function buildIndex(league: League): LookupIndex {
 			team.city,
 			team.city.toLowerCase(),
 			team.logoSlug,
-			team.espn.id,
-			team.espn.slug,
+			team.api.id,
+			team.api.slug,
 		];
 
-		// Add NBA Stats API identifiers if present
-		if (team.nba) {
-			keys.push(team.nba.id, team.nba.slug);
+		// Add secondary Stats API identifiers if present
+		if (team.statsApi) {
+			keys.push(team.statsApi.id, team.statsApi.slug);
 		}
 
 		// Add social handles if present

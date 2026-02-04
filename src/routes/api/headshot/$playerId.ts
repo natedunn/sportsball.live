@@ -15,8 +15,16 @@ export const Route = createFileRoute("/api/headshot/$playerId")({
 					});
 				}
 
-				// NBA CDN headshot URL (works for NBA, WNBA, and G-League players)
-				const headshotUrl = `https://cdn.nba.com/headshots/nba/latest/260x190/${playerId}.png`;
+				const cdnBase = process.env.NBA_HEADSHOT_CDN;
+				if (!cdnBase) {
+					return new Response("NBA_HEADSHOT_CDN not configured", {
+						status: 500,
+						headers: { "Cache-Control": "no-cache" },
+					});
+				}
+
+				// Headshot URL (works for NBA, WNBA, and G-League players)
+				const headshotUrl = `${cdnBase}/headshots/nba/latest/260x190/${playerId}.png`;
 				const cacheKey = `https://sportsball.live/cache/headshot/${playerId}`;
 
 				try {

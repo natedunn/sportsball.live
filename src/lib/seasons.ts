@@ -1,11 +1,6 @@
 /**
  * Hardcoded season dates for each league
  * Last updated: January 28, 2026
- *
- * Sources:
- * - NBA: https://www.nba.com/news/key-dates
- * - WNBA: https://www.wnba.com/news/2026-regular-season-key-dates
- * - G League: https://gleague.nba.com/key-dates
  */
 
 export type League = "nba" | "wnba" | "gleague";

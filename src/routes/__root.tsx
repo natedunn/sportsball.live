@@ -19,16 +19,11 @@ import { getToken } from "@/lib/auth/auth-server-utils";
 import { initThemeObserver } from "@/lib/store";
 
 import appCss from "../styles/app.css?url";
-import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-// import { Devtools } from "./-components/devtools";
 
 const getAuth = createServerFn({ method: "GET" }).handler(async () => {
 	return await getToken();
 });
-
-// const convexPreconnect =
-// 	import.meta.env.VITE_CONVEX_URL || import.meta.env.VITE_CONVEX_SITE_URL || undefined;
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
@@ -70,9 +65,6 @@ export const Route = createRootRouteWithContext<{
 				rel: "stylesheet",
 				href: "https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap",
 			},
-			// ...(convexPreconnect
-			// 	? [{ rel: 'preconnect', href: convexPreconnect, crossOrigin: 'anonymous' as const }]
-			// 	: []),
 		],
 	}),
 	beforeLoad: async (ctx) => {
@@ -142,7 +134,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				</ScriptOnce>
 				<div className="flex-1">{children}</div>
 				<Footer />
-				{/* {process.env.NODE_ENV === "development" && <Devtools />}s */}
 				<Scripts />
 			</body>
 		</html>

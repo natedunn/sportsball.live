@@ -7,6 +7,9 @@ interface TooltipProps {
 	content: React.ReactNode;
 	side?: "top" | "bottom" | "left" | "right";
 	className?: string;
+	delay?: number;
+	closeDelay?: number;
+	hoverable?: boolean;
 }
 
 export function Tooltip({
@@ -14,10 +17,13 @@ export function Tooltip({
 	content,
 	side = "top",
 	className,
+	delay = 100,
+	closeDelay,
+	hoverable = true,
 }: TooltipProps) {
 	return (
-		<BaseTooltip.Provider delay={100}>
-			<BaseTooltip.Root>
+		<BaseTooltip.Provider delay={delay} closeDelay={closeDelay}>
+			<BaseTooltip.Root disableHoverablePopup={!hoverable}>
 				<BaseTooltip.Trigger className={className}>
 					{children}
 				</BaseTooltip.Trigger>
@@ -25,15 +31,10 @@ export function Tooltip({
 					<BaseTooltip.Positioner side={side} sideOffset={8} className="z-50">
 						<BaseTooltip.Popup
 							className={cn(
-								"relative rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-md",
+								"relative rounded bg-popover px-2 py-1 text-xs text-popover-foreground shadow-lg border",
 								"animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
 							)}
 						>
-							<BaseTooltip.Arrow className="fill-foreground absolute -bottom-1.25 left-1/2 -translate-x-1/2">
-								<svg width="10" height="5" viewBox="0 0 10 5">
-									<polygon points="0,0 5,5 10,0" />
-								</svg>
-							</BaseTooltip.Arrow>
 							{content}
 						</BaseTooltip.Popup>
 					</BaseTooltip.Positioner>

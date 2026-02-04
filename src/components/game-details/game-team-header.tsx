@@ -1,12 +1,18 @@
+import { Link } from "@tanstack/react-router";
 import { Image } from "@/components/ui/image";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
 import type { GameDetailsTeam } from "@/lib/nba/game-details.server";
 
+type League = "nba" | "wnba" | "gleague";
+
 interface GameTeamHeaderProps {
 	team: GameDetailsTeam;
+	league: League;
 }
 
-export function GameTeamHeader({ team }: GameTeamHeaderProps) {
+export function GameTeamHeader({ team, league }: GameTeamHeaderProps) {
+	const teamUrl = `/${league}/team/${team.id}`;
+
 	return (
 		<div className="flex flex-1 flex-col items-center relative" id={team.uid}>
 			<Image
@@ -14,9 +20,12 @@ export function GameTeamHeader({ team }: GameTeamHeaderProps) {
 				alt={team.name ?? "Team"}
 				className="h-10 w-10 z-2 relative object-contain md:h-12 md:w-12"
 			/>
-			<span className="inline-block mt-2 text-lg relative z-2 font-semibold md:text-xl">
+			<Link
+				to={teamUrl}
+				className="inline-block mt-2 text-lg relative z-2 font-semibold md:text-xl underline-offset-2 hover:underline"
+			>
 				{team.name}
-			</span>
+			</Link>
 			{team.record && (
 				<span className="relative z-2 font-mono font-bold text-sm text-foreground/50 md:text-base">
 					{team.record}

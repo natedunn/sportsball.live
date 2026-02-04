@@ -6,9 +6,9 @@ import type {
 	LeaderPlayer,
 } from "./types";
 
-type League = "nba" | "wnba" | "gleague";
+import { getLeagueSiteApi, type League } from "@/lib/shared/league";
 
-interface EspnAthlete {
+interface ApiAthlete {
 	id: string;
 	displayName: string;
 	firstName: string;
@@ -19,45 +19,40 @@ interface EspnAthlete {
 	};
 }
 
-interface EspnTeam {
+interface ApiTeam {
 	id: string;
 	displayName: string;
 	abbreviation: string;
 	logos?: Array<{ href: string }>;
 }
 
-interface EspnLeaderEntry {
+interface ApiLeaderEntry {
 	value: number;
 	displayValue: string;
-	athlete: EspnAthlete;
-	team?: EspnTeam;
+	athlete: ApiAthlete;
+	team?: ApiTeam;
 }
 
-interface EspnCategory {
+interface ApiCategory {
 	name: string;
 	displayName: string;
 	abbreviation: string;
-	leaders: EspnLeaderEntry[];
+	leaders: ApiLeaderEntry[];
 }
 
-interface EspnLeadersResponse {
+interface ApiLeadersResponse {
 	leaders?: {
-		categories?: EspnCategory[];
+		categories?: ApiCategory[];
 	};
 }
 
-function getLeagueEndpoint(league: League): string {
-	switch (league) {
-		case "nba":
-			return "https://site.api.espn.com/apis/site/v3/sports/basketball/nba/leaders";
-		case "wnba":
-			return "https://site.api.espn.com/apis/site/v3/sports/basketball/wnba/leaders";
-		case "gleague":
-			return "https://site.api.espn.com/apis/site/v3/sports/basketball/nba-g-league/leaders";
-	}
+function getLeadersEndpoint(league: League): string {
+	const siteApi = getLeagueSiteApi(league);
+	// Leaders endpoint uses /v3/ path instead of /v2/
+	return siteApi.replace("/v2/", "/v3/") + "/leaders";
 }
 
-function mapPlayer(entry: EspnLeaderEntry): LeaderPlayer {
+function mapPlayer(entry: ApiLeaderEntry): LeaderPlayer {
 	return {
 		id: entry.athlete.id,
 		name: entry.athlete.displayName,
@@ -75,7 +70,7 @@ function mapPlayer(entry: EspnLeaderEntry): LeaderPlayer {
 }
 
 function mapCategory(
-	category: EspnCategory,
+	category: ApiCategory,
 	categoryKey: "pts" | "ast" | "reb",
 	limit: number = 5,
 ): CategoryLeaders {
@@ -95,15 +90,15 @@ function mapCategory(
 }
 
 function calculateStocks(
-	stealsCategory: EspnCategory | undefined,
-	blocksCategory: EspnCategory | undefined,
+	stealsCategory: ApiCategory | undefined,
+	blocksCategory: ApiCategory | undefined,
 	limit: number = 5,
 ): CategoryLeaders {
 	// Build a map of player stats
 	const playerStats = new Map<
 		string,
 		{
-			entry: EspnLeaderEntry;
+			entry: ApiLeaderEntry;
 			steals: number;
 			blocks: number;
 		}
@@ -165,7 +160,7 @@ function emptyLeadersResponse(): LeagueLeadersResponse {
 }
 
 async function fetchLeaders(league: League): Promise<LeagueLeadersResponse> {
-	const endpoint = getLeagueEndpoint(league);
+	const endpoint = getLeadersEndpoint(league);
 
 	const response = await fetch(endpoint, {
 		headers: {
@@ -174,12 +169,12 @@ async function fetchLeaders(league: League): Promise<LeagueLeadersResponse> {
 		},
 	});
 
-	// ESPN doesn't support leaders for all leagues (e.g., G-League returns 400)
+	// API doesn't support leaders for all leagues (e.g., G-League returns 400)
 	if (!response.ok) {
 		return emptyLeadersResponse();
 	}
 
-	const data = (await response.json()) as EspnLeadersResponse;
+	const data = (await response.json()) as ApiLeadersResponse;
 	const categories = data.leaders?.categories ?? [];
 
 	// Find the categories we need
@@ -225,7 +220,7 @@ export const fetchWnbaLeaders = createServerFn({ method: "GET" }).handler(
 	},
 );
 
-// G-League uses a different API (stats.gleague.nba.com)
+// G-League leaders use the stats API (GLEAGUE_STATS_API)
 interface GLeagueLeaderRow {
 	playerId: string;
 	rank: number;
@@ -250,8 +245,10 @@ function getCurrentGLeagueSeason(): string {
 async function fetchGLeagueLeadersByCategory(
 	category: "PTS" | "AST" | "REB" | "STL" | "BLK",
 ): Promise<GLeagueLeaderRow[]> {
-	const baseUrl =
-		process.env.GLEAGUE_STATS_API_BASE ?? "https://stats.gleague.nba.com/stats";
+	const baseUrl = process.env.GLEAGUE_STATS_API;
+	if (!baseUrl) {
+		throw new Error("GLEAGUE_STATS_API not configured");
+	}
 	const season = getCurrentGLeagueSeason();
 
 	const response = await fetch(
@@ -259,7 +256,7 @@ async function fetchGLeagueLeadersByCategory(
 		{
 			headers: {
 				"User-Agent": "Mozilla/5.0",
-				Referer: "https://stats.gleague.nba.com/",
+				Referer: baseUrl,
 			},
 		},
 	);

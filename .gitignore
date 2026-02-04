@@ -13,6 +13,9 @@ dist/
 # TanStack Router generated files (optional - can be committed for CI)
 # src/routeTree.gen.ts
 
+# TanStack Start cache
+.tanstack/
+
 # Environment files
 .env
 .env.local

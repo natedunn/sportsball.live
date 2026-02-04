@@ -7,7 +7,8 @@ import { gleagueLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
-import { LeagueLeaders } from "@/components/leaders/league-leaders";
+import { PlayerLeaders } from "@/components/leaders/player-leaders";
+import { SmartTeamRankings } from "@/components/leaders/smart-team-rankings";
 
 export const Route = createFileRoute("/_default/gleague/")({
 	loader: async ({ context }) => {
@@ -69,11 +70,11 @@ function GLeagueHomePage() {
 						</div>
 					</section>
 
-					{/* League Leaders */}
+					{/* Player Leaders */}
 					{leaders && leaders.points.leaders.length > 0 && (
 						<section className="flex flex-col gap-4">
-							<h2 className="text-xl font-bold">League Leaders</h2>
-							<LeagueLeaders
+							<h2 className="text-xl font-bold">Player Leaders</h2>
+							<PlayerLeaders
 								points={leaders.points}
 								assists={leaders.assists}
 								rebounds={leaders.rebounds}
@@ -81,6 +82,12 @@ function GLeagueHomePage() {
 							/>
 						</section>
 					)}
+
+					{/* Team Rankings */}
+					<section className="flex flex-col gap-4">
+						<h2 className="text-xl font-bold">Team Rankings</h2>
+						<SmartTeamRankings league="gleague" />
+					</section>
 				</div>
 			</div>
 		</div>

@@ -1,8 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { DitheredBasketball } from "./-components/dithered-basketball";
 import { useIsDarkMode } from "@/lib/use-is-dark-mode";
+
+// Lazy load Three.js component - ~1MB of dependencies
+const DitheredBasketball = lazy(() =>
+	import("./-components/dithered-basketball").then((m) => ({
+		default: m.DitheredBasketball,
+	}))
+);
 import { getButtonClasses } from "@/components/ui/button";
 import { Scoreboard } from "@/components/scores/scoreboard";
 import { todayGamesQueryOptions } from "@/lib/all-leagues/today-games.queries";
@@ -97,10 +103,12 @@ function BasketballBackground({
 	return (
 		<div className="pointer-events-none absolute -top-96 left-1/2 -translate-x-1/2 opacity-30 dark:opacity-40">
 			<div ref={ballRef} className="will-change-transform">
-				<DitheredBasketball
-					style={{ width: 800, height: 800 }}
-					color={basketballColor}
-				/>
+				<Suspense fallback={null}>
+					<DitheredBasketball
+						style={{ width: 800, height: 800 }}
+						color={basketballColor}
+					/>
+				</Suspense>
 			</div>
 		</div>
 	);

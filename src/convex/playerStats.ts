@@ -38,6 +38,17 @@ function getLeagueSlug(league: League): string {
 	}
 }
 
+// Common API env var names by league (site.web.api.espn.com)
+const COMMON_API_VARS: Record<League, string> = {
+	nba: "NBA_COMMON_API",
+	wnba: "WNBA_COMMON_API",
+	gleague: "GLEAGUE_COMMON_API",
+};
+
+function getCommonApi(league: League): string | undefined {
+	return process.env[COMMON_API_VARS[league]];
+}
+
 // Query to get player stats for a team
 export const getByTeam = query({
 	args: {
@@ -142,8 +153,12 @@ async function fetchPlayerStats(
 	threePointPct: number;
 	freeThrowPct: number;
 } | null> {
-	const leagueSlug = getLeagueSlug(league);
-	const url = `https://site.web.api.espn.com/apis/common/v3/sports/basketball/${leagueSlug}/athletes/${playerId}/overview`;
+	const baseUrl = getCommonApi(league);
+	if (!baseUrl) {
+		console.error(`${COMMON_API_VARS[league]} not configured`);
+		return null;
+	}
+	const url = `${baseUrl}/athletes/${playerId}/overview`;
 
 	try {
 		const response = await fetch(url, {
@@ -200,8 +215,12 @@ async function fetchTeamRoster(
 	league: League,
 	teamId: string
 ): Promise<Array<{ id: string; name: string }>> {
-	const leagueSlug = getLeagueSlug(league);
-	const url = `https://site.web.api.espn.com/apis/common/v3/sports/basketball/${leagueSlug}/teams/${teamId}/roster`;
+	const baseUrl = getCommonApi(league);
+	if (!baseUrl) {
+		console.error(`${COMMON_API_VARS[league]} not configured`);
+		return [];
+	}
+	const url = `${baseUrl}/teams/${teamId}/roster`;
 
 	try {
 		const response = await fetch(url, {

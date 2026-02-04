@@ -41,6 +41,22 @@ interface StandingsResponse {
 
 type League = "nba" | "wnba" | "gleague";
 
+// Site API env var names by league (site.api.espn.com)
+const SITE_API_VARS: Record<League, string> = {
+	nba: "NBA_SITE_API",
+	wnba: "WNBA_SITE_API",
+	gleague: "GLEAGUE_SITE_API",
+};
+
+function getSiteApi(league: League): string | undefined {
+	return process.env[SITE_API_VARS[league]];
+}
+
+// Get league slug for ESPN API paths
+function getLeagueSlug(league: League): string {
+	return league === "gleague" ? "nba-g-league" : league;
+}
+
 // Helper to get stat value
 function getStat(stats: Array<{ name: string; value: number }>, name: string): number {
 	return stats.find((s) => s.name === name)?.value ?? 0;
@@ -265,7 +281,14 @@ async function fetchStandings(league: League): Promise<StandingsTeamEntry[]> {
 		return fetchGLeagueStandings();
 	}
 
-	const url = `https://site.api.espn.com/apis/v2/sports/basketball/${league}/standings`;
+	// Standings uses /apis/v2/ path (different from SITE_API which uses /apis/site/v2/)
+	// Derive from SITE_API by replacing the path segment
+	const siteApi = getSiteApi(league);
+	if (!siteApi) {
+		console.error(`${SITE_API_VARS[league]} not configured`);
+		return [];
+	}
+	const url = siteApi.replace("/apis/site/v2/", "/apis/v2/") + "/standings";
 
 	try {
 		const response = await fetch(url, {
@@ -406,8 +429,12 @@ async function fetchTeamStats(
 	league: League,
 	teamId: string,
 ): Promise<ExtendedTeamStats | null> {
-	const leagueSlug = league === "gleague" ? "nba-g-league" : league;
-	const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/${leagueSlug}/teams/${teamId}/statistics`;
+	const baseUrl = getSiteApi(league);
+	if (!baseUrl) {
+		console.error(`${SITE_API_VARS[league]} not configured`);
+		return null;
+	}
+	const url = `${baseUrl}/teams/${teamId}/statistics`;
 
 	try {
 		const response = await fetch(url, {

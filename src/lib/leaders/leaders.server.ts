@@ -8,7 +8,7 @@ import type {
 
 type League = "nba" | "wnba" | "gleague";
 
-interface EspnAthlete {
+interface ApiAthlete {
 	id: string;
 	displayName: string;
 	firstName: string;
@@ -19,30 +19,30 @@ interface EspnAthlete {
 	};
 }
 
-interface EspnTeam {
+interface ApiTeam {
 	id: string;
 	displayName: string;
 	abbreviation: string;
 	logos?: Array<{ href: string }>;
 }
 
-interface EspnLeaderEntry {
+interface ApiLeaderEntry {
 	value: number;
 	displayValue: string;
-	athlete: EspnAthlete;
-	team?: EspnTeam;
+	athlete: ApiAthlete;
+	team?: ApiTeam;
 }
 
-interface EspnCategory {
+interface ApiCategory {
 	name: string;
 	displayName: string;
 	abbreviation: string;
-	leaders: EspnLeaderEntry[];
+	leaders: ApiLeaderEntry[];
 }
 
-interface EspnLeadersResponse {
+interface ApiLeadersResponse {
 	leaders?: {
-		categories?: EspnCategory[];
+		categories?: ApiCategory[];
 	};
 }
 
@@ -57,7 +57,7 @@ function getLeagueEndpoint(league: League): string {
 	}
 }
 
-function mapPlayer(entry: EspnLeaderEntry): LeaderPlayer {
+function mapPlayer(entry: ApiLeaderEntry): LeaderPlayer {
 	return {
 		id: entry.athlete.id,
 		name: entry.athlete.displayName,
@@ -75,7 +75,7 @@ function mapPlayer(entry: EspnLeaderEntry): LeaderPlayer {
 }
 
 function mapCategory(
-	category: EspnCategory,
+	category: ApiCategory,
 	categoryKey: "pts" | "ast" | "reb",
 	limit: number = 5,
 ): CategoryLeaders {
@@ -95,15 +95,15 @@ function mapCategory(
 }
 
 function calculateStocks(
-	stealsCategory: EspnCategory | undefined,
-	blocksCategory: EspnCategory | undefined,
+	stealsCategory: ApiCategory | undefined,
+	blocksCategory: ApiCategory | undefined,
 	limit: number = 5,
 ): CategoryLeaders {
 	// Build a map of player stats
 	const playerStats = new Map<
 		string,
 		{
-			entry: EspnLeaderEntry;
+			entry: ApiLeaderEntry;
 			steals: number;
 			blocks: number;
 		}
@@ -174,12 +174,12 @@ async function fetchLeaders(league: League): Promise<LeagueLeadersResponse> {
 		},
 	});
 
-	// ESPN doesn't support leaders for all leagues (e.g., G-League returns 400)
+	// API doesn't support leaders for all leagues (e.g., G-League returns 400)
 	if (!response.ok) {
 		return emptyLeadersResponse();
 	}
 
-	const data = (await response.json()) as EspnLeadersResponse;
+	const data = (await response.json()) as ApiLeadersResponse;
 	const categories = data.leaders?.categories ?? [];
 
 	// Find the categories we need
@@ -250,8 +250,10 @@ function getCurrentGLeagueSeason(): string {
 async function fetchGLeagueLeadersByCategory(
 	category: "PTS" | "AST" | "REB" | "STL" | "BLK",
 ): Promise<GLeagueLeaderRow[]> {
-	const baseUrl =
-		process.env.GLEAGUE_STATS_API_BASE ?? "https://stats.gleague.nba.com/stats";
+	const baseUrl = process.env.GLEAGUE_STATS_API;
+	if (!baseUrl) {
+		throw new Error("GLEAGUE_STATS_API not configured");
+	}
 	const season = getCurrentGLeagueSeason();
 
 	const response = await fetch(

@@ -28,10 +28,14 @@ function getCurrentSeason(): string {
 	return `${startYear}-${String(startYear + 1).slice(-2)}`;
 }
 
+interface MappedTeamWithRank extends StandingTeam {
+	playoffRank: number;
+}
+
 function mapRowToTeam(
 	headers: string[],
 	row: (string | number | null)[],
-): StandingTeam {
+): MappedTeamWithRank {
 	const getValue = (name: string): string | number | null => {
 		const index = headers.indexOf(name);
 		return index >= 0 ? row[index] : null;
@@ -60,13 +64,17 @@ function mapRowToTeam(
 		pointsFor: Number(getValue("PointsPG") ?? 0),
 		pointsAgainst: Number(getValue("OppPointsPG") ?? 0),
 		differential: Number(getValue("DiffPointsPG") ?? 0),
+		// Official playoff rank with tiebreakers
+		playoffRank: Number(getValue("PlayoffRank") ?? 999),
 	};
 }
 
 export const fetchGLeagueStandings = createServerFn({ method: "GET" }).handler(
 	async (): Promise<StandingsResponse> => {
-		const baseUrl =
-			process.env.GLEAGUE_STATS_API_BASE ?? "https://stats.gleague.nba.com/stats";
+		const baseUrl = process.env.GLEAGUE_STATS_API;
+		if (!baseUrl) {
+			throw new Error("GLEAGUE_STATS_API not configured");
+		}
 		const season = getCurrentSeason();
 
 		const response = await fetch(
@@ -96,8 +104,8 @@ export const fetchGLeagueStandings = createServerFn({ method: "GET" }).handler(
 		const { headers, rowSet } = standingsResult;
 		const conferenceIndex = headers.indexOf("Conference");
 
-		const eastTeams: StandingTeam[] = [];
-		const westTeams: StandingTeam[] = [];
+		const eastTeams: MappedTeamWithRank[] = [];
+		const westTeams: MappedTeamWithRank[] = [];
 
 		for (const row of rowSet) {
 			const conference = String(row[conferenceIndex] ?? "").toLowerCase();
@@ -110,21 +118,20 @@ export const fetchGLeagueStandings = createServerFn({ method: "GET" }).handler(
 			}
 		}
 
-		// Sort by wins descending, then by win pct
-		const sortTeams = (teams: StandingTeam[]) =>
-			teams.sort((a, b) => {
-				if (b.wins !== a.wins) return b.wins - a.wins;
-				return b.winPct - a.winPct;
-			});
+		// Sort by official playoff rank (includes all tiebreakers)
+		const sortAndStripRank = (teams: MappedTeamWithRank[]): StandingTeam[] => {
+			teams.sort((a, b) => a.playoffRank - b.playoffRank);
+			return teams.map(({ playoffRank, ...team }) => team);
+		};
 
 		return {
 			eastern: {
 				name: "Eastern Conference",
-				teams: sortTeams(eastTeams),
+				teams: sortAndStripRank(eastTeams),
 			},
 			western: {
 				name: "Western Conference",
-				teams: sortTeams(westTeams),
+				teams: sortAndStripRank(westTeams),
 			},
 		};
 	},

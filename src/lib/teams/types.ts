@@ -31,7 +31,7 @@ export interface TeamStaticData {
 		id: string;
 		slug: string;
 	};
-	// Secondary API identifiers (for leagues using stats.nba.com)
+	// Secondary API identifiers (for leagues using the stats API)
 	statsApi?: {
 		id: string;
 		slug: string;

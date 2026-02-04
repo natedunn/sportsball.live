@@ -7,7 +7,7 @@
 		"dev:convex": "convex dev",
 		"dev:web": "vite dev --port 3000 --host",
 		"build:deploy": "npx convex deploy --cmd 'vite build'",
-		"build": "vite build",
+		"build": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
 		"preview": "vite preview",
 		"convex:dev": "convex dev",
 		"convex:deploy": "convex deploy",

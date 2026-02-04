@@ -26,13 +26,13 @@ export interface TeamStaticData {
 		instagram?: string;
 	};
 
-	// API identifiers - grouped by source
-	espn: {
+	// API identifiers
+	api: {
 		id: string;
 		slug: string;
 	};
-	// Only for leagues using stats.nba.com API
-	nba?: {
+	// Secondary API identifiers (for leagues using stats.nba.com)
+	statsApi?: {
 		id: string;
 		slug: string;
 	};

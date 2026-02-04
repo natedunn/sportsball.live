@@ -11,7 +11,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "E03A3E", secondary: "C1D32F" },
 			display: { dark: "E03A3E", light: "E03A3E" },
 		},
-		espn: { id: "1", slug: "atl" },
+		api: { id: "1", slug: "atl" },
 	},
 	{
 		name: "Celtics",
@@ -23,7 +23,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "007A33", secondary: "BA9653" },
 			display: { dark: "BA9653", light: "007A33" },
 		},
-		espn: { id: "2", slug: "bos" },
+		api: { id: "2", slug: "bos" },
 	},
 	{
 		name: "Nets",
@@ -35,7 +35,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "000000", secondary: "FFFFFF" },
 			display: { dark: "FFFFFF", light: "000000" },
 		},
-		espn: { id: "17", slug: "bkn" },
+		api: { id: "17", slug: "bkn" },
 	},
 	{
 		name: "Hornets",
@@ -47,7 +47,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "1D1160", secondary: "00788C" },
 			display: { dark: "00788C", light: "1D1160" },
 		},
-		espn: { id: "30", slug: "cha" },
+		api: { id: "30", slug: "cha" },
 	},
 	{
 		name: "Bulls",
@@ -59,7 +59,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "CE1141", secondary: "000000" },
 			display: { dark: "CE1141", light: "CE1141" },
 		},
-		espn: { id: "4", slug: "chi" },
+		api: { id: "4", slug: "chi" },
 	},
 	{
 		name: "Cavaliers",
@@ -71,7 +71,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "860038", secondary: "FDBB30" },
 			display: { dark: "FDBB30", light: "860038" },
 		},
-		espn: { id: "5", slug: "cle" },
+		api: { id: "5", slug: "cle" },
 	},
 	{
 		name: "Mavericks",
@@ -83,7 +83,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "00538C", secondary: "002B5E" },
 			display: { dark: "00538C", light: "00538C" },
 		},
-		espn: { id: "6", slug: "dal" },
+		api: { id: "6", slug: "dal" },
 	},
 	{
 		name: "Nuggets",
@@ -95,7 +95,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "0E2240", secondary: "FEC524" },
 			display: { dark: "FEC524", light: "0E2240" },
 		},
-		espn: { id: "7", slug: "den" },
+		api: { id: "7", slug: "den" },
 	},
 	{
 		name: "Pistons",
@@ -107,7 +107,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "C8102E", secondary: "1D42BA" },
 			display: { dark: "C8102E", light: "1D42BA" },
 		},
-		espn: { id: "8", slug: "det" },
+		api: { id: "8", slug: "det" },
 	},
 	{
 		name: "Warriors",
@@ -119,7 +119,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "1D428A", secondary: "FFC72C" },
 			display: { dark: "FFC72C", light: "1D428A" },
 		},
-		espn: { id: "9", slug: "gs" },
+		api: { id: "9", slug: "gs" },
 	},
 	{
 		name: "Rockets",
@@ -131,7 +131,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "CE1141", secondary: "000000" },
 			display: { dark: "CE1141", light: "CE1141" },
 		},
-		espn: { id: "10", slug: "hou" },
+		api: { id: "10", slug: "hou" },
 	},
 	{
 		name: "Pacers",
@@ -143,7 +143,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "002D62", secondary: "FDBB30" },
 			display: { dark: "FDBB30", light: "002D62" },
 		},
-		espn: { id: "11", slug: "ind" },
+		api: { id: "11", slug: "ind" },
 	},
 	{
 		name: "Clippers",
@@ -155,7 +155,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "C8102E", secondary: "1D428A" },
 			display: { dark: "C8102E", light: "1D428A" },
 		},
-		espn: { id: "12", slug: "lac" },
+		api: { id: "12", slug: "lac" },
 	},
 	{
 		name: "Lakers",
@@ -167,7 +167,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "552583", secondary: "FDB927" },
 			display: { dark: "FDB927", light: "552583" },
 		},
-		espn: { id: "13", slug: "lal" },
+		api: { id: "13", slug: "lal" },
 	},
 	{
 		name: "Grizzlies",
@@ -179,7 +179,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "5D76A9", secondary: "12173F" },
 			display: { dark: "5D76A9", light: "12173F" },
 		},
-		espn: { id: "29", slug: "mem" },
+		api: { id: "29", slug: "mem" },
 	},
 	{
 		name: "Heat",
@@ -191,7 +191,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "98002E", secondary: "F9A01B" },
 			display: { dark: "F9A01B", light: "98002E" },
 		},
-		espn: { id: "14", slug: "mia" },
+		api: { id: "14", slug: "mia" },
 	},
 	{
 		name: "Bucks",
@@ -203,7 +203,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "00471B", secondary: "EEE1C6" },
 			display: { dark: "EEE1C6", light: "00471B" },
 		},
-		espn: { id: "15", slug: "mil" },
+		api: { id: "15", slug: "mil" },
 	},
 	{
 		name: "Timberwolves",
@@ -215,7 +215,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "0C2340", secondary: "236192" },
 			display: { dark: "236192", light: "0C2340" },
 		},
-		espn: { id: "16", slug: "min" },
+		api: { id: "16", slug: "min" },
 	},
 	{
 		name: "Pelicans",
@@ -227,7 +227,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "0C2340", secondary: "C8102E" },
 			display: { dark: "C8102E", light: "0C2340" },
 		},
-		espn: { id: "3", slug: "no" },
+		api: { id: "3", slug: "no" },
 	},
 	{
 		name: "Knicks",
@@ -239,7 +239,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "006BB6", secondary: "F58426" },
 			display: { dark: "F58426", light: "006BB6" },
 		},
-		espn: { id: "18", slug: "ny" },
+		api: { id: "18", slug: "ny" },
 	},
 	{
 		name: "Thunder",
@@ -251,7 +251,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "007AC1", secondary: "EF3B24" },
 			display: { dark: "007AC1", light: "007AC1" },
 		},
-		espn: { id: "25", slug: "okc" },
+		api: { id: "25", slug: "okc" },
 	},
 	{
 		name: "Magic",
@@ -263,7 +263,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "0077C0", secondary: "C4CED4" },
 			display: { dark: "0077C0", light: "0077C0" },
 		},
-		espn: { id: "19", slug: "orl" },
+		api: { id: "19", slug: "orl" },
 	},
 	{
 		name: "76ers",
@@ -275,7 +275,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "006BB6", secondary: "ED174C" },
 			display: { dark: "ED174C", light: "006BB6" },
 		},
-		espn: { id: "20", slug: "phi" },
+		api: { id: "20", slug: "phi" },
 	},
 	{
 		name: "Suns",
@@ -287,7 +287,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "1D1160", secondary: "E56020" },
 			display: { dark: "E56020", light: "1D1160" },
 		},
-		espn: { id: "21", slug: "phx" },
+		api: { id: "21", slug: "phx" },
 	},
 	{
 		name: "Trail Blazers",
@@ -299,7 +299,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "E03A3E", secondary: "000000" },
 			display: { dark: "E03A3E", light: "E03A3E" },
 		},
-		espn: { id: "22", slug: "por" },
+		api: { id: "22", slug: "por" },
 	},
 	{
 		name: "Kings",
@@ -311,7 +311,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "5A2D81", secondary: "63727A" },
 			display: { dark: "5A2D81", light: "5A2D81" },
 		},
-		espn: { id: "23", slug: "sac" },
+		api: { id: "23", slug: "sac" },
 	},
 	{
 		name: "Spurs",
@@ -323,7 +323,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "C4CED4", secondary: "000000" },
 			display: { dark: "C4CED4", light: "000000" },
 		},
-		espn: { id: "24", slug: "sa" },
+		api: { id: "24", slug: "sa" },
 	},
 	{
 		name: "Raptors",
@@ -335,7 +335,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "CE1141", secondary: "000000" },
 			display: { dark: "CE1141", light: "CE1141" },
 		},
-		espn: { id: "28", slug: "tor" },
+		api: { id: "28", slug: "tor" },
 	},
 	{
 		name: "Jazz",
@@ -347,7 +347,7 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "002B5C", secondary: "00471B" },
 			display: { dark: "F9A01B", light: "002B5C" },
 		},
-		espn: { id: "26", slug: "utah" },
+		api: { id: "26", slug: "utah" },
 	},
 	{
 		name: "Wizards",
@@ -359,6 +359,6 @@ export const NBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "002B5C", secondary: "E31837" },
 			display: { dark: "E31837", light: "002B5C" },
 		},
-		espn: { id: "27", slug: "wsh" },
+		api: { id: "27", slug: "wsh" },
 	},
 ];

@@ -11,7 +11,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "E31837", secondary: "5091CC" },
 			display: { dark: "E31837", light: "5091CC" },
 		},
-		espn: { id: "20", slug: "atl" },
+		api: { id: "20", slug: "atl" },
 	},
 	{
 		name: "Sky",
@@ -23,7 +23,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "5091CD", secondary: "FFD520" },
 			display: { dark: "5091CD", light: "FFD520" },
 		},
-		espn: { id: "19", slug: "chi" },
+		api: { id: "19", slug: "chi" },
 	},
 	{
 		name: "Sun",
@@ -35,7 +35,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "F05023", secondary: "0A2240" },
 			display: { dark: "F05023", light: "0A2240" },
 		},
-		espn: { id: "18", slug: "conn" },
+		api: { id: "18", slug: "conn" },
 	},
 	{
 		name: "Wings",
@@ -47,7 +47,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "002B5C", secondary: "C4D600" },
 			display: { dark: "C4D600", light: "002B5C" },
 		},
-		espn: { id: "3", slug: "dal" },
+		api: { id: "3", slug: "dal" },
 	},
 	{
 		name: "Valkyries",
@@ -59,7 +59,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "5E2C83", secondary: "F4C01E" },
 			display: { dark: "F4C01E", light: "5E2C83" },
 		},
-		espn: { id: "129689", slug: "gs" },
+		api: { id: "129689", slug: "gs" },
 	},
 	{
 		name: "Fever",
@@ -71,7 +71,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "002D62", secondary: "E03A3E" },
 			display: { dark: "E03A3E", light: "002D62" },
 		},
-		espn: { id: "5", slug: "ind" },
+		api: { id: "5", slug: "ind" },
 	},
 	{
 		name: "Aces",
@@ -83,7 +83,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "000000", secondary: "C4CED4" },
 			display: { dark: "C4CED4", light: "000000" },
 		},
-		espn: { id: "17", slug: "lv" },
+		api: { id: "17", slug: "lv" },
 	},
 	{
 		name: "Sparks",
@@ -95,7 +95,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "552583", secondary: "FDB927" },
 			display: { dark: "FDB927", light: "552583" },
 		},
-		espn: { id: "6", slug: "la" },
+		api: { id: "6", slug: "la" },
 	},
 	{
 		name: "Lynx",
@@ -107,7 +107,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "0C2340", secondary: "78BE20" },
 			display: { dark: "78BE20", light: "0C2340" },
 		},
-		espn: { id: "8", slug: "min" },
+		api: { id: "8", slug: "min" },
 	},
 	{
 		name: "Liberty",
@@ -119,7 +119,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "6ECEB2", secondary: "000000" },
 			display: { dark: "6ECEB2", light: "000000" },
 		},
-		espn: { id: "9", slug: "ny" },
+		api: { id: "9", slug: "ny" },
 	},
 	{
 		name: "Mercury",
@@ -131,7 +131,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "201747", secondary: "E56020" },
 			display: { dark: "E56020", light: "201747" },
 		},
-		espn: { id: "11", slug: "phx" },
+		api: { id: "11", slug: "phx" },
 	},
 	{
 		name: "Storm",
@@ -143,7 +143,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "2C5234", secondary: "FEE11A" },
 			display: { dark: "FEE11A", light: "2C5234" },
 		},
-		espn: { id: "14", slug: "sea" },
+		api: { id: "14", slug: "sea" },
 	},
 	{
 		name: "Mystics",
@@ -155,6 +155,6 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 			brand: { primary: "002B5C", secondary: "E31837" },
 			display: { dark: "E31837", light: "002B5C" },
 		},
-		espn: { id: "16", slug: "wsh" },
+		api: { id: "16", slug: "wsh" },
 	},
 ];

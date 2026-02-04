@@ -36,12 +36,35 @@ const getOrdinalSuffix = (day: number): string => {
   }
 };
 
-export const formatGameDate = (date: Date, dayOf: boolean = false): string => {
+// Date format presets - extensible for future user preferences (locale, etc.)
+export type DateFormatPreset = "full" | "short" | "time-only";
+
+interface FormatGameDateOptions {
+  format?: DateFormatPreset;
+}
+
+export const formatGameDate = (
+  date: Date,
+  options: FormatGameDateOptions | boolean = {}
+): string => {
+  // Support legacy boolean param for backwards compatibility
+  const opts: FormatGameDateOptions =
+    typeof options === "boolean" ? { format: options ? "time-only" : "full" } : options;
+  const formatPreset = opts.format ?? "full";
+
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const formatOptions = { timeZone };
 
   const currentYear = new Date().getFullYear();
   const dateYear = date.getFullYear();
+
+  // Short format: M/D/YY (US) - future: support other locales
+  if (formatPreset === "short") {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const year = String(dateYear).slice(-2);
+    return `${month}/${day}/${year}`;
+  }
 
   const weekday = date.toLocaleString("en-US", {
     ...formatOptions,
@@ -66,7 +89,7 @@ export const formatGameDate = (date: Date, dayOf: boolean = false): string => {
 
   const yearSuffix = dateYear !== currentYear ? `, ${dateYear}` : "";
 
-  if (dayOf) {
+  if (formatPreset === "time-only") {
     return `${time} ${tz}`;
   }
 

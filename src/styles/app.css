@@ -139,6 +139,30 @@
 	--tracking-wide: 0.025em;
 	--tracking-wider: 0.05em;
 	--tracking-widest: 0.1em;
+
+	--color-green-50: oklch(97.1% 0.019 163);
+	--color-green-100: oklch(93% 0.039 159);
+	--color-green-200: oklch(86.6% 0.065 160);
+	--color-green-300: oklch(77.6% 0.088 160);
+	--color-green-400: oklch(70.6% 0.098 161);
+	--color-green-500: oklch(56.8% 0.115 162);
+	--color-green-600: oklch(46.4% 0.096 162);
+	--color-green-700: oklch(38.4% 0.077 163);
+	--color-green-800: oklch(32.3% 0.063 163);
+	--color-green-900: oklch(27.7% 0.051 163);
+	--color-green-950: oklch(17.9% 0.032 163);
+
+	--color-red-50: oklch(97.3% 0.009 17);
+	--color-red-100: oklch(93.5% 0.022 17);
+	--color-red-200: oklch(88.2% 0.042 17);
+	--color-red-300: oklch(79.5% 0.073 17);
+	--color-red-400: oklch(67% 0.126 20);
+	--color-red-500: oklch(57.3% 0.167 23);
+	--color-red-600: oklch(48.9% 0.174 25);
+	--color-red-700: oklch(41.5% 0.148 25);
+	--color-red-800: oklch(36.2% 0.123 24);
+	--color-red-900: oklch(32% 0.101 23);
+	--color-red-950: oklch(20.6% 0.067 22);
 }
 
 @layer base {

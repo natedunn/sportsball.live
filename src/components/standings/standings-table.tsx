@@ -1,6 +1,8 @@
+import { Link } from "@tanstack/react-router";
 import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { getTeamStaticData } from "@/lib/teams";
 import type { StandingTeam } from "@/lib/types/standings";
 
 type League = "nba" | "wnba" | "gleague";
@@ -35,26 +37,64 @@ function SectionHeader({
 	);
 }
 
-function TeamRow({ team, rank }: { team: StandingTeam; rank: number }) {
+const teamRoutes: Record<League, string> = {
+	nba: "/nba/team/$teamId",
+	wnba: "/wnba/team/$teamId",
+	gleague: "/gleague/team/$teamId",
+};
+
+function TeamRow({
+	team,
+	rank,
+	league,
+}: {
+	team: StandingTeam;
+	rank: number;
+	league: League;
+}) {
+	// Look up the team slug from the static registry
+	const teamData = getTeamStaticData(league, team.id);
+	const teamSlug = teamData?.api.slug;
+
 	return (
-		<tr className="border-b border-border last:border-b-0 hover:bg-muted/30">
+		<tr className="border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors">
 			<td className="px-3 py-2 text-center text-muted-foreground tabular-nums">
 				{rank}
 			</td>
 			<td className="px-3 py-2">
-				<div className="flex items-center gap-2">
-					<Image
-						src={team.logo}
-						alt={team.name}
-						width={20}
-						height={20}
-						className="size-5 shrink-0 object-contain"
-					/>
-					<span className="w-10 shrink-0 font-medium">{team.abbreviation}</span>
-					<span className="hidden truncate text-muted-foreground lg:inline">
-						{team.name}
-					</span>
-				</div>
+				{teamSlug ? (
+					<Link
+						to={teamRoutes[league]}
+						params={{ teamId: teamSlug }}
+						className="flex items-center gap-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+					>
+						<Image
+							src={team.logo}
+							alt={team.name}
+							width={20}
+							height={20}
+							className="size-5 shrink-0 object-contain"
+						/>
+						<span className="w-10 shrink-0 font-medium">{team.abbreviation}</span>
+						<span className="hidden truncate text-muted-foreground lg:inline">
+							{team.name}
+						</span>
+					</Link>
+				) : (
+					<div className="flex items-center gap-2">
+						<Image
+							src={team.logo}
+							alt={team.name}
+							width={20}
+							height={20}
+							className="size-5 shrink-0 object-contain"
+						/>
+						<span className="w-10 shrink-0 font-medium">{team.abbreviation}</span>
+						<span className="hidden truncate text-muted-foreground lg:inline">
+							{team.name}
+						</span>
+					</div>
+				)}
 			</td>
 			<td className="px-3 py-2 text-center tabular-nums">{team.wins}</td>
 			<td className="px-3 py-2 text-center tabular-nums">{team.losses}</td>
@@ -106,13 +146,13 @@ export function StandingsTable({
 		return (
 			<>
 				{playoffTeams.map((team, index) => (
-					<TeamRow key={team.id} team={team} rank={index + 1} />
+					<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
 				))}
 				{playInTeams.length > 0 && (
 					<>
 						<SectionHeader title="Play-In Tournament" />
 						{playInTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 7} />
+							<TeamRow key={team.id} team={team} rank={index + 7} league={league} />
 						))}
 					</>
 				)}
@@ -120,7 +160,7 @@ export function StandingsTable({
 					<>
 						<SectionHeader title="Out of Playoffs" />
 						{outTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 11} />
+							<TeamRow key={team.id} team={team} rank={index + 11} league={league} />
 						))}
 					</>
 				)}
@@ -137,13 +177,13 @@ export function StandingsTable({
 			<>
 				<SectionHeader title="First Round Bye" isFirst />
 				{byeTeams.map((team, index) => (
-					<TeamRow key={team.id} team={team} rank={index + 1} />
+					<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
 				))}
 				{playoffTeams.length > 0 && (
 					<>
 						<SectionHeader title="Playoff Bound" />
 						{playoffTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 3} />
+							<TeamRow key={team.id} team={team} rank={index + 3} league={league} />
 						))}
 					</>
 				)}
@@ -151,7 +191,7 @@ export function StandingsTable({
 					<>
 						<SectionHeader title="Out of Playoffs" />
 						{outTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 9} />
+							<TeamRow key={team.id} team={team} rank={index + 9} league={league} />
 						))}
 					</>
 				)}
@@ -166,13 +206,13 @@ export function StandingsTable({
 		return (
 			<>
 				{playoffTeams.map((team, index) => (
-					<TeamRow key={team.id} team={team} rank={index + 1} />
+					<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
 				))}
 				{outTeams.length > 0 && (
 					<>
 						<SectionHeader title="Out of Playoffs" />
 						{outTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 9} />
+							<TeamRow key={team.id} team={team} rank={index + 9} league={league} />
 						))}
 					</>
 				)}
@@ -182,7 +222,7 @@ export function StandingsTable({
 
 	const renderSimpleList = () =>
 		teams.map((team, index) => (
-			<TeamRow key={team.id} team={team} rank={index + 1} />
+			<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
 		));
 
 	const renderBody = () => {

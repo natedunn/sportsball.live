@@ -67,7 +67,7 @@ export function GameDetailsLayout({
 				<div className="container">
 					{/* Teams and Score */}
 					<div className="flex items-center justify-center gap-4 md:gap-8">
-						<GameTeamHeader team={game.away} />
+						<GameTeamHeader team={game.away} league={league} />
 
 						{/* Score */}
 						<div className="flex flex-col items-center gap-1 relative z-20">
@@ -118,7 +118,7 @@ export function GameDetailsLayout({
 							)}
 						</div>
 
-						<GameTeamHeader team={game.home} />
+						<GameTeamHeader team={game.home} league={league} />
 					</div>
 				</div>
 			</div>

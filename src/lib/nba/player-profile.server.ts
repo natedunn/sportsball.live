@@ -78,9 +78,9 @@ function extractSeasonStats(athlete: ApiAthlete): PlayerSeasonStats | null {
 export const fetchPlayerProfile = createServerFn({ method: "GET" })
   .inputValidator((d: string) => d)
   .handler(async ({ data: playerId }): Promise<PlayerProfile | null> => {
-    const baseUrl = process.env.NBA_PLAYER_API_BASE;
+    const baseUrl = process.env.NBA_PLAYER_API;
     if (!baseUrl) {
-      console.warn("NBA_PLAYER_API_BASE not configured");
+      console.warn("NBA_PLAYER_API not configured");
       return null;
     }
 

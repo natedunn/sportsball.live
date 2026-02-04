@@ -117,6 +117,24 @@ export const upsertTeamStats = internalMutation({
 		offensiveRating: v.number(),
 		defensiveRating: v.number(),
 		netRating: v.number(),
+		// Derived scoring
+		margin: v.optional(v.number()),
+		// Shooting stats
+		fgPct: v.optional(v.number()),
+		threePct: v.optional(v.number()),
+		ftPct: v.optional(v.number()),
+		efgPct: v.optional(v.number()),
+		tsPct: v.optional(v.number()),
+		// Rebounding stats
+		rpg: v.optional(v.number()),
+		orpg: v.optional(v.number()),
+		drpg: v.optional(v.number()),
+		// Playmaking stats
+		apg: v.optional(v.number()),
+		tovPg: v.optional(v.number()),
+		// Defense stats
+		spg: v.optional(v.number()),
+		bpg: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db
@@ -135,6 +153,107 @@ export const upsertTeamStats = internalMutation({
 			await ctx.db.patch(existing._id, data);
 		} else {
 			await ctx.db.insert("teamStats", data);
+		}
+	},
+});
+
+// Internal mutation to update ranks for all teams in a league
+export const updateLeagueRanks = internalMutation({
+	args: { league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")) },
+	handler: async (ctx, args) => {
+		const teams = await ctx.db
+			.query("teamStats")
+			.withIndex("by_league", (q) => q.eq("league", args.league))
+			.collect();
+
+		// Filter to teams with valid data
+		const validTeams = teams.filter((t) => t.offensiveRating > 0);
+
+		if (validTeams.length === 0) return;
+
+		// Helper to get rank (1-indexed)
+		const getRank = (sorted: typeof validTeams, team: typeof validTeams[0]) =>
+			sorted.findIndex((t) => t._id === team._id) + 1;
+
+		// Helper to get rank for optional stats (only rank teams that have the stat)
+		const getRankOptional = (
+			sorted: typeof validTeams,
+			team: typeof validTeams[0],
+			hasValue: (t: typeof team) => boolean
+		) => {
+			if (!hasValue(team)) return undefined;
+			const teamsWithStat = sorted.filter(hasValue);
+			const idx = teamsWithStat.findIndex((t) => t._id === team._id);
+			return idx >= 0 ? idx + 1 : undefined;
+		};
+
+		// Sort arrays for each stat
+		// Scoring: PPG higher is better, OPP PPG lower is better
+		const byPpg = [...validTeams].sort((a, b) => b.pointsFor - a.pointsFor);
+		const byOppPpg = [...validTeams].sort((a, b) => a.pointsAgainst - b.pointsAgainst);
+		const byMargin = [...validTeams].sort((a, b) => (b.margin ?? 0) - (a.margin ?? 0));
+		const byPace = [...validTeams].sort((a, b) => b.pace - a.pace);
+		const byOrtg = [...validTeams].sort((a, b) => b.offensiveRating - a.offensiveRating);
+		const byDrtg = [...validTeams].sort((a, b) => a.defensiveRating - b.defensiveRating);
+		const byNetRtg = [...validTeams].sort((a, b) => b.netRating - a.netRating);
+
+		// Shooting: higher is better
+		const byFgPct = [...validTeams].sort((a, b) => (b.fgPct ?? 0) - (a.fgPct ?? 0));
+		const byThreePct = [...validTeams].sort((a, b) => (b.threePct ?? 0) - (a.threePct ?? 0));
+		const byFtPct = [...validTeams].sort((a, b) => (b.ftPct ?? 0) - (a.ftPct ?? 0));
+		const byEfgPct = [...validTeams].sort((a, b) => (b.efgPct ?? 0) - (a.efgPct ?? 0));
+		const byTsPct = [...validTeams].sort((a, b) => (b.tsPct ?? 0) - (a.tsPct ?? 0));
+
+		// Rebounding: higher is better
+		const byRpg = [...validTeams].sort((a, b) => (b.rpg ?? 0) - (a.rpg ?? 0));
+		const byOrpg = [...validTeams].sort((a, b) => (b.orpg ?? 0) - (a.orpg ?? 0));
+		const byDrpg = [...validTeams].sort((a, b) => (b.drpg ?? 0) - (a.drpg ?? 0));
+
+		// Playmaking: APG higher is better, TOV lower is better, AST/TO higher is better
+		const byApg = [...validTeams].sort((a, b) => (b.apg ?? 0) - (a.apg ?? 0));
+		const byTov = [...validTeams].sort((a, b) => (a.tovPg ?? 999) - (b.tovPg ?? 999));
+		// Calculate AST/TO ratio on the fly for ranking
+		const getAstToRatio = (t: typeof validTeams[0]) => {
+			if (!t.apg || !t.tovPg || t.tovPg === 0) return 0;
+			return t.apg / t.tovPg;
+		};
+		const byAstToRatio = [...validTeams].sort((a, b) => getAstToRatio(b) - getAstToRatio(a));
+
+		// Defense: higher is better
+		const bySpg = [...validTeams].sort((a, b) => (b.spg ?? 0) - (a.spg ?? 0));
+		const byBpg = [...validTeams].sort((a, b) => (b.bpg ?? 0) - (a.bpg ?? 0));
+
+		// Update each team with their ranks
+		for (const team of validTeams) {
+			const hasStat = (stat: number | undefined) => stat !== undefined && stat > 0;
+
+			await ctx.db.patch(team._id, {
+				// Scoring ranks
+				rankPpg: getRank(byPpg, team),
+				rankOppPpg: getRank(byOppPpg, team),
+				rankMargin: getRankOptional(byMargin, team, (t) => t.margin !== undefined),
+				rankPace: getRank(byPace, team),
+				rankOrtg: getRank(byOrtg, team),
+				rankDrtg: getRank(byDrtg, team),
+				rankNetRtg: getRank(byNetRtg, team),
+				// Shooting ranks
+				rankFgPct: getRankOptional(byFgPct, team, (t) => hasStat(t.fgPct)),
+				rankThreePct: getRankOptional(byThreePct, team, (t) => hasStat(t.threePct)),
+				rankFtPct: getRankOptional(byFtPct, team, (t) => hasStat(t.ftPct)),
+				rankEfgPct: getRankOptional(byEfgPct, team, (t) => hasStat(t.efgPct)),
+				rankTsPct: getRankOptional(byTsPct, team, (t) => hasStat(t.tsPct)),
+				// Rebounding ranks
+				rankRpg: getRankOptional(byRpg, team, (t) => hasStat(t.rpg)),
+				rankOrpg: getRankOptional(byOrpg, team, (t) => hasStat(t.orpg)),
+				rankDrpg: getRankOptional(byDrpg, team, (t) => hasStat(t.drpg)),
+				// Playmaking ranks
+				rankApg: getRankOptional(byApg, team, (t) => hasStat(t.apg)),
+				rankTov: getRankOptional(byTov, team, (t) => hasStat(t.tovPg)),
+				rankAstToRatio: getRankOptional(byAstToRatio, team, (t) => hasStat(t.apg) && hasStat(t.tovPg)),
+				// Defense ranks
+				rankSpg: getRankOptional(bySpg, team, (t) => hasStat(t.spg)),
+				rankBpg: getRankOptional(byBpg, team, (t) => hasStat(t.bpg)),
+			});
 		}
 	},
 });
@@ -255,11 +374,38 @@ async function fetchGLeagueStandings(): Promise<StandingsTeamEntry[]> {
 	}
 }
 
-// Fetch pace-related stats for a single team
-async function fetchTeamPaceStats(
+// Extended team stats from ESPN API
+interface ExtendedTeamStats {
+	// For pace calculation
+	fga: number;
+	fta: number;
+	oreb: number;
+	tov: number;
+	// Shooting (percentages)
+	fgPct: number;
+	threePct: number;
+	ftPct: number;
+	// Shooting (made/attempted for eFG% and TS% calculation)
+	fgMade: number;
+	threeMade: number;
+	ppg: number; // For TS% calculation
+	// Rebounding
+	rpg: number;
+	orpg: number;
+	drpg: number;
+	// Playmaking
+	apg: number;
+	tovPg: number;
+	// Defense
+	spg: number;
+	bpg: number;
+}
+
+// Fetch all team stats from ESPN API
+async function fetchTeamStats(
 	league: League,
 	teamId: string,
-): Promise<{ fga: number; fta: number; oreb: number; tov: number } | null> {
+): Promise<ExtendedTeamStats | null> {
 	const leagueSlug = league === "gleague" ? "nba-g-league" : league;
 	const url = `https://site.api.espn.com/apis/site/v2/sports/basketball/${leagueSlug}/teams/${teamId}/statistics`;
 
@@ -271,7 +417,7 @@ async function fetchTeamPaceStats(
 		if (!response.ok) {
 			// Don't log 404s for G-League teams - many don't have stats
 			if (response.status !== 404) {
-				console.error(`Failed to fetch pace stats for team ${teamId}: ${response.status}`);
+				console.error(`Failed to fetch stats for team ${teamId}: ${response.status}`);
 			}
 			return null;
 		}
@@ -280,14 +426,35 @@ async function fetchTeamPaceStats(
 		const categories = data.results?.stats?.categories ?? [];
 		const allStats: EspnTeamStats[] = categories.flatMap((c) => c.stats);
 
+		const getStat = (name: string) => allStats.find((s) => s.name === name)?.value ?? 0;
+
 		return {
-			fga: allStats.find((s) => s.name === "avgFieldGoalsAttempted")?.value ?? 0,
-			fta: allStats.find((s) => s.name === "avgFreeThrowsAttempted")?.value ?? 0,
-			oreb: allStats.find((s) => s.name === "avgOffensiveRebounds")?.value ?? 0,
-			tov: allStats.find((s) => s.name === "avgTurnovers")?.value ?? 0,
+			// Pace calculation stats
+			fga: getStat("avgFieldGoalsAttempted"),
+			fta: getStat("avgFreeThrowsAttempted"),
+			oreb: getStat("avgOffensiveRebounds"),
+			tov: getStat("avgTurnovers"),
+			// Shooting (percentages)
+			fgPct: getStat("fieldGoalPct"),
+			threePct: getStat("threePointFieldGoalPct"),
+			ftPct: getStat("freeThrowPct"),
+			// Shooting (made/attempted for eFG% and TS%)
+			fgMade: getStat("avgFieldGoalsMade"),
+			threeMade: getStat("avgThreePointFieldGoalsMade"),
+			ppg: getStat("avgPoints"),
+			// Rebounding
+			rpg: getStat("avgRebounds"),
+			orpg: getStat("avgOffensiveRebounds"),
+			drpg: getStat("avgDefensiveRebounds"),
+			// Playmaking
+			apg: getStat("avgAssists"),
+			tovPg: getStat("avgTurnovers"),
+			// Defense
+			spg: getStat("avgSteals"),
+			bpg: getStat("avgBlocks"),
 		};
 	} catch (error) {
-		console.error(`Error fetching pace stats for team ${teamId}:`, error);
+		console.error(`Error fetching stats for team ${teamId}:`, error);
 		return null;
 	}
 }
@@ -322,8 +489,8 @@ export const updateLeagueStats = internalAction({
 			const pointsFor = getStat(entry.stats, "avgPointsFor");
 			const pointsAgainst = getStat(entry.stats, "avgPointsAgainst");
 
-			// Fetch pace stats for this team
-			const paceStats = await fetchTeamPaceStats(league, teamId);
+			// Fetch full team stats from ESPN
+			const teamStats = await fetchTeamStats(league, teamId);
 
 			// Calculate pace and ratings
 			let pace = 0;
@@ -331,9 +498,9 @@ export const updateLeagueStats = internalAction({
 			let defensiveRating = 0;
 			let netRating = 0;
 
-			if (paceStats && (paceStats.fga > 0 || paceStats.tov > 0)) {
+			if (teamStats && (teamStats.fga > 0 || teamStats.tov > 0)) {
 				// We have real pace data
-				pace = calculatePossessions(paceStats.fga, paceStats.fta, paceStats.oreb, paceStats.tov);
+				pace = calculatePossessions(teamStats.fga, teamStats.fta, teamStats.oreb, teamStats.tov);
 			} else if (pointsFor > 0 && pointsAgainst > 0) {
 				// Use league average pace estimate when individual stats unavailable
 				// NBA/WNBA ~100, G-League ~105 (faster pace)
@@ -344,6 +511,24 @@ export const updateLeagueStats = internalAction({
 				offensiveRating = (pointsFor / pace) * 100;
 				defensiveRating = (pointsAgainst / pace) * 100;
 				netRating = offensiveRating - defensiveRating;
+			}
+
+			// Calculate derived stats
+			const margin = pointsFor - pointsAgainst;
+
+			// eFG% = (FGM + 0.5 * 3PM) / FGA
+			let efgPct: number | undefined;
+			if (teamStats && teamStats.fga > 0) {
+				efgPct = ((teamStats.fgMade + 0.5 * teamStats.threeMade) / teamStats.fga) * 100;
+			}
+
+			// TS% = PTS / (2 * (FGA + 0.44 * FTA))
+			let tsPct: number | undefined;
+			if (teamStats && (teamStats.fga > 0 || teamStats.fta > 0)) {
+				const trueShotAttempts = 2 * (teamStats.fga + 0.44 * teamStats.fta);
+				if (trueShotAttempts > 0) {
+					tsPct = (teamStats.ppg / trueShotAttempts) * 100;
+				}
 			}
 
 			try {
@@ -360,6 +545,24 @@ export const updateLeagueStats = internalAction({
 					offensiveRating,
 					defensiveRating,
 					netRating,
+					// Derived scoring
+					margin,
+					// Shooting stats
+					fgPct: teamStats?.fgPct,
+					threePct: teamStats?.threePct,
+					ftPct: teamStats?.ftPct,
+					efgPct,
+					tsPct,
+					// Rebounding stats
+					rpg: teamStats?.rpg,
+					orpg: teamStats?.orpg,
+					drpg: teamStats?.drpg,
+					// Playmaking stats
+					apg: teamStats?.apg,
+					tovPg: teamStats?.tovPg,
+					// Defense stats
+					spg: teamStats?.spg,
+					bpg: teamStats?.bpg,
 				});
 				successCount++;
 			} catch (error) {
@@ -370,6 +573,10 @@ export const updateLeagueStats = internalAction({
 			// Small delay between requests to avoid rate limiting
 			await new Promise((resolve) => setTimeout(resolve, 100));
 		}
+
+		// Calculate and update ranks for all teams in the league
+		console.log(`Calculating ranks for ${league.toUpperCase()}...`);
+		await ctx.runMutation(internal.teamStats.updateLeagueRanks, { league });
 
 		console.log(
 			`Finished ${league.toUpperCase()} update: ${successCount} success, ${errorCount} errors`,

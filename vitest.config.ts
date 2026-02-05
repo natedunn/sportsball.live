@@ -12,6 +12,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "./src"),
+      "~api": resolve(__dirname, "./src/lib/api.ts"),
+      "@convex": resolve(__dirname, "./src/convex"),
     },
   },
 });

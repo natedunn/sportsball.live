@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Check, Loader2, AlertCircle, Trash2, Play, Square, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { isLeagueInSeason } from "@/lib/seasons";
+import type { League } from "@/lib/shared/league";
 
 export const Route = createFileRoute("/_default/admin/")({
 	component: AdminPage,
@@ -162,7 +163,7 @@ function AdminPage() {
 		}
 	};
 
-	const handleStartBackfill = async (league: "nba" | "wnba" | "gleague") => {
+	const handleStartBackfill = async (league: League) => {
 		setBackfillMessages((prev) => ({ ...prev, [league]: "" }));
 
 		try {
@@ -175,7 +176,7 @@ function AdminPage() {
 		}
 	};
 
-	const handleCancelBackfill = async (league: "nba" | "wnba" | "gleague") => {
+	const handleCancelBackfill = async (league: League) => {
 		try {
 			await cancelBackfill({ league });
 			refetchBackfillProgress();

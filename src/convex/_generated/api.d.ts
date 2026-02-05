@@ -19,6 +19,7 @@ import type * as playerStats from "../playerStats.js";
 import type * as randomUsername from "../randomUsername.js";
 import type * as statsHistory from "../statsHistory.js";
 import type * as teamStats from "../teamStats.js";
+import type * as validators from "../validators.js";
 
 import type {
   ApiFromModules,
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   randomUsername: typeof randomUsername;
   statsHistory: typeof statsHistory;
   teamStats: typeof teamStats;
+  validators: typeof validators;
 }>;
 
 /**

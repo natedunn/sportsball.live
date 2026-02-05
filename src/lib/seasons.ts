@@ -3,7 +3,8 @@
  * Last updated: January 28, 2026
  */
 
-export type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
+export type { League } from "@/lib/shared/league";
 
 export interface Season {
   name: string;

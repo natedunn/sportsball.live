@@ -5,16 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionTitle } from "@/components/ui/section-title";
 import { useFavorites, type FavoriteTeam } from "@/lib/use-favorites";
-import { getTeamStaticData } from "@/lib/teams";
+import { getTeamStaticData, leagueLabels, type League } from "@/lib/teams";
 import { TeamSearchModal } from "./team-search-modal";
-
-type League = "nba" | "wnba" | "gleague";
-
-const leagueLabels: Record<League, string> = {
-	nba: "NBA",
-	wnba: "WNBA",
-	gleague: "G League",
-};
 
 interface FavoriteTeamCardProps {
 	favorite: FavoriteTeam;

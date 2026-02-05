@@ -2,8 +2,7 @@ import * as React from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import type { SeasonSeries } from "@/lib/nba/game-details.server";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
 
 interface SeriesMatchupTableProps {
 	allSeries: SeasonSeries[];

@@ -4,20 +4,16 @@ import { Competitor } from "./competitor";
 import { Score } from "./score";
 import { formatGameDate } from "@/lib/date";
 import { useFavorites } from "@/lib/use-favorites";
+import { leagueLabels, type League } from "@/lib/teams";
+import { leagueGameRoutes } from "@/lib/league-routes";
 import type { GameData } from "@/lib/types";
 
 interface ScoreboardProps {
 	game: GameData;
 	currentDate?: string;
-	league?: "nba" | "wnba" | "gleague";
+	league?: League;
 	showLeagueTag?: boolean;
 }
-
-const leagueLabels: Record<"nba" | "wnba" | "gleague", string> = {
-	nba: "NBA",
-	wnba: "WNBA",
-	gleague: "G League",
-};
 
 export function Scoreboard({
 	game,
@@ -63,13 +59,7 @@ export function Scoreboard({
 						<>
 							<span className="text-muted-foreground">|</span>
 							<Link
-								to={
-									league === "wnba"
-										? "/wnba/game/$gameId"
-										: league === "gleague"
-											? "/gleague/game/$gameId"
-											: "/nba/game/$gameId"
-								}
+								to={leagueGameRoutes[league]}
 								params={{ gameId: game.id }}
 								search={currentDate ? { fromDate: currentDate } : undefined}
 								className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground hover:underline focus:text-foreground focus:underline"

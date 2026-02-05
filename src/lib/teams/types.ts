@@ -1,4 +1,11 @@
-export type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
+export type { League } from "@/lib/shared/league";
+
+export const leagueLabels: Record<League, string> = {
+	nba: "NBA",
+	wnba: "WNBA",
+	gleague: "G League",
+};
 
 export interface TeamStaticData {
 	// Identity

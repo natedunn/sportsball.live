@@ -1,11 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-
-const leagueValidator = v.union(
-	v.literal("nba"),
-	v.literal("wnba"),
-	v.literal("gleague"),
-);
+import { leagueValidator } from "./validators";
 
 export default defineSchema({
 	// Player stats (updated nightly via cron)

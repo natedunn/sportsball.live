@@ -1,12 +1,14 @@
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
 import { Image } from "@/components/ui/image";
 import { FavoriteStar } from "@/components/ui/favorite-star";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/lib/use-favorites";
 import { getTeamStaticData } from "@/lib/teams";
+import type { League } from "@/lib/shared/league";
 import type { TeamOverview } from "@/lib/types/team";
-
-type League = "nba" | "wnba" | "gleague";
 
 interface TeamHeaderProps {
 	overview: TeamOverview;
@@ -23,6 +25,10 @@ export function TeamHeader({ overview, league }: TeamHeaderProps) {
 	const teamData = getTeamStaticData(league, overview.id);
 	const teamSlug = teamData?.api.slug ?? "";
 	const favorited = isFavorited(league, overview.id);
+	const { data: currentUser } = useQuery(
+		convexQuery(api.auth.getCurrentUser, {}),
+	);
+	const isAuthenticated = !!currentUser;
 
 	return (
 		<div className="relative overflow-hidden border-b bg-card">
@@ -70,7 +76,7 @@ export function TeamHeader({ overview, league }: TeamHeaderProps) {
 								<h1 className="text-2xl md:text-4xl font-bold tracking-tight">
 									{teamName}
 								</h1>
-								{!favoritesLoading && teamSlug && (
+								{isAuthenticated && !favoritesLoading && teamSlug && (
 									<FavoriteStar
 										isFavorited={favorited}
 										onToggle={() => toggleFavorite(league, overview.id, teamSlug)}

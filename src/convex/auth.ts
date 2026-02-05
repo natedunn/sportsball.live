@@ -1,4 +1,8 @@
-import { createClient, type GenericCtx, type AuthFunctions } from "@convex-dev/better-auth";
+import {
+	createClient,
+	type GenericCtx,
+	type AuthFunctions,
+} from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
@@ -78,10 +82,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 				clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
 			},
 		},
-		plugins: [
-			username(),
-			convex({ authConfig }),
-		],
+		plugins: [username(), convex({ authConfig })],
 	});
 };
 
@@ -99,7 +100,9 @@ export const getUserByUsername = query({
 	handler: async (ctx, args) => {
 		const user = await ctx.db
 			.query("profile")
-			.withIndex("by_username", (q) => q.eq("username", args.username.toLowerCase()))
+			.withIndex("by_username", (q) =>
+				q.eq("username", args.username.toLowerCase()),
+			)
 			.first();
 
 		if (!user) return null;
@@ -107,7 +110,6 @@ export const getUserByUsername = query({
 		// Return only public fields
 		return {
 			id: user._id,
-			authUserId: user.authUserId, // Auth component's user ID (used for favorites lookup)
 			name: user.name,
 			username: user.username,
 			displayUsername: user.displayUsername,
@@ -137,7 +139,8 @@ export const syncCurrentUserToLocal = mutation({
 			await ctx.db.patch(existingUser._id, {
 				name: user.name || undefined,
 				image: user.image || undefined,
-				username: (user as any).username?.toLowerCase() || existingUser.username,
+				username:
+					(user as any).username?.toLowerCase() || existingUser.username,
 				displayUsername: (user as any).username || existingUser.displayUsername,
 				authUserId: String(user._id), // Ensure auth component's user ID is stored
 				updatedAt: Date.now(),
@@ -146,7 +149,8 @@ export const syncCurrentUserToLocal = mutation({
 		}
 
 		// Create new record
-		const newUsername = (user as any).username?.toLowerCase() || generateRandomUsername();
+		const newUsername =
+			(user as any).username?.toLowerCase() || generateRandomUsername();
 		await ctx.db.insert("profile", {
 			email: user.email,
 			name: user.name || undefined,

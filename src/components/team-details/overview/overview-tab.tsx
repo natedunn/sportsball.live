@@ -11,8 +11,7 @@ import type {
   InjuredPlayer,
   ScheduleGame,
 } from "@/lib/types/team";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
 
 interface OverviewTabProps {
   overview: TeamOverview;

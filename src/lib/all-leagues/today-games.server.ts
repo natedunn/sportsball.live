@@ -3,9 +3,10 @@ import type { GameData } from "@/lib/types";
 import { fetchNbaGames } from "@/lib/nba/games.server";
 import { fetchWnbaGames } from "@/lib/wnba/games.server";
 import { fetchGLeagueGames } from "@/lib/gleague/games.server";
+import type { League } from "@/lib/shared/league";
 
 export interface LeagueGames {
-  league: "nba" | "wnba" | "gleague";
+  league: League;
   leagueLabel: string;
   games: GameData[];
 }

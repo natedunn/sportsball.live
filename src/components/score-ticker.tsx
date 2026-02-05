@@ -8,14 +8,8 @@ import { Image } from "./ui/image";
 import { FavoriteStar } from "./ui/favorite-star";
 import { cn } from "@/lib/utils";
 import { useFavorites } from "@/lib/use-favorites";
-
-type League = "nba" | "wnba" | "gleague";
-
-const leagueGameRoutes: Record<League, string> = {
-	nba: "/nba/game/$gameId",
-	wnba: "/wnba/game/$gameId",
-	gleague: "/gleague/game/$gameId",
-};
+import type { League } from "@/lib/shared/league";
+import { leagueGameRoutes } from "@/lib/league-routes";
 
 const MIN_CARD_WIDTH = 140;
 const CARD_GAP = 12;

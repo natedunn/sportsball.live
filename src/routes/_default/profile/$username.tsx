@@ -6,19 +6,11 @@ import { User, Star, Calendar, ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { SectionTitle } from "@/components/ui/section-title";
 import { Image } from "@/components/ui/image";
-import { getTeamStaticData } from "@/lib/teams";
+import { getTeamStaticData, leagueLabels, type League } from "@/lib/teams";
 
 export const Route = createFileRoute("/_default/profile/$username")({
 	component: PublicProfilePage,
 });
-
-type League = "nba" | "wnba" | "gleague";
-
-const leagueLabels: Record<League, string> = {
-	nba: "NBA",
-	wnba: "WNBA",
-	gleague: "G League",
-};
 
 interface FavoriteTeam {
 	_id: string;
@@ -84,10 +76,10 @@ function PublicProfilePage() {
 	);
 
 	const { data: favorites = [] } = useSuspenseQuery(
-		convexQuery(api.favorites.getFavoritesByUserId, {
-			userId: user?.authUserId ?? "",
+		convexQuery(api.favorites.getFavoritesByUsername, {
+			username,
 		}),
-	);
+	) as { data: FavoriteTeam[] };
 
 	if (!user) {
 		return (

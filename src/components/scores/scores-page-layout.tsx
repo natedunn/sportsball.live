@@ -7,8 +7,7 @@ import { SeasonalNotice } from "./seasonal-notice";
 import { formatDate, moveDate } from "@/lib/date";
 import { useFavorites } from "@/lib/use-favorites";
 import type { GameData } from "@/lib/types";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
 
 interface ScoresPageLayoutProps {
 	games: GameData[];

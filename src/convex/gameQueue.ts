@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "../lib/shared/league";
+import { leagueValidator } from "./validators";
 
 // ESPN API response types for scoreboard
 interface ApiCompetitor {
@@ -80,7 +80,7 @@ async function fetchLeagueGames(league: League, date: string): Promise<ApiEvent[
 // Internal query to check if a game already exists in the queue
 export const getGameByLeagueAndId = internalQuery({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		gameId: v.string(),
 	},
 	handler: async (ctx, args) => {
@@ -96,7 +96,7 @@ export const getGameByLeagueAndId = internalQuery({
 // Internal mutation to insert a game into the queue
 export const insertGame = internalMutation({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		gameId: v.string(),
 		homeTeamId: v.string(),
 		awayTeamId: v.string(),

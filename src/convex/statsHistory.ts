@@ -1,10 +1,8 @@
 import { v } from "convex/values";
 import { query, action, internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-
-type League = "nba" | "wnba" | "gleague";
-
-const leagueValidator = v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague"));
+import type { League } from "../lib/shared/league";
+import { leagueValidator } from "./validators";
 
 // Season start dates for backfill (YYYYMMDD format)
 const SEASON_START_DATES: Record<League, string> = {

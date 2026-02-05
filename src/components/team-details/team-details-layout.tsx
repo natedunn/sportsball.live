@@ -6,6 +6,8 @@ import { OverviewTab } from "./overview/overview-tab";
 import { RosterTab } from "./roster/roster-tab";
 import { GamesTab } from "./games/games-tab";
 import { StatsTab } from "./stats/stats-tab";
+import { leagueLabels, type League } from "@/lib/teams";
+import { leagueRoutes } from "@/lib/league-routes";
 import type {
   TeamOverview,
   RosterPlayer,
@@ -15,20 +17,6 @@ import type {
   InjuredPlayer,
 } from "@/lib/types/team";
 import type { TeamGameData } from "./stats/trend-chart";
-
-type League = "nba" | "wnba" | "gleague";
-
-const leagueRoutes: Record<League, string> = {
-  nba: "/nba",
-  wnba: "/wnba",
-  gleague: "/gleague",
-};
-
-const leagueLabels: Record<League, string> = {
-  nba: "NBA",
-  wnba: "WNBA",
-  gleague: "G League",
-};
 
 interface TeamDetailsLayoutProps {
   overview: TeamOverview;

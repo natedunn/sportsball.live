@@ -1,12 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
-
-const leagueValidator = v.union(
-	v.literal("nba"),
-	v.literal("wnba"),
-	v.literal("gleague"),
-);
+import { leagueValidator } from "./validators";
 
 // Get all favorites for authenticated user
 export const getUserFavorites = query({
@@ -49,15 +44,25 @@ export const getUserFavoritesByLeague = query({
 	},
 });
 
-// Get favorites for a specific user (public profile)
-export const getFavoritesByUserId = query({
+// Get favorites for a specific user by username (public profile)
+export const getFavoritesByUsername = query({
 	args: {
-		userId: v.string(),
+		username: v.string(),
 	},
 	handler: async (ctx, args) => {
+		const username = args.username.trim().toLowerCase();
+		const profile = await ctx.db
+			.query("profile")
+			.withIndex("by_username", (q) => q.eq("username", username))
+			.first();
+
+		if (!profile?.authUserId) {
+			return [];
+		}
+
 		return ctx.db
 			.query("favoriteTeams")
-			.withIndex("by_user", (q) => q.eq("userId", args.userId))
+			.withIndex("by_user", (q) => q.eq("userId", profile.authUserId!))
 			.collect();
 	},
 });

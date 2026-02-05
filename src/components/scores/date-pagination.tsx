@@ -6,11 +6,12 @@ import { cn } from "@/lib/utils";
 import { moveDate } from "@/lib/date";
 import { getButtonClasses } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import type { League } from "@/lib/shared/league";
 
 interface DatePaginationProps {
 	date: string;
 	className?: string;
-	league?: "nba" | "wnba" | "gleague";
+	league?: League;
 }
 
 type NavigatingTo = "prev" | "next" | "today" | "picker" | null;

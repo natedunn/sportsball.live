@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
 import { getTeamStaticData } from "@/lib/teams";
 import { useFavorites } from "@/lib/use-favorites";
 import type { StandingTeam } from "@/lib/types/standings";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
 
 interface StandingsTableProps {
 	teams: StandingTeam[];

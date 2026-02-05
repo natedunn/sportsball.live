@@ -16,6 +16,7 @@ import { todayGamesQueryOptions } from "@/lib/all-leagues/today-games.queries";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
+import type { League } from "@/lib/shared/league";
 
 function useScrollEffects(
 	ballRef: React.RefObject<HTMLDivElement | null>,
@@ -130,7 +131,7 @@ function TodayGames() {
 			.flatMap((leagueData) =>
 				leagueData.games.map((game) => ({
 					game,
-					league: leagueData.league as "nba" | "wnba" | "gleague",
+					league: leagueData.league as League,
 				})),
 			)
 			.sort((a, b) => {

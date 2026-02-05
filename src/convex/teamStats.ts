@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query, action, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { League } from "../lib/shared/league";
+import { leagueValidator } from "./validators";
 
 // Types for ESPN API responses
 interface EspnTeamStats {
@@ -38,8 +40,6 @@ interface StandingsResponse {
 		};
 	}>;
 }
-
-type League = "nba" | "wnba" | "gleague";
 
 // Site API env var names by league
 const SITE_API_VARS: Record<League, string> = {
@@ -79,7 +79,7 @@ function calculatePossessions(
 
 // Query to get all team stats for a league
 export const getByLeague = query({
-	args: { league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")) },
+	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
 		return await ctx.db
 			.query("teamStats")
@@ -91,7 +91,7 @@ export const getByLeague = query({
 // Query to get top teams by a specific stat
 export const getTopTeams = query({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		stat: v.union(
 			v.literal("offensiveRating"),
 			v.literal("defensiveRating"),
@@ -125,7 +125,7 @@ export const getTopTeams = query({
 // NOTE: Only stores dynamic stats - static data (logos, colors) comes from client-side registry
 export const upsertTeamStats = internalMutation({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		teamId: v.string(),
 		teamName: v.string(),
 		abbreviation: v.string(),
@@ -179,7 +179,7 @@ export const upsertTeamStats = internalMutation({
 
 // Internal mutation to update ranks for all teams in a league
 export const updateLeagueRanks = internalMutation({
-	args: { league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")) },
+	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
 		const teams = await ctx.db
 			.query("teamStats")
@@ -497,7 +497,7 @@ async function fetchTeamStats(
 
 // Action to update all team stats for a league
 export const updateLeagueStats = internalAction({
-	args: { league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")) },
+	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
 		const { league } = args;
 		console.log(`Starting stats update for ${league.toUpperCase()}...`);
@@ -647,7 +647,7 @@ export const updateAllLeagues = internalAction({
 
 // Public action to manually trigger an update (for admin/testing)
 export const triggerUpdate = action({
-	args: { league: v.optional(v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague"))) },
+	args: { league: v.optional(leagueValidator) },
 	handler: async (ctx, args): Promise<{ success: boolean; updated?: number; errors?: number } | Record<string, { success: boolean; updated?: number; errors?: number }>> => {
 		if (args.league) {
 			return await ctx.runAction(internal.teamStats.updateLeagueStats, {

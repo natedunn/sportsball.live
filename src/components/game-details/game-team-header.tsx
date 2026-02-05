@@ -2,8 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Image } from "@/components/ui/image";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
 import type { GameDetailsTeam } from "@/lib/nba/game-details.server";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
 
 interface GameTeamHeaderProps {
 	team: GameDetailsTeam;

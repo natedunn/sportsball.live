@@ -188,9 +188,14 @@ function ProfileForm() {
 		setError(null);
 
 		const nameChanged = name.trim() !== (user?.name || "");
-		const usernameChanged = username.trim() !== ((user as any)?.username || "");
+		const trimmedUsername = username.trim();
+		const usernameChanged = trimmedUsername !== ((user as any)?.username || "");
 
 		if (!nameChanged && !usernameChanged) return;
+		if (usernameChanged && trimmedUsername.length < 3) {
+			setError("Username must be at least 3 characters");
+			return;
+		}
 		if (usernameChanged && usernameStatus === "taken") {
 			setError("Username is already taken");
 			return;
@@ -201,7 +206,7 @@ function ProfileForm() {
 		try {
 			const updates: { name?: string; username?: string } = {};
 			if (nameChanged) updates.name = name.trim();
-			if (usernameChanged && username.trim()) updates.username = username.trim().toLowerCase();
+			if (usernameChanged && trimmedUsername) updates.username = trimmedUsername.toLowerCase();
 
 			await authClient.updateUser(updates);
 			setSaved(true);
@@ -216,9 +221,14 @@ function ProfileForm() {
 	};
 
 	const nameChanged = name.trim() !== (user?.name || "");
-	const usernameChanged = username.trim() !== ((user as any)?.username || "");
+	const trimmedUsername = username.trim();
+	const usernameChanged = trimmedUsername !== ((user as any)?.username || "");
 	const hasChanges = nameChanged || usernameChanged;
-	const canSave = hasChanges && usernameStatus !== "taken" && usernameStatus !== "checking";
+	const canSave =
+		hasChanges &&
+		(!usernameChanged || trimmedUsername.length >= 3) &&
+		usernameStatus !== "taken" &&
+		usernameStatus !== "checking";
 
 	return (
 		<section aria-labelledby="profile-heading">

@@ -2,8 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "~api";
 import { useMemo, useCallback, useState, useRef } from "react";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
 
 export interface FavoriteTeam {
 	_id: string;

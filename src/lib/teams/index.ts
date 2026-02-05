@@ -12,6 +12,7 @@
 //   const teams = getAllTeams("nba");
 
 export { getTeamStaticData, getAllTeams, clearTeamCache } from "./registry";
+export { leagueLabels } from "./types";
 export type { League, TeamStaticData, TeamDefinition } from "./types";
 
 // Re-export team arrays for direct access if needed

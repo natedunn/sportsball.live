@@ -1,8 +1,8 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "@convex/_generated/api";
 import { queryOptions } from "@tanstack/react-query";
-
-export type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
+export type { League } from "@/lib/shared/league";
 
 // Get all team stats for a league
 export const teamStatsQueryOptions = (league: League) =>

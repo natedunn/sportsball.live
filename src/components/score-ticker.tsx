@@ -5,22 +5,28 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { GameData } from "@/lib/types";
 import { formatGameDate } from "@/lib/date";
 import { Image } from "./ui/image";
+import { FavoriteStar } from "./ui/favorite-star";
 import { cn } from "@/lib/utils";
-
-type League = "nba" | "wnba" | "gleague";
-
-const leagueGameRoutes: Record<League, string> = {
-	nba: "/nba/game/$gameId",
-	wnba: "/wnba/game/$gameId",
-	gleague: "/gleague/game/$gameId",
-};
+import { useFavorites } from "@/lib/use-favorites";
+import type { League } from "@/lib/shared/league";
+import { leagueGameRoutes } from "@/lib/league-routes";
 
 const MIN_CARD_WIDTH = 140;
 const CARD_GAP = 12;
 const SWIPE_THRESHOLD = 50;
 const SWIPE_VELOCITY_THRESHOLD = 500;
 
-function TickerItem({ game, league }: { game: GameData; league: League }) {
+function TickerItem({
+	game,
+	league,
+	isAwayFavorited,
+	isHomeFavorited,
+}: {
+	game: GameData;
+	league: League;
+	isAwayFavorited: boolean;
+	isHomeFavorited: boolean;
+}) {
 	return (
 		<Link
 			to={leagueGameRoutes[league]}
@@ -29,6 +35,7 @@ function TickerItem({ game, league }: { game: GameData; league: League }) {
 		>
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex min-w-0 items-center gap-1.5">
+					<FavoriteStar isFavorited={isAwayFavorited} size="sm" showOnlyWhenFavorited />
 					<Image
 						src={game.away.logo}
 						alt={game.away.name ?? "Away team"}
@@ -44,6 +51,7 @@ function TickerItem({ game, league }: { game: GameData; league: League }) {
 			</div>
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex min-w-0 items-center gap-1.5">
+					<FavoriteStar isFavorited={isHomeFavorited} size="sm" showOnlyWhenFavorited />
 					<Image
 						src={game.home.logo}
 						alt={game.home.name ?? "Home team"}
@@ -80,6 +88,7 @@ export function ScoreTicker({
 	games: GameData[];
 	league: League;
 }) {
+	const { isFavorited } = useFavorites();
 	const contentRef = useRef<HTMLDivElement>(null);
 	const [currentPage, setCurrentPage] = useState(0);
 	const [itemsPerPage, setItemsPerPage] = useState(2);
@@ -233,7 +242,12 @@ export function ScoreTicker({
 									}
 								}}
 							>
-								<TickerItem game={game} league={league} />
+								<TickerItem
+								game={game}
+								league={league}
+								isAwayFavorited={isFavorited(league, game.away.id)}
+								isHomeFavorited={isFavorited(league, game.home.id)}
+							/>
 							</div>
 						))}
 					</motion.div>

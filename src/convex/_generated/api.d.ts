@@ -11,12 +11,15 @@
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as favorites from "../favorites.js";
 import type * as gameQueue from "../gameQueue.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as playerStats from "../playerStats.js";
+import type * as randomUsername from "../randomUsername.js";
 import type * as statsHistory from "../statsHistory.js";
 import type * as teamStats from "../teamStats.js";
+import type * as validators from "../validators.js";
 
 import type {
   ApiFromModules,
@@ -28,12 +31,15 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
   crons: typeof crons;
+  favorites: typeof favorites;
   gameQueue: typeof gameQueue;
   http: typeof http;
   images: typeof images;
   playerStats: typeof playerStats;
+  randomUsername: typeof randomUsername;
   statsHistory: typeof statsHistory;
   teamStats: typeof teamStats;
+  validators: typeof validators;
 }>;
 
 /**

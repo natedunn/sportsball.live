@@ -4,8 +4,8 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatGameDate } from "@/lib/date";
 import type { ScheduleGame } from "@/lib/types/team";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
+import { leagueGameRoutes } from "@/lib/league-routes";
 
 interface GamesTableProps {
 	recentGames: ScheduleGame[];
@@ -13,11 +13,6 @@ interface GamesTableProps {
 	league: League;
 }
 
-const gameRoutes: Record<League, string> = {
-	nba: "/nba/game/$gameId",
-	wnba: "/wnba/game/$gameId",
-	gleague: "/gleague/game/$gameId",
-};
 
 export function GamesTable({ recentGames, upcomingGames, league }: GamesTableProps) {
 	// Last 3 recent games (most recent first, then reverse for chronological)
@@ -72,7 +67,7 @@ export function GamesTable({ recentGames, upcomingGames, league }: GamesTablePro
 									{/* Opponent */}
 									<td className="px-4 py-2.5">
 										<Link
-											to={gameRoutes[league]}
+											to={leagueGameRoutes[league]}
 											params={{ gameId: game.id }}
 											className="flex items-center gap-2.5 hover:underline"
 										>

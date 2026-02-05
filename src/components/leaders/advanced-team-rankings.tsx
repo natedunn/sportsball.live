@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
+import { FavoriteStar } from "@/components/ui/favorite-star";
 import { useIsDarkMode } from "@/lib/use-is-dark-mode";
+import { useFavorites } from "@/lib/use-favorites";
 import { teamStatsQueryOptions, type League } from "@/lib/team-stats.queries";
 import { getTeamStaticData } from "@/lib/teams";
 
@@ -35,10 +37,12 @@ function TopTeam({
 	team,
 	category,
 	statLabel,
+	isFavorited,
 }: {
 	team: RankedTeam;
 	category: string;
 	statLabel: string;
+	isFavorited: boolean;
 }) {
 	const isDarkMode = useIsDarkMode();
 	const teamColor = isDarkMode ? team.darkColor : team.lightColor;
@@ -61,7 +65,10 @@ function TopTeam({
 				<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
 					{category}
 				</span>
-				<span className="text-lg font-bold leading-tight">{team.teamName}</span>
+				<div className="flex items-center gap-1">
+					<span className="text-lg font-bold leading-tight">{team.teamName}</span>
+					<FavoriteStar isFavorited={isFavorited} size="sm" showOnlyWhenFavorited />
+				</div>
 				<span className="text-sm text-muted-foreground">
 					{team.wins}-{team.losses}
 				</span>
@@ -79,9 +86,11 @@ function TopTeam({
 function RunnerUpTeam({
 	team,
 	statLabel,
+	isFavorited,
 }: {
 	team: RankedTeam;
 	statLabel: string;
+	isFavorited: boolean;
 }) {
 	const isDarkMode = useIsDarkMode();
 	const teamColor = isDarkMode ? team.darkColor : team.lightColor;
@@ -104,9 +113,12 @@ function RunnerUpTeam({
 				/>
 			</div>
 			<div className="flex flex-1 flex-col">
-				<span className="text-sm font-medium leading-tight">
-					{team.abbreviation}
-				</span>
+				<div className="flex items-center gap-1">
+					<span className="text-sm font-medium leading-tight">
+						{team.abbreviation}
+					</span>
+					<FavoriteStar isFavorited={isFavorited} size="sm" showOnlyWhenFavorited />
+				</div>
 				<span className="text-xs text-muted-foreground">
 					{team.wins}-{team.losses}
 				</span>
@@ -123,10 +135,12 @@ function RankingCard({
 	teams,
 	category,
 	statLabel,
+	isFavorited,
 }: {
 	teams: RankedTeam[];
 	category: string;
 	statLabel: string;
+	isFavorited: (teamId: string) => boolean;
 }) {
 	if (teams.length === 0) {
 		return null;
@@ -138,7 +152,7 @@ function RankingCard({
 		<Card classNames={{ inner: "flex-col overflow-hidden h-full" }}>
 			<div className="relative flex-1 px-4 py-4 overflow-hidden">
 				<div className="pointer-events-none absolute -left-12 -top-12 size-48 rounded-full bg-primary/10 blur-3xl" />
-				<TopTeam team={topTeam} category={category} statLabel={statLabel} />
+				<TopTeam team={topTeam} category={category} statLabel={statLabel} isFavorited={isFavorited(topTeam.teamId)} />
 			</div>
 
 			{runnerUps.length > 0 && (
@@ -148,6 +162,7 @@ function RankingCard({
 							key={team._id}
 							team={team}
 							statLabel={statLabel}
+							isFavorited={isFavorited(team.teamId)}
 						/>
 					))}
 				</div>
@@ -157,10 +172,14 @@ function RankingCard({
 }
 
 export function AdvancedTeamRankings({ league }: AdvancedTeamRankingsProps) {
+	const { isFavorited } = useFavorites();
 	const { data: teams = [], isLoading } = useQuery(teamStatsQueryOptions(league)) as {
 		data: TeamStat[] | undefined;
 		isLoading: boolean;
 	};
+
+	// Helper to check if a team is favorited
+	const checkFavorited = (teamId: string) => isFavorited(league, teamId);
 
 	if (isLoading) {
 		return (
@@ -230,12 +249,13 @@ export function AdvancedTeamRankings({ league }: AdvancedTeamRankingsProps) {
 
 	return (
 		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			<RankingCard teams={topOffense} category="Offense" statLabel="ORTG" />
-			<RankingCard teams={topDefense} category="Defense" statLabel="DRTG" />
+			<RankingCard teams={topOffense} category="Offense" statLabel="ORTG" isFavorited={checkFavorited} />
+			<RankingCard teams={topDefense} category="Defense" statLabel="DRTG" isFavorited={checkFavorited} />
 			<RankingCard
 				teams={topNetRating}
 				category="Net Rating"
 				statLabel="NET"
+				isFavorited={checkFavorited}
 			/>
 		</div>
 	);

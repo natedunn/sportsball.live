@@ -1,13 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useQueryClient, type FetchQueryOptions } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { DatePagination } from "./date-pagination";
 import { Scoreboard } from "./scoreboard";
 import { SeasonalNotice } from "./seasonal-notice";
 import { formatDate, moveDate } from "@/lib/date";
+import { useFavorites } from "@/lib/use-favorites";
 import type { GameData } from "@/lib/types";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
 
 interface ScoresPageLayoutProps {
 	games: GameData[];
@@ -30,6 +30,7 @@ export function ScoresPageLayout({
 	queryOptions,
 	cacheKeyPrefix,
 }: ScoresPageLayoutProps) {
+	const { isFavorited } = useFavorites();
 	const prevDateRef = useRef<string>(formattedDate);
 	const directionRef = useRef<"next" | "previous">("next");
 
@@ -45,6 +46,25 @@ export function ScoresPageLayout({
 	const direction = directionRef.current;
 
 	const queryClient = useQueryClient();
+
+	// Sort games: favorites first, then others
+	const { favoriteGames, otherGames } = useMemo(() => {
+		const favGames: GameData[] = [];
+		const other: GameData[] = [];
+
+		for (const game of games) {
+			const homeIsFavorite = isFavorited(league, game.home.id);
+			const awayIsFavorite = isFavorited(league, game.away.id);
+
+			if (homeIsFavorite || awayIsFavorite) {
+				favGames.push(game);
+			} else {
+				other.push(game);
+			}
+		}
+
+		return { favoriteGames: favGames, otherGames: other };
+	}, [games, league, isFavorited]);
 
 	useEffect(() => {
 		const prefetchWithDelay = (date: string, delayMs: number) => {
@@ -117,7 +137,29 @@ export function ScoresPageLayout({
 						>
 							{games.length > 0 ? (
 								<div className="flex flex-col w-full gap-6">
-									{games.map((game) => (
+									{/* Favorite teams' games */}
+									{favoriteGames.map((game) => (
+										<Scoreboard
+											key={game.id}
+											game={game}
+											currentDate={currentDate}
+											league={league}
+										/>
+									))}
+
+									{/* Divider between favorites and others */}
+									{favoriteGames.length > 0 && otherGames.length > 0 && (
+										<div className="flex items-center gap-4 py-2">
+											<div className="h-px flex-1 bg-border" />
+											<span className="text-xs text-muted-foreground">
+												Other games
+											</span>
+											<div className="h-px flex-1 bg-border" />
+										</div>
+									)}
+
+									{/* Other games */}
+									{otherGames.map((game) => (
 										<Scoreboard
 											key={game.id}
 											game={game}

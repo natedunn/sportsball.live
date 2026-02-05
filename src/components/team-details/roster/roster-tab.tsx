@@ -5,6 +5,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ChevronUp, ChevronDown, Settings2, Check } from "lucide-react";
 import type { RosterPlayer } from "@/lib/types/team";
+import type { League } from "@/lib/shared/league";
 
 // Column definition type
 interface StatColumn {
@@ -151,7 +152,6 @@ function getDefaultVisibleColumns(): string[] {
   return [...statDefaults, ...infoDefaults];
 }
 
-type League = "nba" | "wnba" | "gleague";
 type SortField = "name" | "jersey" | "position" | string;
 type SortDirection = "asc" | "desc";
 

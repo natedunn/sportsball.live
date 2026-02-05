@@ -7,8 +7,8 @@ import { MarginBar } from "./margin-bar";
 import { StatCard } from "../stat-card";
 import { Home, Plane, TrendingUp, Trophy, ChevronDown } from "lucide-react";
 import type { ScheduleGame } from "@/lib/types/team";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "@/lib/shared/league";
+import { leagueGameRoutes } from "@/lib/league-routes";
 type Filter = "all" | "home" | "away";
 type TimeFilter = "all" | "upcoming";
 
@@ -18,11 +18,6 @@ interface GamesTabProps {
   league: League;
 }
 
-const gameRoutes: Record<League, string> = {
-  nba: "/nba/game/$gameId",
-  wnba: "/wnba/game/$gameId",
-  gleague: "/gleague/game/$gameId",
-};
 
 function formatScheduleDate(dateStr: string, isCompleted: boolean): { date: string; time?: string } {
   const date = new Date(dateStr);
@@ -271,7 +266,7 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
                       {/* Opponent */}
                       <td className="px-4 py-3">
                         <Link
-                          to={gameRoutes[league]}
+                          to={leagueGameRoutes[league]}
                           params={{ gameId: game.id }}
                           className="flex items-center gap-3 hover:underline"
                         >
@@ -327,4 +322,3 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
     </div>
   );
 }
-

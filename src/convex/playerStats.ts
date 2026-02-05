@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { query, action, internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-
-type League = "nba" | "wnba" | "gleague";
+import type { League } from "../lib/shared/league";
+import { leagueValidator } from "./validators";
 
 // ESPN API response types
 interface PlayerOverviewResponse {
@@ -52,7 +52,7 @@ function getCommonApi(league: League): string | undefined {
 // Query to get player stats for a team
 export const getByTeam = query({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		teamId: v.string(),
 	},
 	handler: async (ctx, args) => {
@@ -68,7 +68,7 @@ export const getByTeam = query({
 // Query to get all player stats for a league (for bulk loading)
 export const getByLeague = query({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 	},
 	handler: async (ctx, args) => {
 		return await ctx.db
@@ -81,7 +81,7 @@ export const getByLeague = query({
 // Query to get a single player's stats
 export const getByPlayer = query({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		playerId: v.string(),
 	},
 	handler: async (ctx, args) => {
@@ -97,7 +97,7 @@ export const getByPlayer = query({
 // Internal mutation to upsert a player's stats
 export const upsertPlayerStats = internalMutation({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		playerId: v.string(),
 		teamId: v.string(),
 		name: v.string(),
@@ -250,7 +250,7 @@ async function fetchTeamRoster(
 // Internal action to update player stats for a single team
 export const updateTeamPlayerStats = internalAction({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 		teamId: v.string(),
 		delayMs: v.optional(v.number()),
 	},
@@ -303,7 +303,7 @@ export const updateTeamPlayerStats = internalAction({
 // Internal action to update all player stats for a league
 export const updateLeaguePlayerStats = internalAction({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 	},
 	handler: async (ctx, args) => {
 		const { league } = args;
@@ -353,7 +353,7 @@ export const updateLeaguePlayerStats = internalAction({
 // Internal query to get team IDs from teamStats table
 export const getTeamIds = internalQuery({
 	args: {
-		league: v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague")),
+		league: leagueValidator,
 	},
 	handler: async (ctx, args) => {
 		const teams = await ctx.db
@@ -405,7 +405,7 @@ type AllLeaguesResult = Record<string, LeagueResult>;
 // Public action to manually trigger an update (for admin/testing)
 export const triggerUpdate = action({
 	args: {
-		league: v.optional(v.union(v.literal("nba"), v.literal("wnba"), v.literal("gleague"))),
+		league: v.optional(leagueValidator),
 		teamId: v.optional(v.string()),
 	},
 	handler: async (ctx, args): Promise<TeamResult | LeagueResult | AllLeaguesResult> => {

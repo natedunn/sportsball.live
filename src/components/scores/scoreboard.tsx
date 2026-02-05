@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Competitor } from "./competitor";
 import { Score } from "./score";
 import { formatGameDate } from "@/lib/date";
+import { useFavorites } from "@/lib/use-favorites";
 import type { GameData } from "@/lib/types";
 
 interface ScoreboardProps {
@@ -24,6 +25,7 @@ export function Scoreboard({
 	league = "nba",
 	showLeagueTag = false,
 }: ScoreboardProps) {
+	const { isFavorited } = useFavorites();
 	const homeTeam = game.home;
 	const awayTeam = game.away;
 
@@ -38,7 +40,7 @@ export function Scoreboard({
 					{leagueLabels[league]}
 				</span>
 			)}
-			<Competitor homeAway="away" classes={classes} team={awayTeam} />
+			<Competitor homeAway="away" classes={classes} team={awayTeam} isFavorited={isFavorited(league, awayTeam.id)} />
 			<div className="flex flex-col items-center justify-center gap-2">
 				<div>
 					{(game.state === "in" || game.state === "post") && (
@@ -78,7 +80,7 @@ export function Scoreboard({
 					)}
 				</div>
 			</div>
-			<Competitor homeAway="home" classes={classes} team={homeTeam} />
+			<Competitor homeAway="home" classes={classes} team={homeTeam} isFavorited={isFavorited(league, homeTeam.id)} />
 		</Card>
 	);
 }

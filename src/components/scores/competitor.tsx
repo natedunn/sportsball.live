@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
 import { Image } from "@/components/ui/image";
+import { FavoriteStar } from "@/components/ui/favorite-star";
 import type { GameData } from "@/lib/types";
 
 type Team = GameData["home"] | GameData["away"];
@@ -8,6 +9,7 @@ type Team = GameData["home"] | GameData["away"];
 interface CompetitorProps {
 	team: Team;
 	homeAway: "home" | "away";
+	isFavorited?: boolean;
 	classes?: {
 		wrapper?: string;
 		logo?: string;
@@ -16,7 +18,7 @@ interface CompetitorProps {
 	};
 }
 
-export function Competitor({ team, homeAway, classes }: CompetitorProps) {
+export function Competitor({ team, homeAway, isFavorited = false, classes }: CompetitorProps) {
 	const isJazz = team.name === "Jazz";
 
 	return (
@@ -39,17 +41,24 @@ export function Competitor({ team, homeAway, classes }: CompetitorProps) {
 				light={team.lightColor}
 			/>
 			<div className="z-10 flex h-full flex-col items-center justify-center gap-2">
-				<Image
-					src={team.logo}
-					alt={team.name ?? "Team logo"}
-					width={40}
-					height={40}
-					className={cn(
-						"w-7 sm:w-8 md:w-10",
-						classes?.logo,
-						isJazz && "dark:invert",
+				<div className="relative">
+					<Image
+						src={team.logo}
+						alt={team.name ?? "Team logo"}
+						width={40}
+						height={40}
+						className={cn(
+							"w-7 sm:w-8 md:w-10",
+							classes?.logo,
+							isJazz && "dark:invert",
+						)}
+					/>
+					{isFavorited && (
+						<div className="absolute -top-1 -right-1">
+							<FavoriteStar isFavorited size="sm" showOnlyWhenFavorited />
+						</div>
 					)}
-				/>
+				</div>
 				<div className="flex flex-col items-center">
 					<span className={cn("text-sm font-bold", classes?.team)}>
 						{team.name}

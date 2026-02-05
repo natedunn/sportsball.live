@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
+import { FavoriteStar } from "@/components/ui/favorite-star";
 import { cn } from "@/lib/utils";
 import { getTeamStaticData } from "@/lib/teams";
+import { useFavorites } from "@/lib/use-favorites";
 import type { StandingTeam } from "@/lib/types/standings";
 
 type League = "nba" | "wnba" | "gleague";
@@ -47,10 +49,12 @@ function TeamRow({
 	team,
 	rank,
 	league,
+	isFavorited,
 }: {
 	team: StandingTeam;
 	rank: number;
 	league: League;
+	isFavorited: boolean;
 }) {
 	// Look up the team slug from the static registry
 	const teamData = getTeamStaticData(league, team.id);
@@ -68,6 +72,7 @@ function TeamRow({
 						params={{ teamId: teamSlug }}
 						className="flex items-center gap-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
 					>
+						<FavoriteStar isFavorited={isFavorited} size="sm" showOnlyWhenFavorited />
 						<Image
 							src={team.logo}
 							alt={team.name}
@@ -82,6 +87,7 @@ function TeamRow({
 					</Link>
 				) : (
 					<div className="flex items-center gap-2">
+						<FavoriteStar isFavorited={isFavorited} size="sm" showOnlyWhenFavorited />
 						<Image
 							src={team.logo}
 							alt={team.name}
@@ -135,6 +141,8 @@ export function StandingsTable({
 	league = "nba",
 	showSections = true,
 }: StandingsTableProps) {
+	const { isFavorited } = useFavorites();
+
 	// Determine if we should show sections based on league and override
 	const shouldShowSections = showSections && league !== "wnba";
 
@@ -146,13 +154,13 @@ export function StandingsTable({
 		return (
 			<>
 				{playoffTeams.map((team, index) => (
-					<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
+					<TeamRow key={team.id} team={team} rank={index + 1} league={league} isFavorited={isFavorited(league, team.id)} />
 				))}
 				{playInTeams.length > 0 && (
 					<>
 						<SectionHeader title="Play-In Tournament" />
 						{playInTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 7} league={league} />
+							<TeamRow key={team.id} team={team} rank={index + 7} league={league} isFavorited={isFavorited(league, team.id)} />
 						))}
 					</>
 				)}
@@ -160,7 +168,7 @@ export function StandingsTable({
 					<>
 						<SectionHeader title="Out of Playoffs" />
 						{outTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 11} league={league} />
+							<TeamRow key={team.id} team={team} rank={index + 11} league={league} isFavorited={isFavorited(league, team.id)} />
 						))}
 					</>
 				)}
@@ -177,13 +185,13 @@ export function StandingsTable({
 			<>
 				<SectionHeader title="First Round Bye" isFirst />
 				{byeTeams.map((team, index) => (
-					<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
+					<TeamRow key={team.id} team={team} rank={index + 1} league={league} isFavorited={isFavorited(league, team.id)} />
 				))}
 				{playoffTeams.length > 0 && (
 					<>
 						<SectionHeader title="Playoff Bound" />
 						{playoffTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 3} league={league} />
+							<TeamRow key={team.id} team={team} rank={index + 3} league={league} isFavorited={isFavorited(league, team.id)} />
 						))}
 					</>
 				)}
@@ -191,7 +199,7 @@ export function StandingsTable({
 					<>
 						<SectionHeader title="Out of Playoffs" />
 						{outTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 9} league={league} />
+							<TeamRow key={team.id} team={team} rank={index + 9} league={league} isFavorited={isFavorited(league, team.id)} />
 						))}
 					</>
 				)}
@@ -206,13 +214,13 @@ export function StandingsTable({
 		return (
 			<>
 				{playoffTeams.map((team, index) => (
-					<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
+					<TeamRow key={team.id} team={team} rank={index + 1} league={league} isFavorited={isFavorited(league, team.id)} />
 				))}
 				{outTeams.length > 0 && (
 					<>
 						<SectionHeader title="Out of Playoffs" />
 						{outTeams.map((team, index) => (
-							<TeamRow key={team.id} team={team} rank={index + 9} league={league} />
+							<TeamRow key={team.id} team={team} rank={index + 9} league={league} isFavorited={isFavorited(league, team.id)} />
 						))}
 					</>
 				)}
@@ -222,7 +230,7 @@ export function StandingsTable({
 
 	const renderSimpleList = () =>
 		teams.map((team, index) => (
-			<TeamRow key={team.id} team={team} rank={index + 1} league={league} />
+			<TeamRow key={team.id} team={team} rank={index + 1} league={league} isFavorited={isFavorited(league, team.id)} />
 		));
 
 	const renderBody = () => {

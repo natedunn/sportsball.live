@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { NavigationMenu } from "@base-ui/react/navigation-menu";
-import { ThemeToggle } from "./theme-toggle";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { api } from "~api";
 import { convexQuery } from "@convex-dev/react-query";
 import { Newspaper, BarChart3, Trophy, Users, ChevronDown } from "lucide-react";
+import { UserMenu } from "./user-menu";
 
 function NavLink(props: NavigationMenu.Link.Props) {
 	return (
@@ -151,20 +151,21 @@ export function Header() {
 	return (
 		<nav className="relative z-50 border-b border-border/50 bg-background/20 py-2 backdrop-blur-xl">
 			<div className="container flex items-center justify-between">
-				<Link
-					to="/"
-					className="group inline-flex items-center justify-center gap-2 px-2 py-2"
-				>
-					<span className="py-0.5 text-lg leading-none">◍</span>
-					<span className="group-hover:underline group-focus:underline">
-						Sportsball™
-					</span>
-					<span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
-						BETA
-					</span>
-				</Link>
+				<div className="flex items-center gap-1">
+					<Link
+						to="/"
+						className="group inline-flex items-center justify-center gap-2 px-2 py-2"
+					>
+						<span className="py-0.5 text-lg leading-none">◍</span>
+						<span className="group-hover:underline group-focus:underline">
+							Sportsball™
+						</span>
+						<span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
+							BETA
+						</span>
+					</Link>
 
-				<div className="flex items-center gap-3">
+					{/* Desktop nav */}
 					<NavigationMenu.Root className="hidden sm:block">
 						<NavigationMenu.List className="flex items-center gap-1">
 							{navItems.map((item) => (
@@ -257,24 +258,15 @@ export function Header() {
 							G League
 						</Link>
 					</div>
+				</div>
 
-					<div className="text-muted-foreground/50">|</div>
-					<ThemeToggle />
-					<div className="text-muted-foreground/50">|</div>
+				<div className="flex items-center">
 					{user ? (
-						<Link
-							to="/profile"
-							className="inline-flex items-center gap-2 px-2 py-2 hover:underline focus:underline"
-						>
-							{user?.image && (
-								<img src={user.image} alt="" className="h-6 w-6 rounded-full" />
-							)}
-							<span className="hidden sm:inline">{user.name || "Profile"}</span>
-						</Link>
+						<UserMenu user={user} />
 					) : (
 						<Link
 							to="/auth/sign-in"
-							className="inline-flex px-2 py-2 hover:underline focus:underline"
+							className="inline-flex rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							Sign In
 						</Link>

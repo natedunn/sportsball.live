@@ -67,7 +67,7 @@ export function TeamDetailsLayout({
   return (
     <div className="flex flex-col pb-16 lg:pb-24">
       {/* Header with team info */}
-      <TeamHeader overview={overview} />
+      <TeamHeader overview={overview} league={league} />
 
       {/* Tabbed Content */}
       <div className="relative bg-background">

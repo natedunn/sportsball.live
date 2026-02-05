@@ -112,19 +112,25 @@ export default defineSchema({
     expiresAt: v.number(),
   }).index("by_originalUrl", ["originalUrl"]),
 
-  // Users table for Better Auth
-  users: defineTable({
+  // Public profile data (synced from Better Auth via triggers)
+  // Better Auth manages authentication; this table is for public profile queries
+  profile: defineTable({
     email: v.string(),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     emailVerified: v.boolean(),
+    username: v.optional(v.string()),
+    displayUsername: v.optional(v.string()),
+    authUserId: v.optional(v.string()), // Better Auth component's internal user ID (for favorites lookup)
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_email", ["email"]),
+  })
+    .index("by_email", ["email"])
+    .index("by_username", ["username"]),
 
-  // Sessions for Better Auth
+  // Sessions for Better Auth (managed by component, kept for schema compatibility)
   sessions: defineTable({
-    userId: v.id("users"),
+    userId: v.id("profile"),
     token: v.string(),
     expiresAt: v.number(),
     createdAt: v.number(),
@@ -298,9 +304,21 @@ export default defineSchema({
     .index("by_league_player", ["league", "playerId"])
     .index("by_league_team", ["league", "teamId"]),
 
-  // OAuth accounts
+  // User favorite teams
+  favoriteTeams: defineTable({
+    userId: v.string(), // User ID from Better Auth (stored as string for compatibility)
+    league: leagueValidator, // "nba" | "wnba" | "gleague"
+    teamId: v.string(), // ESPN team ID (e.g., "1")
+    teamSlug: v.string(), // For routing (e.g., "atl")
+    addedAt: v.number(), // Timestamp
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_league", ["userId", "league"])
+    .index("by_user_team", ["userId", "league", "teamId"]),
+
+  // OAuth accounts (managed by Better Auth component, kept for schema compatibility)
   accounts: defineTable({
-    userId: v.id("users"),
+    userId: v.id("profile"),
     providerId: v.string(),
     accountId: v.string(),
     accessToken: v.optional(v.string()),

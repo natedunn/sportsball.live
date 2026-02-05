@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useIsDarkMode } from "@/lib/use-is-dark-mode";
+import { useFavorites } from "@/lib/use-favorites";
 
 // Lazy load Three.js component - ~1MB of dependencies
 const DitheredBasketball = lazy(() =>
@@ -116,6 +117,49 @@ function BasketballBackground({
 
 function TodayGames() {
 	const { data } = useSuspenseQuery(todayGamesQueryOptions());
+	const { isFavorited } = useFavorites();
+
+	// Flatten all games and sort by start time, then separate favorites
+	const { favoriteGames, otherGames } = useMemo(() => {
+		if (data.totalGames === 0) {
+			return { favoriteGames: [], otherGames: [] };
+		}
+
+		// Flatten and sort by start time
+		const allGames = data.leagues
+			.flatMap((leagueData) =>
+				leagueData.games.map((game) => ({
+					game,
+					league: leagueData.league as "nba" | "wnba" | "gleague",
+				})),
+			)
+			.sort((a, b) => {
+				const timeA = a.game.time.start
+					? new Date(a.game.time.start).getTime()
+					: 0;
+				const timeB = b.game.time.start
+					? new Date(b.game.time.start).getTime()
+					: 0;
+				return timeA - timeB;
+			});
+
+		// Separate favorites from others
+		const favGames: typeof allGames = [];
+		const other: typeof allGames = [];
+
+		for (const item of allGames) {
+			const homeIsFavorite = isFavorited(item.league, item.game.home.id);
+			const awayIsFavorite = isFavorited(item.league, item.game.away.id);
+
+			if (homeIsFavorite || awayIsFavorite) {
+				favGames.push(item);
+			} else {
+				other.push(item);
+			}
+		}
+
+		return { favoriteGames: favGames, otherGames: other };
+	}, [data, isFavorited]);
 
 	if (data.totalGames === 0) {
 		return (
@@ -127,27 +171,24 @@ function TodayGames() {
 		);
 	}
 
-	// Flatten all games and sort by start time
-	const allGames = data.leagues
-		.flatMap((leagueData) =>
-			leagueData.games.map((game) => ({
-				game,
-				league: leagueData.league,
-			})),
-		)
-		.sort((a, b) => {
-			const timeA = a.game.time.start
-				? new Date(a.game.time.start).getTime()
-				: 0;
-			const timeB = b.game.time.start
-				? new Date(b.game.time.start).getTime()
-				: 0;
-			return timeA - timeB;
-		});
-
 	return (
 		<div className="w-full space-y-3">
-			{allGames.map(({ game, league }) => (
+			{/* Favorite teams' games */}
+			{favoriteGames.map(({ game, league }) => (
+				<Scoreboard key={game.id} game={game} league={league} showLeagueTag />
+			))}
+
+			{/* Divider between favorites and others */}
+			{favoriteGames.length > 0 && otherGames.length > 0 && (
+				<div className="flex items-center gap-4 py-2">
+					<div className="h-px flex-1 bg-border" />
+					<span className="text-xs text-muted-foreground">Other games</span>
+					<div className="h-px flex-1 bg-border" />
+				</div>
+			)}
+
+			{/* Other games */}
+			{otherGames.map(({ game, league }) => (
 				<Scoreboard key={game.id} game={game} league={league} showLeagueTag />
 			))}
 		</div>

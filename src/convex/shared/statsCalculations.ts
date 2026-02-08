@@ -1,5 +1,4 @@
 // Statistical calculation formulas used for computing advanced stats
-// Extracted from src/convex/teamStats.ts for reuse across all league functions
 
 /**
  * Calculate possessions using the standard formula.

@@ -614,8 +614,8 @@ export const requestGameSync = action({
 
 // Step 1: Bootstrap all WNBA teams from API standings
 export const bootstrapTeams = internalAction({
-	args: {},
-	handler: async (ctx) => {
+	args: { bootstrapRunId: v.optional(v.string()) },
+	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 		const baseUrl = getSiteApi();
 
@@ -670,13 +670,20 @@ export const bootstrapTeams = internalAction({
 		}
 
 		console.log(`[WNBA Bootstrap] Created/updated ${teamCount} teams`);
+
+		if (args.bootstrapRunId) {
+			await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+				league: "wnba",
+				completedStep: "teams",
+			});
+		}
 	},
 });
 
 // Step 2: Bootstrap players from rosters (entry point)
 export const bootstrapPlayers = internalAction({
-	args: {},
-	handler: async (ctx) => {
+	args: { bootstrapRunId: v.optional(v.string()) },
+	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 
 		console.log(`[WNBA Bootstrap] Starting player roster bootstrap for season ${season}...`);
@@ -685,6 +692,12 @@ export const bootstrapPlayers = internalAction({
 
 		if (teams.length === 0) {
 			console.error("[WNBA Bootstrap] No teams found. Run bootstrapTeams first.");
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "wnba",
+					completedStep: "players",
+				});
+			}
 			return;
 		}
 
@@ -695,6 +708,7 @@ export const bootstrapPlayers = internalAction({
 		await ctx.scheduler.runAfter(100, internal.wnba.actions.bootstrapPlayersChunk, {
 			teamInfos,
 			offset: 0,
+			bootstrapRunId: args.bootstrapRunId,
 		});
 	},
 });
@@ -707,15 +721,39 @@ export const bootstrapPlayersChunk = internalAction({
 			convexTeamId: v.id("wnbaTeam"),
 		})),
 		offset: v.number(),
+		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Check for cancellation before processing
+		if (args.bootstrapRunId) {
+			const cancelled = await ctx.runMutation(internal.bootstrapAdmin.checkCancelled, { league: "wnba" });
+			if (cancelled) {
+				console.log(`[WNBA Bootstrap] Cancelled during player roster bootstrap`);
+				return;
+			}
+		}
+
 		const season = getCurrentSeason();
 		const commonBase = getCommonApi();
 		const chunk = args.teamInfos.slice(args.offset, args.offset + ROSTER_TEAMS_PER_CHUNK);
 
 		if (chunk.length === 0) {
 			console.log(`[WNBA Bootstrap] Player roster bootstrap complete!`);
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "wnba",
+					completedStep: "players",
+				});
+			}
 			return;
+		}
+
+		// Update progress
+		if (args.bootstrapRunId) {
+			await ctx.runMutation(internal.bootstrapAdmin.updateProgress, {
+				league: "wnba",
+				progress: `Roster ${args.offset + 1}-${Math.min(args.offset + chunk.length, args.teamInfos.length)} of ${args.teamInfos.length} teams`,
+			});
 		}
 
 		console.log(`[WNBA Bootstrap] Processing rosters for teams ${args.offset + 1}-${args.offset + chunk.length} of ${args.teamInfos.length}...`);
@@ -768,9 +806,16 @@ export const bootstrapPlayersChunk = internalAction({
 			await ctx.scheduler.runAfter(BACKFILL_DELAY_MS, internal.wnba.actions.bootstrapPlayersChunk, {
 				teamInfos: args.teamInfos,
 				offset: nextOffset,
+				bootstrapRunId: args.bootstrapRunId,
 			});
 		} else {
 			console.log(`[WNBA Bootstrap] All player rosters processed!`);
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "wnba",
+					completedStep: "players",
+				});
+			}
 		}
 	},
 });
@@ -780,6 +825,7 @@ export const backfillGames = internalAction({
 	args: {
 		startDate: v.optional(v.string()),
 		endDate: v.optional(v.string()),
+		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
@@ -792,6 +838,7 @@ export const backfillGames = internalAction({
 		await ctx.scheduler.runAfter(100, internal.wnba.actions.backfillDateChunk, {
 			dates,
 			offset: 0,
+			bootstrapRunId: args.bootstrapRunId,
 		});
 	},
 });
@@ -801,11 +848,35 @@ export const backfillDateChunk = internalAction({
 	args: {
 		dates: v.array(v.string()),
 		offset: v.number(),
+		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Check for cancellation before processing
+		if (args.bootstrapRunId) {
+			const cancelled = await ctx.runMutation(internal.bootstrapAdmin.checkCancelled, { league: "wnba" });
+			if (cancelled) {
+				console.log(`[WNBA Backfill] Cancelled during game backfill`);
+				return;
+			}
+		}
+
 		if (args.offset >= args.dates.length) {
 			console.log(`[WNBA Backfill] All dates processed! Run recalculateAll to compute averages.`);
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "wnba",
+					completedStep: "backfill",
+				});
+			}
 			return;
+		}
+
+		// Update progress
+		if (args.bootstrapRunId) {
+			await ctx.runMutation(internal.bootstrapAdmin.updateProgress, {
+				league: "wnba",
+				progress: `Date ${args.offset + 1} of ${args.dates.length}`,
+			});
 		}
 
 		const date = args.dates[args.offset];
@@ -922,14 +993,15 @@ export const backfillDateChunk = internalAction({
 		await ctx.scheduler.runAfter(BACKFILL_DELAY_MS, internal.wnba.actions.backfillDateChunk, {
 			dates: args.dates,
 			offset: args.offset + 1,
+			bootstrapRunId: args.bootstrapRunId,
 		});
 	},
 });
 
 // Step 4: Recalculate all averages and rankings
 export const recalculateAll = internalAction({
-	args: {},
-	handler: async (ctx) => {
+	args: { bootstrapRunId: v.optional(v.string()) },
+	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 
 		console.log(`[WNBA Recalculate] Starting full recalculation for season ${season}...`);
@@ -958,5 +1030,12 @@ export const recalculateAll = internalAction({
 		await ctx.runMutation(internal.wnba.mutations.updateLeagueRankings, { season });
 
 		console.log(`[WNBA Recalculate] Full recalculation complete!`);
+
+		if (args.bootstrapRunId) {
+			await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+				league: "wnba",
+				completedStep: "recalculate",
+			});
+		}
 	},
 });

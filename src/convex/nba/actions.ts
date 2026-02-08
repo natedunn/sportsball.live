@@ -616,8 +616,8 @@ export const requestGameSync = action({
 
 // Step 1: Bootstrap all NBA teams from standings
 export const bootstrapTeams = internalAction({
-	args: {},
-	handler: async (ctx) => {
+	args: { bootstrapRunId: v.optional(v.string()) },
+	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 		const baseUrl = getSiteApi();
 
@@ -673,6 +673,13 @@ export const bootstrapTeams = internalAction({
 		}
 
 		console.log(`[NBA Bootstrap] Created/updated ${teamCount} teams`);
+
+		if (args.bootstrapRunId) {
+			await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+				league: "nba",
+				completedStep: "teams",
+			});
+		}
 	},
 });
 
@@ -724,8 +731,8 @@ async function fetchAndUpsertRoster(
 
 // Step 2: Bootstrap players from rosters (entry point)
 export const bootstrapPlayers = internalAction({
-	args: {},
-	handler: async (ctx) => {
+	args: { bootstrapRunId: v.optional(v.string()) },
+	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 
 		console.log(`[NBA Bootstrap] Starting player roster bootstrap for season ${season}...`);
@@ -735,6 +742,12 @@ export const bootstrapPlayers = internalAction({
 
 		if (teams.length === 0) {
 			console.error("[NBA Bootstrap] No teams found. Run bootstrapTeams first.");
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "nba",
+					completedStep: "players",
+				});
+			}
 			return;
 		}
 
@@ -747,6 +760,7 @@ export const bootstrapPlayers = internalAction({
 		await ctx.scheduler.runAfter(100, internal.nba.actions.bootstrapPlayersChunk, {
 			teamInfos,
 			offset: 0,
+			bootstrapRunId: args.bootstrapRunId,
 		});
 	},
 });
@@ -759,15 +773,39 @@ export const bootstrapPlayersChunk = internalAction({
 			convexTeamId: v.id("nbaTeam"),
 		})),
 		offset: v.number(),
+		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Check for cancellation before processing
+		if (args.bootstrapRunId) {
+			const cancelled = await ctx.runMutation(internal.bootstrapAdmin.checkCancelled, { league: "nba" });
+			if (cancelled) {
+				console.log(`[NBA Bootstrap] Cancelled during player roster bootstrap`);
+				return;
+			}
+		}
+
 		const season = getCurrentSeason();
 		const commonBase = getCommonApi();
 		const chunk = args.teamInfos.slice(args.offset, args.offset + ROSTER_TEAMS_PER_CHUNK);
 
 		if (chunk.length === 0) {
 			console.log(`[NBA Bootstrap] Player roster bootstrap complete!`);
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "nba",
+					completedStep: "players",
+				});
+			}
 			return;
+		}
+
+		// Update progress
+		if (args.bootstrapRunId) {
+			await ctx.runMutation(internal.bootstrapAdmin.updateProgress, {
+				league: "nba",
+				progress: `Roster ${args.offset + 1}-${Math.min(args.offset + chunk.length, args.teamInfos.length)} of ${args.teamInfos.length} teams`,
+			});
 		}
 
 		console.log(`[NBA Bootstrap] Processing rosters for teams ${args.offset + 1}-${args.offset + chunk.length} of ${args.teamInfos.length}...`);
@@ -788,9 +826,16 @@ export const bootstrapPlayersChunk = internalAction({
 			await ctx.scheduler.runAfter(BACKFILL_DELAY_MS, internal.nba.actions.bootstrapPlayersChunk, {
 				teamInfos: args.teamInfos,
 				offset: nextOffset,
+				bootstrapRunId: args.bootstrapRunId,
 			});
 		} else {
 			console.log(`[NBA Bootstrap] All player rosters processed!`);
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "nba",
+					completedStep: "players",
+				});
+			}
 		}
 	},
 });
@@ -827,6 +872,7 @@ export const backfillGames = internalAction({
 		startDate: v.optional(v.string()), // YYYYMMDD, defaults to season start
 		endDate: v.optional(v.string()),   // YYYYMMDD, defaults to today
 		targetEspnTeamId: v.optional(v.string()), // Only backfill games involving this team
+		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
@@ -842,6 +888,7 @@ export const backfillGames = internalAction({
 			dates,
 			offset: 0,
 			targetEspnTeamId: args.targetEspnTeamId,
+			bootstrapRunId: args.bootstrapRunId,
 		});
 	},
 });
@@ -852,11 +899,35 @@ export const backfillDateChunk = internalAction({
 		dates: v.array(v.string()),
 		offset: v.number(),
 		targetEspnTeamId: v.optional(v.string()),
+		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
+		// Check for cancellation before processing
+		if (args.bootstrapRunId) {
+			const cancelled = await ctx.runMutation(internal.bootstrapAdmin.checkCancelled, { league: "nba" });
+			if (cancelled) {
+				console.log(`[NBA Backfill] Cancelled during game backfill`);
+				return;
+			}
+		}
+
 		if (args.offset >= args.dates.length) {
 			console.log(`[NBA Backfill] All dates processed! Run recalculateAll to compute averages.`);
+			if (args.bootstrapRunId) {
+				await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+					league: "nba",
+					completedStep: "backfill",
+				});
+			}
 			return;
+		}
+
+		// Update progress
+		if (args.bootstrapRunId) {
+			await ctx.runMutation(internal.bootstrapAdmin.updateProgress, {
+				league: "nba",
+				progress: `Date ${args.offset + 1} of ${args.dates.length}`,
+			});
 		}
 
 		const date = args.dates[args.offset];
@@ -984,14 +1055,15 @@ export const backfillDateChunk = internalAction({
 			dates: args.dates,
 			offset: args.offset + 1,
 			targetEspnTeamId: args.targetEspnTeamId,
+			bootstrapRunId: args.bootstrapRunId,
 		});
 	},
 });
 
 // Step 4: Recalculate all averages and rankings
 export const recalculateAll = internalAction({
-	args: {},
-	handler: async (ctx) => {
+	args: { bootstrapRunId: v.optional(v.string()) },
+	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 
 		console.log(`[NBA Recalculate] Starting full recalculation for season ${season}...`);
@@ -1023,5 +1095,12 @@ export const recalculateAll = internalAction({
 		await ctx.runMutation(internal.nba.mutations.updateLeagueRankings, { season });
 
 		console.log(`[NBA Recalculate] Full recalculation complete!`);
+
+		if (args.bootstrapRunId) {
+			await ctx.runAction(internal.bootstrapAdmin.onStepComplete, {
+				league: "nba",
+				completedStep: "recalculate",
+			});
+		}
 	},
 });

@@ -645,6 +645,33 @@ export default defineSchema({
 		.index("by_teamId", ["teamId"]),
 
 	// ============================================================
+	// Bootstrap Status (tracks admin-triggered bootstrap progress per league)
+	// ============================================================
+
+	bootstrapStatus: defineTable({
+		league: leagueValidator,
+		status: v.union(
+			v.literal("idle"),
+			v.literal("running"),
+			v.literal("cancelling"),
+			v.literal("completed"),
+			v.literal("failed"),
+		),
+		currentStep: v.optional(v.union(
+			v.literal("teams"),
+			v.literal("players"),
+			v.literal("backfill"),
+			v.literal("recalculate"),
+		)),
+		progress: v.optional(v.string()),
+		startedAt: v.optional(v.number()),
+		completedAt: v.optional(v.number()),
+		error: v.optional(v.string()),
+		updatedAt: v.number(),
+	})
+		.index("by_league", ["league"]),
+
+	// ============================================================
   // Cached images from external CDN
   cachedImages: defineTable({
     originalUrl: v.string(),

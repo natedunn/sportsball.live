@@ -57,13 +57,14 @@ function mapEventStatusToState(status: EventStatus | string): "pre" | "in" | "po
 
 function buildGameTeam(
 	league: League,
-	team: { espnTeamId: string; name: string; abbreviation: string; wins: number; losses: number } | null,
+	team: { espnTeamId: string; name: string; location: string; abbreviation: string; wins: number; losses: number } | null,
 	score: number | undefined,
 ): GameTeam {
 	if (!team) {
 		return {
 			id: "",
 			uid: undefined,
+			location: undefined,
 			name: "Unknown",
 			score: String(score ?? 0),
 			logo: undefined,
@@ -80,10 +81,16 @@ function buildGameTeam(
 		: { darkColor: "000000", lightColor: "000000" };
 	const logo = staticData ? `/api/${league}/logo/${staticData.logoSlug}` : undefined;
 
+	// Derive short name by stripping location prefix from full display name
+	const shortName = team.location && team.name.startsWith(team.location)
+		? team.name.slice(team.location.length).trim()
+		: team.name;
+
 	return {
 		id: team.espnTeamId,
 		uid: undefined,
-		name: team.name,
+		location: team.location,
+		name: shortName || team.name,
 		score: String(score ?? 0),
 		logo,
 		primaryColor: colors.darkColor,
@@ -492,6 +499,15 @@ export function convexScheduleToGames(
 			};
 		}
 
+		// Build live score for in-progress games
+		let liveScore: ScheduleGame["liveScore"];
+		if (state === "in" && game.homeScore !== undefined && game.awayScore !== undefined) {
+			liveScore = {
+				score: isHome ? game.homeScore : game.awayScore,
+				opponentScore: isHome ? game.awayScore : game.homeScore,
+			};
+		}
+
 		return {
 			id: game.espnGameId,
 			date: game.scheduledStart ? new Date(game.scheduledStart).toISOString() : "",
@@ -503,6 +519,7 @@ export function convexScheduleToGames(
 				logo: opponentLogo,
 			},
 			result,
+			liveScore,
 			state,
 			statusDetail: game.statusDetail ?? "",
 			venue: game.venue,

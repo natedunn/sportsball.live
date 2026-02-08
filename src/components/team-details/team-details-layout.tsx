@@ -44,12 +44,12 @@ export function TeamDetailsLayout({
 	const roster = providerRoster;
 	const stats = providerStats;
 
-	// Separate past/current and future games
+	// Separate past and upcoming/active games
 	const pastGames = schedule
-		.filter((g) => g.state === "post" || g.state === "in")
+		.filter((g) => g.state === "post")
 		.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 	const upcomingGames = schedule
-		.filter((g) => g.state === "pre")
+		.filter((g) => g.state === "pre" || g.state === "in")
 		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 	return (

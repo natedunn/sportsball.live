@@ -18,7 +18,12 @@ interface CompetitorProps {
 	};
 }
 
-export function Competitor({ team, homeAway, isFavorited = false, classes }: CompetitorProps) {
+export function Competitor({
+	team,
+	homeAway,
+	isFavorited = false,
+	classes,
+}: CompetitorProps) {
 	const isJazz = team.name === "Jazz";
 
 	return (

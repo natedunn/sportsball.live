@@ -3,6 +3,7 @@ import type { State } from "@/schema/nba-scoreboard";
 export interface GameTeam {
 	id: string;
 	uid: string | undefined;
+	location: string | undefined;
 	name: string | undefined;
 	score: string;
 	logo: string | undefined;

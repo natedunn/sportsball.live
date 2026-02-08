@@ -103,6 +103,19 @@ export function GamesTable({ recentGames, upcomingGames, league }: GamesTablePro
 													{game.result.score}-{game.result.opponentScore}
 												</span>
 											</span>
+										) : game.liveScore ? (
+											<span className="inline-flex items-center gap-1.5">
+												<span className="relative flex h-2 w-2">
+													<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+													<span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+												</span>
+												<span className="tabular-nums font-medium">
+													{game.liveScore.score}-{game.liveScore.opponentScore}
+												</span>
+												<span className="text-xs text-muted-foreground">
+													{game.statusDetail}
+												</span>
+											</span>
 										) : (
 											<span className="text-xs text-muted-foreground">
 												{game.statusDetail}

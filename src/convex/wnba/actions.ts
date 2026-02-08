@@ -33,6 +33,12 @@ function getSeasonStartDate(season: string): string {
 	return `${startYear}0501`;
 }
 
+/** Get the end date for the WNBA regular season (mid-September). */
+function getSeasonEndDate(season: string): string {
+	const startYear = parseInt(season.split("-")[0], 10);
+	return `${startYear}0920`;
+}
+
 // Daily cron: discover today's games, update standings
 export const discoverTodaysGames = internalAction({
 	args: {},
@@ -830,7 +836,7 @@ export const backfillGames = internalAction({
 	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 		const startDate = args.startDate ?? getSeasonStartDate(season);
-		const endDate = args.endDate ?? getTodayDateUTC();
+		const endDate = args.endDate ?? getSeasonEndDate(season);
 		const dates = getDateRange(startDate, endDate);
 
 		console.log(`[WNBA Backfill] Starting game backfill: ${startDate} to ${endDate} (${dates.length} dates)`);
@@ -994,6 +1000,24 @@ export const backfillDateChunk = internalAction({
 			dates: args.dates,
 			offset: args.offset + 1,
 			bootstrapRunId: args.bootstrapRunId,
+		});
+	},
+});
+
+// Standalone: backfill only upcoming scheduled games (today → season end)
+export const backfillUpcomingSchedule = internalAction({
+	args: {},
+	handler: async (ctx) => {
+		const season = getCurrentSeason();
+		const startDate = getTodayDateUTC();
+		const endDate = getSeasonEndDate(season);
+		const dates = getDateRange(startDate, endDate);
+
+		console.log(`[WNBA Schedule] Backfilling upcoming schedule: ${startDate} to ${endDate} (${dates.length} dates)`);
+
+		await ctx.scheduler.runAfter(100, internal.wnba.actions.backfillDateChunk, {
+			dates,
+			offset: 0,
 		});
 	},
 });

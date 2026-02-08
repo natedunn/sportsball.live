@@ -97,6 +97,11 @@ export interface ScheduleGame {
     opponentScore: number;
     margin: number;
   };
+  // Live score (for in-progress games)
+  liveScore?: {
+    score: number;
+    opponentScore: number;
+  };
   // Status
   state: "pre" | "in" | "post";
   statusDetail: string;

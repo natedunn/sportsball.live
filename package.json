@@ -14,7 +14,8 @@
 		"lint": "eslint .",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"tsc": "tsc --noEmit"
+		"tsc": "tsc --noEmit",
+		"sync:prod": "npx convex export --prod --path /tmp/convex-prod-snapshot.zip && cd /tmp && mkdir -p convex-league-only && unzip -o convex-prod-snapshot.zip 'nbaTeam/*' 'nbaPlayer/*' 'nbaGameEvent/*' 'nbaTeamEvent/*' 'nbaPlayerEvent/*' 'wnbaTeam/*' 'wnbaPlayer/*' 'wnbaGameEvent/*' 'wnbaTeamEvent/*' 'wnbaPlayerEvent/*' 'gleagueTeam/*' 'gleaguePlayer/*' 'gleagueGameEvent/*' 'gleagueTeamEvent/*' 'gleaguePlayerEvent/*' 'bootstrapStatus/*' -d convex-league-only && cd convex-league-only && zip -r /tmp/convex-league-only.zip . && cd /Users/natedunn/Code/sportsball.live && npx convex import --replace -y /tmp/convex-league-only.zip && rm -rf /tmp/convex-prod-snapshot.zip /tmp/convex-league-only /tmp/convex-league-only.zip"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.1.0",

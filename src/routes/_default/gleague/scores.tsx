@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type FetchQueryOptions } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
 import { formatDate } from "@/lib/date";
-import { gleagueGamesQueryOptions } from "@/lib/gleague/games.queries";
+import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
 import {
 	ScoresPageLayout,
 	ScoresPagePending,
@@ -13,6 +16,9 @@ const DESCRIPTION = "View current, upcoming, and past games for the G League.";
 interface GLeagueSearchParams {
 	date?: string;
 }
+
+const scoreboardQuery = (date: string) =>
+	convexQuery(api.gleague.queries.getScoreboard, { gameDate: date });
 
 export const Route = createFileRoute("/_default/gleague/scores")({
 	validateSearch: (search: Record<string, unknown>): GLeagueSearchParams => {
@@ -26,7 +32,7 @@ export const Route = createFileRoute("/_default/gleague/scores")({
 		const formattedDate = formatDate(currentDate, "YYYYMMDD");
 
 		await context.queryClient.ensureQueryData(
-			gleagueGamesQueryOptions(formattedDate),
+			scoreboardQuery(formattedDate),
 		);
 	},
 	pendingComponent: () => (
@@ -40,7 +46,12 @@ function GLeagueScoresPage() {
 	const currentDate = date ?? formatDate(new Date(), "YYYY-MM-DD");
 	const formattedDate = formatDate(currentDate, "YYYYMMDD");
 
-	const { data: games = [] } = useQuery(gleagueGamesQueryOptions(formattedDate));
+	const { data: rawGames } = useQuery(scoreboardQuery(formattedDate));
+
+	const games = useMemo(
+		() => convexScoreboardToGameData(rawGames ?? [], "gleague"),
+		[rawGames],
+	);
 
 	return (
 		<ScoresPageLayout
@@ -50,7 +61,7 @@ function GLeagueScoresPage() {
 			formattedDate={formattedDate}
 			title={TITLE}
 			description={DESCRIPTION}
-			queryOptions={gleagueGamesQueryOptions}
+			queryOptions={scoreboardQuery as (date: string) => FetchQueryOptions<any, any, any, any>}
 			cacheKeyPrefix="gleague"
 		/>
 	);

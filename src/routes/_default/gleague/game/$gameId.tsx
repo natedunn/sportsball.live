@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { gleagueGameDetailsQueryOptions } from "@/lib/gleague/game-details.queries";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
+import { useState, useEffect, useMemo } from "react";
+import { convexGameDetailsToGameDetails } from "@/lib/shared/convex-adapters";
+import { syncLiveGame } from "@/lib/shared/sync.server";
 import {
 	GameDetailsLayout,
 	GameDetailsPending,
@@ -21,9 +24,12 @@ export const Route = createFileRoute("/_default/gleague/game/$gameId")({
 		};
 	},
 	loader: async ({ context, params }) => {
+		// Pre-populate Convex data for SSR
 		await context.queryClient.ensureQueryData(
-			gleagueGameDetailsQueryOptions(params.gameId),
+			convexQuery(api.gleague.queries.getGameDetails, { espnGameId: params.gameId }),
 		);
+		// Trigger ESPN→Convex sync (throttled to 15s)
+		await syncLiveGame({ data: { espnGameId: params.gameId, league: "gleague" } });
 	},
 	pendingComponent: GameDetailsPending,
 	component: GLeagueGameDetailsPage,
@@ -33,7 +39,15 @@ function GLeagueGameDetailsPage() {
 	const { gameId } = Route.useParams();
 	const { fromDate, tab } = Route.useSearch();
 	const navigate = useNavigate();
-	const { data: game } = useQuery(gleagueGameDetailsQueryOptions(gameId));
+
+	const { data: rawGame } = useQuery(
+		convexQuery(api.gleague.queries.getGameDetails, { espnGameId: gameId }),
+	);
+
+	const game = useMemo(
+		() => convexGameDetailsToGameDetails(rawGame, "gleague"),
+		[rawGame],
+	);
 
 	// Local state for immediate UI feedback
 	const [activeTab, setActiveTab] = useState(tab || "box-score");

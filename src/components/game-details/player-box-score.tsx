@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
-import type { Player, GameDetailsTeam } from "@/lib/nba/game-details.server";
+import type { Player, GameDetailsTeam } from "@/lib/shared/game-details.types";
 import { playerProfileQueryOptions } from "@/lib/nba/player-profile.queries";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Select, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select";

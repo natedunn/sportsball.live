@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
 import { ArrowRight } from "lucide-react";
-import { nbaGamesQueryOptions } from "@/lib/nba/games.queries";
 import { nbaNewsQueryOptions } from "@/lib/nba/news.queries";
 import { nbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
+import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
 import { PlayerLeaders } from "@/components/leaders/player-leaders";
@@ -14,7 +17,9 @@ export const Route = createFileRoute("/_default/nba/")({
 	loader: async ({ context }) => {
 		const today = formatDate(new Date(), "YYYYMMDD");
 		await Promise.all([
-			context.queryClient.ensureQueryData(nbaGamesQueryOptions(today)),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
+			),
 			context.queryClient.ensureQueryData(nbaNewsQueryOptions()),
 			context.queryClient.ensureQueryData(nbaLeadersQueryOptions()),
 		]);
@@ -24,9 +29,16 @@ export const Route = createFileRoute("/_default/nba/")({
 
 function NbaHomePage() {
 	const today = formatDate(new Date(), "YYYYMMDD");
-	const { data: games = [] } = useQuery(nbaGamesQueryOptions(today));
+	const { data: rawGames } = useQuery(
+		convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
+	);
 	const { data: news = [] } = useQuery(nbaNewsQueryOptions());
 	const { data: leaders } = useQuery(nbaLeadersQueryOptions());
+
+	const games = useMemo(
+		() => convexScoreboardToGameData(rawGames ?? [], "nba"),
+		[rawGames],
+	);
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">

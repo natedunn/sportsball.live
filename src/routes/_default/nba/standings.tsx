@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { nbaStandingsQueryOptions } from "@/lib/nba/standings.queries";
+import { useState, useEffect, useMemo } from "react";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
+import { getCurrentSeason } from "@/lib/shared/season";
+import { convexStandingsToResponse } from "@/lib/shared/convex-adapters";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StandingsTable } from "@/components/standings/standings-table";
 
@@ -14,6 +17,10 @@ interface StandingsSearchParams {
 	conference?: string;
 }
 
+const season = getCurrentSeason();
+const standingsQuery = () =>
+	convexQuery(api.nba.queries.getStandings, { season });
+
 export const Route = createFileRoute("/_default/nba/standings")({
 	validateSearch: (search: Record<string, unknown>): StandingsSearchParams => {
 		return {
@@ -22,7 +29,7 @@ export const Route = createFileRoute("/_default/nba/standings")({
 		};
 	},
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(nbaStandingsQueryOptions());
+		await context.queryClient.ensureQueryData(standingsQuery());
 	},
 	pendingComponent: () => (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
@@ -55,7 +62,12 @@ function getInitialConference(searchParam?: string): Conference {
 function NbaStandingsPage() {
 	const { conference: searchConference } = Route.useSearch();
 	const navigate = useNavigate();
-	const { data: standings } = useQuery(nbaStandingsQueryOptions());
+	const { data: rawStandings } = useQuery(standingsQuery());
+
+	const standings = useMemo(
+		() => rawStandings ? convexStandingsToResponse(rawStandings, "nba") : null,
+		[rawStandings],
+	);
 
 	// Local state for immediate UI feedback
 	const [activeConference, setActiveConference] = useState<Conference>(() =>

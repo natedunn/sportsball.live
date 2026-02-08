@@ -1,10 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
 import { ArrowRight } from "lucide-react";
-import { gleagueGamesQueryOptions } from "@/lib/gleague/games.queries";
 import { gleagueNewsQueryOptions } from "@/lib/gleague/news.queries";
 import { gleagueLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
+import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
 import { PlayerLeaders } from "@/components/leaders/player-leaders";
@@ -14,7 +17,9 @@ export const Route = createFileRoute("/_default/gleague/")({
 	loader: async ({ context }) => {
 		const today = formatDate(new Date(), "YYYYMMDD");
 		await Promise.all([
-			context.queryClient.ensureQueryData(gleagueGamesQueryOptions(today)),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
+			),
 			context.queryClient.ensureQueryData(gleagueNewsQueryOptions()),
 			context.queryClient.ensureQueryData(gleagueLeadersQueryOptions()),
 		]);
@@ -24,9 +29,16 @@ export const Route = createFileRoute("/_default/gleague/")({
 
 function GLeagueHomePage() {
 	const today = formatDate(new Date(), "YYYYMMDD");
-	const { data: games = [] } = useQuery(gleagueGamesQueryOptions(today));
+	const { data: rawGames } = useQuery(
+		convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
+	);
 	const { data: news = [] } = useQuery(gleagueNewsQueryOptions());
 	const { data: leaders } = useQuery(gleagueLeadersQueryOptions());
+
+	const games = useMemo(
+		() => convexScoreboardToGameData(rawGames ?? [], "gleague"),
+		[rawGames],
+	);
 
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">

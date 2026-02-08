@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { wnbaGameDetailsQueryOptions } from "@/lib/wnba/game-details.queries";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
+import { useState, useEffect, useMemo } from "react";
+import { convexGameDetailsToGameDetails } from "@/lib/shared/convex-adapters";
+import { syncLiveGame } from "@/lib/shared/sync.server";
 import {
 	GameDetailsLayout,
 	GameDetailsPending,
@@ -21,9 +24,12 @@ export const Route = createFileRoute("/_default/wnba/game/$gameId")({
 		};
 	},
 	loader: async ({ context, params }) => {
+		// Pre-populate Convex data for SSR
 		await context.queryClient.ensureQueryData(
-			wnbaGameDetailsQueryOptions(params.gameId),
+			convexQuery(api.wnba.queries.getGameDetails, { espnGameId: params.gameId }),
 		);
+		// Trigger ESPN→Convex sync (throttled to 15s)
+		await syncLiveGame({ data: { espnGameId: params.gameId, league: "wnba" } });
 	},
 	pendingComponent: GameDetailsPending,
 	component: WnbaGameDetailsPage,
@@ -33,7 +39,15 @@ function WnbaGameDetailsPage() {
 	const { gameId } = Route.useParams();
 	const { fromDate, tab } = Route.useSearch();
 	const navigate = useNavigate();
-	const { data: game } = useQuery(wnbaGameDetailsQueryOptions(gameId));
+
+	const { data: rawGame } = useQuery(
+		convexQuery(api.wnba.queries.getGameDetails, { espnGameId: gameId }),
+	);
+
+	const game = useMemo(
+		() => convexGameDetailsToGameDetails(rawGame, "wnba"),
+		[rawGame],
+	);
 
 	// Local state for immediate UI feedback
 	const [activeTab, setActiveTab] = useState(tab || "box-score");

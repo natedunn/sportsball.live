@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
-import type { SeasonSeries } from "@/lib/nba/game-details.server";
+import type { SeasonSeries } from "@/lib/shared/game-details.types";
 import type { League } from "@/lib/shared/league";
 
 interface SeriesMatchupTableProps {

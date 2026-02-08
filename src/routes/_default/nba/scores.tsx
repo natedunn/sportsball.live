@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type FetchQueryOptions } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
 import { formatDate } from "@/lib/date";
-import { nbaGamesQueryOptions } from "@/lib/nba/games.queries";
+import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
 import {
 	ScoresPageLayout,
 	ScoresPagePending,
@@ -13,6 +16,9 @@ const DESCRIPTION = "View current, upcoming, and past games for the NBA.";
 interface NbaSearchParams {
 	date?: string;
 }
+
+const scoreboardQuery = (date: string) =>
+	convexQuery(api.nba.queries.getScoreboard, { gameDate: date });
 
 export const Route = createFileRoute("/_default/nba/scores")({
 	validateSearch: (search: Record<string, unknown>): NbaSearchParams => {
@@ -26,7 +32,7 @@ export const Route = createFileRoute("/_default/nba/scores")({
 		const formattedDate = formatDate(currentDate, "YYYYMMDD");
 
 		await context.queryClient.ensureQueryData(
-			nbaGamesQueryOptions(formattedDate),
+			scoreboardQuery(formattedDate),
 		);
 	},
 	pendingComponent: () => (
@@ -40,7 +46,12 @@ function NbaScoresPage() {
 	const currentDate = date ?? formatDate(new Date(), "YYYY-MM-DD");
 	const formattedDate = formatDate(currentDate, "YYYYMMDD");
 
-	const { data: games = [] } = useQuery(nbaGamesQueryOptions(formattedDate));
+	const { data: rawGames } = useQuery(scoreboardQuery(formattedDate));
+
+	const games = useMemo(
+		() => convexScoreboardToGameData(rawGames ?? [], "nba"),
+		[rawGames],
+	);
 
 	return (
 		<ScoresPageLayout
@@ -50,7 +61,7 @@ function NbaScoresPage() {
 			formattedDate={formattedDate}
 			title={TITLE}
 			description={DESCRIPTION}
-			queryOptions={nbaGamesQueryOptions}
+			queryOptions={scoreboardQuery as (date: string) => FetchQueryOptions<any, any, any, any>}
 			cacheKeyPrefix="nba"
 		/>
 	);

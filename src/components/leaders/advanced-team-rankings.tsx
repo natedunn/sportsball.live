@@ -1,10 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
+import { getCurrentSeason } from "@/lib/shared/season";
 import { Card } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 import { FavoriteStar } from "@/components/ui/favorite-star";
 import { useIsDarkMode } from "@/lib/use-is-dark-mode";
 import { useFavorites } from "@/lib/use-favorites";
-import { teamStatsQueryOptions, type League } from "@/lib/team-stats.queries";
+import type { League } from "@/lib/shared/league";
 import { getTeamStaticData } from "@/lib/teams";
 
 interface AdvancedTeamRankingsProps {
@@ -13,15 +16,15 @@ interface AdvancedTeamRankingsProps {
 
 interface TeamStat {
 	_id: string;
-	teamId: string;
-	teamName: string;
+	espnTeamId: string;
+	name: string;
 	abbreviation: string;
 	wins: number;
 	losses: number;
-	offensiveRating: number;
-	defensiveRating: number;
-	netRating: number;
-	pace: number;
+	offensiveRating?: number;
+	defensiveRating?: number;
+	netRating?: number;
+	pace?: number;
 }
 
 interface RankedTeam extends TeamStat {
@@ -31,6 +34,19 @@ interface RankedTeam extends TeamStat {
 	logoUrl: string;
 	darkColor: string;
 	lightColor: string;
+}
+
+const season = getCurrentSeason();
+
+function getTeamStatsQuery(league: League): any {
+	switch (league) {
+		case "nba":
+			return convexQuery(api.nba.queries.getAllTeamStats, { season });
+		case "wnba":
+			return convexQuery(api.wnba.queries.getAllTeamStats, { season });
+		case "gleague":
+			return convexQuery(api.gleague.queries.getAllTeamStats, { season });
+	}
 }
 
 function TopTeam({
@@ -55,7 +71,7 @@ function TopTeam({
 			>
 				<Image
 					src={team.logoUrl}
-					alt={team.teamName}
+					alt={team.name}
 					width={48}
 					height={48}
 					className="size-12 object-contain"
@@ -66,7 +82,7 @@ function TopTeam({
 					{category}
 				</span>
 				<div className="flex items-center gap-1">
-					<span className="text-lg font-bold leading-tight">{team.teamName}</span>
+					<span className="text-lg font-bold leading-tight">{team.name}</span>
 					<FavoriteStar isFavorited={isFavorited} size="sm" showOnlyWhenFavorited />
 				</div>
 				<span className="text-sm text-muted-foreground">
@@ -106,7 +122,7 @@ function RunnerUpTeam({
 			>
 				<Image
 					src={team.logoUrl}
-					alt={team.teamName}
+					alt={team.name}
 					width={24}
 					height={24}
 					className="size-6 object-contain"
@@ -152,7 +168,7 @@ function RankingCard({
 		<Card classNames={{ inner: "flex-col overflow-hidden h-full" }}>
 			<div className="relative flex-1 px-4 py-4 overflow-hidden">
 				<div className="pointer-events-none absolute -left-12 -top-12 size-48 rounded-full bg-primary/10 blur-3xl" />
-				<TopTeam team={topTeam} category={category} statLabel={statLabel} isFavorited={isFavorited(topTeam.teamId)} />
+				<TopTeam team={topTeam} category={category} statLabel={statLabel} isFavorited={isFavorited(topTeam.espnTeamId)} />
 			</div>
 
 			{runnerUps.length > 0 && (
@@ -162,7 +178,7 @@ function RankingCard({
 							key={team._id}
 							team={team}
 							statLabel={statLabel}
-							isFavorited={isFavorited(team.teamId)}
+							isFavorited={isFavorited(team.espnTeamId)}
 						/>
 					))}
 				</div>
@@ -173,7 +189,9 @@ function RankingCard({
 
 export function AdvancedTeamRankings({ league }: AdvancedTeamRankingsProps) {
 	const { isFavorited } = useFavorites();
-	const { data: teams = [], isLoading } = useQuery(teamStatsQueryOptions(league)) as {
+	const { data: teams = [], isLoading } = useQuery(
+		getTeamStatsQuery(league),
+	) as {
 		data: TeamStat[] | undefined;
 		isLoading: boolean;
 	};
@@ -200,7 +218,7 @@ export function AdvancedTeamRankings({ league }: AdvancedTeamRankingsProps) {
 	}
 
 	// Filter to only teams with valid ratings data (non-zero offensive rating)
-	const teamsWithRatings = teams.filter((t) => t.offensiveRating > 0);
+	const teamsWithRatings = teams.filter((t) => (t.offensiveRating ?? 0) > 0);
 
 	if (teamsWithRatings.length === 0) {
 		return (
@@ -212,7 +230,7 @@ export function AdvancedTeamRankings({ league }: AdvancedTeamRankingsProps) {
 
 	// Helper to enrich team with static data from registry
 	const enrichTeam = (team: TeamStat, rank: number, statDisplay: string): RankedTeam => {
-		const staticData = getTeamStaticData(league, [team.teamId, team.abbreviation]);
+		const staticData = getTeamStaticData(league, [team.espnTeamId, team.abbreviation]);
 		return {
 			...team,
 			rank,
@@ -225,27 +243,28 @@ export function AdvancedTeamRankings({ league }: AdvancedTeamRankingsProps) {
 
 	// Sort and rank teams by offensive rating (higher is better)
 	const topOffense: RankedTeam[] = [...teamsWithRatings]
-		.sort((a, b) => b.offensiveRating - a.offensiveRating)
+		.sort((a, b) => (b.offensiveRating ?? 0) - (a.offensiveRating ?? 0))
 		.slice(0, 5)
-		.map((team, index) => enrichTeam(team, index + 1, team.offensiveRating.toFixed(1)));
+		.map((team, index) => enrichTeam(team, index + 1, (team.offensiveRating ?? 0).toFixed(1)));
 
 	// Sort and rank teams by defensive rating (lower is better)
 	const topDefense: RankedTeam[] = [...teamsWithRatings]
-		.sort((a, b) => a.defensiveRating - b.defensiveRating)
+		.sort((a, b) => (a.defensiveRating ?? 0) - (b.defensiveRating ?? 0))
 		.slice(0, 5)
-		.map((team, index) => enrichTeam(team, index + 1, team.defensiveRating.toFixed(1)));
+		.map((team, index) => enrichTeam(team, index + 1, (team.defensiveRating ?? 0).toFixed(1)));
 
 	// Sort and rank teams by net rating (higher is better)
 	const topNetRating: RankedTeam[] = [...teamsWithRatings]
-		.sort((a, b) => b.netRating - a.netRating)
+		.sort((a, b) => (b.netRating ?? 0) - (a.netRating ?? 0))
 		.slice(0, 5)
-		.map((team, index) =>
-			enrichTeam(
+		.map((team, index) => {
+			const nr = team.netRating ?? 0;
+			return enrichTeam(
 				team,
 				index + 1,
-				team.netRating > 0 ? `+${team.netRating.toFixed(1)}` : team.netRating.toFixed(1),
-			),
-		);
+				nr > 0 ? `+${nr.toFixed(1)}` : nr.toFixed(1),
+			);
+		});
 
 	return (
 		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

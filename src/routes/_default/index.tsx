@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, lazy, Suspense, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
 import { useIsDarkMode } from "@/lib/use-is-dark-mode";
 import { useFavorites } from "@/lib/use-favorites";
 
@@ -12,11 +14,31 @@ const DitheredBasketball = lazy(() =>
 );
 import { getButtonClasses } from "@/components/ui/button";
 import { Scoreboard } from "@/components/scores/scoreboard";
-import { todayGamesQueryOptions } from "@/lib/all-leagues/today-games.queries";
+import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
+import { formatDate } from "@/lib/date";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import type { League } from "@/lib/shared/league";
+import type { GameData } from "@/lib/types";
+
+export const Route = createFileRoute("/_default/")({
+	component: HomePage,
+	loader: async ({ context }) => {
+		const today = formatDate(new Date(), "YYYYMMDD");
+		await Promise.all([
+			context.queryClient.ensureQueryData(
+				convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
+			),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.wnba.queries.getScoreboard, { gameDate: today }),
+			),
+			context.queryClient.ensureQueryData(
+				convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
+			),
+		]);
+	},
+});
 
 function useScrollEffects(
 	ballRef: React.RefObject<HTMLDivElement | null>,
@@ -79,12 +101,6 @@ function useScrollEffects(
 	}, [ballRef, headerRef, cardRef, isDarkMode]);
 }
 
-export const Route = createFileRoute("/_default/")({
-	component: HomePage,
-	loader: ({ context }) =>
-		context.queryClient.ensureQueryData(todayGamesQueryOptions()),
-});
-
 function BasketballBackground({
 	ballRef,
 }: {
@@ -116,18 +132,56 @@ function BasketballBackground({
 	);
 }
 
+interface LeagueGames {
+	league: League;
+	leagueLabel: string;
+	games: GameData[];
+}
+
 function TodayGames() {
-	const { data } = useSuspenseQuery(todayGamesQueryOptions());
+	const today = formatDate(new Date(), "YYYYMMDD");
+	const { data: rawNba } = useQuery(
+		convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
+	);
+	const { data: rawWnba } = useQuery(
+		convexQuery(api.wnba.queries.getScoreboard, { gameDate: today }),
+	);
+	const { data: rawGleague } = useQuery(
+		convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
+	);
 	const { isFavorited } = useFavorites();
+
+	const nbaGames = useMemo(
+		() => convexScoreboardToGameData(rawNba ?? [], "nba"),
+		[rawNba],
+	);
+	const wnbaGames = useMemo(
+		() => convexScoreboardToGameData(rawWnba ?? [], "wnba"),
+		[rawWnba],
+	);
+	const gleagueGames = useMemo(
+		() => convexScoreboardToGameData(rawGleague ?? [], "gleague"),
+		[rawGleague],
+	);
+
+	const leagues = useMemo(() => {
+		const result: LeagueGames[] = [];
+		if (nbaGames.length > 0) result.push({ league: "nba", leagueLabel: "NBA", games: nbaGames });
+		if (wnbaGames.length > 0) result.push({ league: "wnba", leagueLabel: "WNBA", games: wnbaGames });
+		if (gleagueGames.length > 0) result.push({ league: "gleague", leagueLabel: "G League", games: gleagueGames });
+		return result;
+	}, [nbaGames, wnbaGames, gleagueGames]);
+
+	const totalGames = nbaGames.length + wnbaGames.length + gleagueGames.length;
 
 	// Flatten all games and sort by start time, then separate favorites
 	const { favoriteGames, otherGames } = useMemo(() => {
-		if (data.totalGames === 0) {
+		if (totalGames === 0) {
 			return { favoriteGames: [], otherGames: [] };
 		}
 
 		// Flatten and sort by start time
-		const allGames = data.leagues
+		const allGames = leagues
 			.flatMap((leagueData) =>
 				leagueData.games.map((game) => ({
 					game,
@@ -160,9 +214,9 @@ function TodayGames() {
 		}
 
 		return { favoriteGames: favGames, otherGames: other };
-	}, [data, isFavorited]);
+	}, [leagues, totalGames, isFavorited]);
 
-	if (data.totalGames === 0) {
+	if (totalGames === 0) {
 		return (
 			<div className="text-center">
 				<p className="text-lg text-muted-foreground">

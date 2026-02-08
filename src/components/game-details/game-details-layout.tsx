@@ -7,7 +7,7 @@ import { PlayerBoxScore } from "./player-box-score";
 import { GameTeamHeader } from "./game-team-header";
 import { TeamStatsCard } from "./team-stats-card";
 import { SeriesMatchupTable } from "./series-matchup-table";
-import type { SeasonSeries } from "@/lib/nba/game-details.server";
+import type { SeasonSeries } from "@/lib/shared/game-details.types";
 import type { League } from "@/lib/shared/league";
 
 // Local type that works across all leagues

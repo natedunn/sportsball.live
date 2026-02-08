@@ -10,16 +10,28 @@
 
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as bootstrap from "../bootstrap.js";
 import type * as crons from "../crons.js";
 import type * as favorites from "../favorites.js";
-import type * as gameQueue from "../gameQueue.js";
+import type * as gleague_actions from "../gleague/actions.js";
+import type * as gleague_mutations from "../gleague/mutations.js";
+import type * as gleague_queries from "../gleague/queries.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
+import type * as nba_actions from "../nba/actions.js";
+import type * as nba_mutations from "../nba/mutations.js";
+import type * as nba_queries from "../nba/queries.js";
 import type * as playerStats from "../playerStats.js";
 import type * as randomUsername from "../randomUsername.js";
+import type * as shared_apiParser from "../shared/apiParser.js";
+import type * as shared_seasonHelpers from "../shared/seasonHelpers.js";
+import type * as shared_statsCalculations from "../shared/statsCalculations.js";
 import type * as statsHistory from "../statsHistory.js";
 import type * as teamStats from "../teamStats.js";
 import type * as validators from "../validators.js";
+import type * as wnba_actions from "../wnba/actions.js";
+import type * as wnba_mutations from "../wnba/mutations.js";
+import type * as wnba_queries from "../wnba/queries.js";
 
 import type {
   ApiFromModules,
@@ -30,16 +42,28 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  bootstrap: typeof bootstrap;
   crons: typeof crons;
   favorites: typeof favorites;
-  gameQueue: typeof gameQueue;
+  "gleague/actions": typeof gleague_actions;
+  "gleague/mutations": typeof gleague_mutations;
+  "gleague/queries": typeof gleague_queries;
   http: typeof http;
   images: typeof images;
+  "nba/actions": typeof nba_actions;
+  "nba/mutations": typeof nba_mutations;
+  "nba/queries": typeof nba_queries;
   playerStats: typeof playerStats;
   randomUsername: typeof randomUsername;
+  "shared/apiParser": typeof shared_apiParser;
+  "shared/seasonHelpers": typeof shared_seasonHelpers;
+  "shared/statsCalculations": typeof shared_statsCalculations;
   statsHistory: typeof statsHistory;
   teamStats: typeof teamStats;
   validators: typeof validators;
+  "wnba/actions": typeof wnba_actions;
+  "wnba/mutations": typeof wnba_mutations;
+  "wnba/queries": typeof wnba_queries;
 }>;
 
 /**

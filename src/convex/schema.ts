@@ -2,13 +2,658 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { leagueValidator } from "./validators";
 
+// Event status validator shared across all league game event tables
+const eventStatusValidator = v.union(
+	v.literal("scheduled"),
+	v.literal("in_progress"),
+	v.literal("halftime"),
+	v.literal("end_of_period"),
+	v.literal("overtime"),
+	v.literal("completed"),
+	v.literal("postponed"),
+	v.literal("cancelled"),
+);
+
 export default defineSchema({
+	// ============================================================
+	// NBA Tables (Convex-first architecture)
+	// ============================================================
+
+	// NBA Team — seasonal record + averages
+	nbaTeam: defineTable({
+		espnTeamId: v.string(),
+		season: v.string(),
+		name: v.string(),
+		abbreviation: v.string(),
+		location: v.string(),
+		slug: v.string(),
+		conference: v.optional(v.string()),
+		division: v.optional(v.string()),
+		conferenceRank: v.optional(v.number()),
+		divisionRank: v.optional(v.number()),
+		wins: v.number(),
+		losses: v.number(),
+		winPct: v.optional(v.number()),
+		streak: v.optional(v.string()),
+		homeRecord: v.optional(v.string()),
+		awayRecord: v.optional(v.string()),
+		gamesBack: v.optional(v.string()),
+		last10: v.optional(v.string()),
+		divisionRecord: v.optional(v.string()),
+		conferenceRecord: v.optional(v.string()),
+		// Seasonal averages (computed from nbaTeamEvent)
+		pointsFor: v.optional(v.number()),
+		pointsAgainst: v.optional(v.number()),
+		margin: v.optional(v.number()),
+		pace: v.optional(v.number()),
+		offensiveRating: v.optional(v.number()),
+		defensiveRating: v.optional(v.number()),
+		netRating: v.optional(v.number()),
+		fgPct: v.optional(v.number()),
+		threePct: v.optional(v.number()),
+		ftPct: v.optional(v.number()),
+		efgPct: v.optional(v.number()),
+		tsPct: v.optional(v.number()),
+		rpg: v.optional(v.number()),
+		orpg: v.optional(v.number()),
+		drpg: v.optional(v.number()),
+		apg: v.optional(v.number()),
+		tovPg: v.optional(v.number()),
+		astToRatio: v.optional(v.number()),
+		spg: v.optional(v.number()),
+		bpg: v.optional(v.number()),
+		// Totals (for accurate % calculations from raw data)
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
+		// Rankings (computed within league)
+		rankPpg: v.optional(v.number()),
+		rankOppPpg: v.optional(v.number()),
+		rankMargin: v.optional(v.number()),
+		rankPace: v.optional(v.number()),
+		rankOrtg: v.optional(v.number()),
+		rankDrtg: v.optional(v.number()),
+		rankNetRtg: v.optional(v.number()),
+		rankFgPct: v.optional(v.number()),
+		rankThreePct: v.optional(v.number()),
+		rankFtPct: v.optional(v.number()),
+		rankEfgPct: v.optional(v.number()),
+		rankTsPct: v.optional(v.number()),
+		rankRpg: v.optional(v.number()),
+		rankOrpg: v.optional(v.number()),
+		rankDrpg: v.optional(v.number()),
+		rankApg: v.optional(v.number()),
+		rankTov: v.optional(v.number()),
+		rankAstToRatio: v.optional(v.number()),
+		rankSpg: v.optional(v.number()),
+		rankBpg: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnTeamId_season", ["espnTeamId", "season"])
+		.index("by_season", ["season"]),
+
+	// NBA Player — seasonal record + averages
+	nbaPlayer: defineTable({
+		espnPlayerId: v.string(),
+		season: v.string(),
+		teamId: v.id("nbaTeam"),
+		name: v.string(),
+		firstName: v.optional(v.string()),
+		lastName: v.optional(v.string()),
+		jersey: v.optional(v.string()),
+		position: v.optional(v.string()),
+		headshot: v.optional(v.string()),
+		height: v.optional(v.string()),
+		weight: v.optional(v.string()),
+		age: v.optional(v.number()),
+		experience: v.optional(v.string()),
+		college: v.optional(v.string()),
+		// Seasonal averages (computed from nbaPlayerEvent)
+		gamesPlayed: v.optional(v.number()),
+		gamesStarted: v.optional(v.number()),
+		minutesPerGame: v.optional(v.number()),
+		pointsPerGame: v.optional(v.number()),
+		reboundsPerGame: v.optional(v.number()),
+		assistsPerGame: v.optional(v.number()),
+		stealsPerGame: v.optional(v.number()),
+		blocksPerGame: v.optional(v.number()),
+		turnoversPerGame: v.optional(v.number()),
+		fieldGoalPct: v.optional(v.number()),
+		threePointPct: v.optional(v.number()),
+		freeThrowPct: v.optional(v.number()),
+		offRebPerGame: v.optional(v.number()),
+		defRebPerGame: v.optional(v.number()),
+		// Totals (for accurate % calculations)
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnPlayerId_season", ["espnPlayerId", "season"])
+		.index("by_teamId", ["teamId"])
+		.index("by_season", ["season"]),
+
+	// NBA Game Event — individual game tracking
+	nbaGameEvent: defineTable({
+		espnGameId: v.string(),
+		season: v.string(),
+		homeTeamId: v.id("nbaTeam"),
+		awayTeamId: v.id("nbaTeam"),
+		gameDate: v.string(),
+		scheduledStart: v.number(),
+		eventStatus: eventStatusValidator,
+		statusDetail: v.optional(v.string()),
+		venue: v.optional(v.string()),
+		homeScore: v.optional(v.number()),
+		awayScore: v.optional(v.number()),
+		lastFetchedAt: v.optional(v.number()),
+		checkCount: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnGameId", ["espnGameId"])
+		.index("by_gameDate", ["gameDate"])
+		.index("by_status", ["eventStatus"])
+		.index("by_season", ["season"])
+		.index("by_homeTeam", ["homeTeamId"])
+		.index("by_awayTeam", ["awayTeamId"]),
+
+	// NBA Team Event — one team's box score in one game
+	nbaTeamEvent: defineTable({
+		gameEventId: v.id("nbaGameEvent"),
+		teamId: v.id("nbaTeam"),
+		isHome: v.boolean(),
+		score: v.number(),
+		winner: v.optional(v.boolean()),
+		fieldGoalsMade: v.number(),
+		fieldGoalsAttempted: v.number(),
+		fieldGoalPct: v.number(),
+		threePointMade: v.number(),
+		threePointAttempted: v.number(),
+		threePointPct: v.number(),
+		freeThrowsMade: v.number(),
+		freeThrowsAttempted: v.number(),
+		freeThrowPct: v.number(),
+		totalRebounds: v.number(),
+		offensiveRebounds: v.number(),
+		defensiveRebounds: v.number(),
+		assists: v.number(),
+		steals: v.number(),
+		blocks: v.number(),
+		turnovers: v.number(),
+		fouls: v.number(),
+		pointsInPaint: v.optional(v.number()),
+		fastBreakPoints: v.optional(v.number()),
+		largestLead: v.optional(v.number()),
+		// Computed per-game
+		pace: v.optional(v.number()),
+		offensiveRating: v.optional(v.number()),
+		defensiveRating: v.optional(v.number()),
+		netRating: v.optional(v.number()),
+		efgPct: v.optional(v.number()),
+		tsPct: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_gameEventId", ["gameEventId"])
+		.index("by_teamId", ["teamId"]),
+
+	// NBA Player Event — one player's box score in one game
+	nbaPlayerEvent: defineTable({
+		gameEventId: v.id("nbaGameEvent"),
+		teamId: v.id("nbaTeam"),
+		playerId: v.id("nbaPlayer"),
+		starter: v.boolean(),
+		active: v.boolean(),
+		minutes: v.number(),
+		points: v.number(),
+		totalRebounds: v.number(),
+		offensiveRebounds: v.number(),
+		defensiveRebounds: v.number(),
+		assists: v.number(),
+		steals: v.number(),
+		blocks: v.number(),
+		turnovers: v.number(),
+		fouls: v.number(),
+		fieldGoalsMade: v.number(),
+		fieldGoalsAttempted: v.number(),
+		threePointMade: v.number(),
+		threePointAttempted: v.number(),
+		freeThrowsMade: v.number(),
+		freeThrowsAttempted: v.number(),
+		plusMinus: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_gameEventId", ["gameEventId"])
+		.index("by_playerId", ["playerId"])
+		.index("by_teamId", ["teamId"]),
+
+	// ============================================================
+	// WNBA Tables (same structure, different table/ID references)
+	// ============================================================
+
+	wnbaTeam: defineTable({
+		espnTeamId: v.string(),
+		season: v.string(),
+		name: v.string(),
+		abbreviation: v.string(),
+		location: v.string(),
+		slug: v.string(),
+		conference: v.optional(v.string()),
+		division: v.optional(v.string()),
+		conferenceRank: v.optional(v.number()),
+		divisionRank: v.optional(v.number()),
+		wins: v.number(),
+		losses: v.number(),
+		winPct: v.optional(v.number()),
+		streak: v.optional(v.string()),
+		homeRecord: v.optional(v.string()),
+		awayRecord: v.optional(v.string()),
+		gamesBack: v.optional(v.string()),
+		last10: v.optional(v.string()),
+		divisionRecord: v.optional(v.string()),
+		conferenceRecord: v.optional(v.string()),
+		pointsFor: v.optional(v.number()),
+		pointsAgainst: v.optional(v.number()),
+		margin: v.optional(v.number()),
+		pace: v.optional(v.number()),
+		offensiveRating: v.optional(v.number()),
+		defensiveRating: v.optional(v.number()),
+		netRating: v.optional(v.number()),
+		fgPct: v.optional(v.number()),
+		threePct: v.optional(v.number()),
+		ftPct: v.optional(v.number()),
+		efgPct: v.optional(v.number()),
+		tsPct: v.optional(v.number()),
+		rpg: v.optional(v.number()),
+		orpg: v.optional(v.number()),
+		drpg: v.optional(v.number()),
+		apg: v.optional(v.number()),
+		tovPg: v.optional(v.number()),
+		astToRatio: v.optional(v.number()),
+		spg: v.optional(v.number()),
+		bpg: v.optional(v.number()),
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
+		rankPpg: v.optional(v.number()),
+		rankOppPpg: v.optional(v.number()),
+		rankMargin: v.optional(v.number()),
+		rankPace: v.optional(v.number()),
+		rankOrtg: v.optional(v.number()),
+		rankDrtg: v.optional(v.number()),
+		rankNetRtg: v.optional(v.number()),
+		rankFgPct: v.optional(v.number()),
+		rankThreePct: v.optional(v.number()),
+		rankFtPct: v.optional(v.number()),
+		rankEfgPct: v.optional(v.number()),
+		rankTsPct: v.optional(v.number()),
+		rankRpg: v.optional(v.number()),
+		rankOrpg: v.optional(v.number()),
+		rankDrpg: v.optional(v.number()),
+		rankApg: v.optional(v.number()),
+		rankTov: v.optional(v.number()),
+		rankAstToRatio: v.optional(v.number()),
+		rankSpg: v.optional(v.number()),
+		rankBpg: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnTeamId_season", ["espnTeamId", "season"])
+		.index("by_season", ["season"]),
+
+	wnbaPlayer: defineTable({
+		espnPlayerId: v.string(),
+		season: v.string(),
+		teamId: v.id("wnbaTeam"),
+		name: v.string(),
+		firstName: v.optional(v.string()),
+		lastName: v.optional(v.string()),
+		jersey: v.optional(v.string()),
+		position: v.optional(v.string()),
+		headshot: v.optional(v.string()),
+		height: v.optional(v.string()),
+		weight: v.optional(v.string()),
+		age: v.optional(v.number()),
+		experience: v.optional(v.string()),
+		college: v.optional(v.string()),
+		gamesPlayed: v.optional(v.number()),
+		gamesStarted: v.optional(v.number()),
+		minutesPerGame: v.optional(v.number()),
+		pointsPerGame: v.optional(v.number()),
+		reboundsPerGame: v.optional(v.number()),
+		assistsPerGame: v.optional(v.number()),
+		stealsPerGame: v.optional(v.number()),
+		blocksPerGame: v.optional(v.number()),
+		turnoversPerGame: v.optional(v.number()),
+		fieldGoalPct: v.optional(v.number()),
+		threePointPct: v.optional(v.number()),
+		freeThrowPct: v.optional(v.number()),
+		offRebPerGame: v.optional(v.number()),
+		defRebPerGame: v.optional(v.number()),
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnPlayerId_season", ["espnPlayerId", "season"])
+		.index("by_teamId", ["teamId"])
+		.index("by_season", ["season"]),
+
+	wnbaGameEvent: defineTable({
+		espnGameId: v.string(),
+		season: v.string(),
+		homeTeamId: v.id("wnbaTeam"),
+		awayTeamId: v.id("wnbaTeam"),
+		gameDate: v.string(),
+		scheduledStart: v.number(),
+		eventStatus: eventStatusValidator,
+		statusDetail: v.optional(v.string()),
+		venue: v.optional(v.string()),
+		homeScore: v.optional(v.number()),
+		awayScore: v.optional(v.number()),
+		lastFetchedAt: v.optional(v.number()),
+		checkCount: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnGameId", ["espnGameId"])
+		.index("by_gameDate", ["gameDate"])
+		.index("by_status", ["eventStatus"])
+		.index("by_season", ["season"])
+		.index("by_homeTeam", ["homeTeamId"])
+		.index("by_awayTeam", ["awayTeamId"]),
+
+	wnbaTeamEvent: defineTable({
+		gameEventId: v.id("wnbaGameEvent"),
+		teamId: v.id("wnbaTeam"),
+		isHome: v.boolean(),
+		score: v.number(),
+		winner: v.optional(v.boolean()),
+		fieldGoalsMade: v.number(),
+		fieldGoalsAttempted: v.number(),
+		fieldGoalPct: v.number(),
+		threePointMade: v.number(),
+		threePointAttempted: v.number(),
+		threePointPct: v.number(),
+		freeThrowsMade: v.number(),
+		freeThrowsAttempted: v.number(),
+		freeThrowPct: v.number(),
+		totalRebounds: v.number(),
+		offensiveRebounds: v.number(),
+		defensiveRebounds: v.number(),
+		assists: v.number(),
+		steals: v.number(),
+		blocks: v.number(),
+		turnovers: v.number(),
+		fouls: v.number(),
+		pointsInPaint: v.optional(v.number()),
+		fastBreakPoints: v.optional(v.number()),
+		largestLead: v.optional(v.number()),
+		pace: v.optional(v.number()),
+		offensiveRating: v.optional(v.number()),
+		defensiveRating: v.optional(v.number()),
+		netRating: v.optional(v.number()),
+		efgPct: v.optional(v.number()),
+		tsPct: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_gameEventId", ["gameEventId"])
+		.index("by_teamId", ["teamId"]),
+
+	wnbaPlayerEvent: defineTable({
+		gameEventId: v.id("wnbaGameEvent"),
+		teamId: v.id("wnbaTeam"),
+		playerId: v.id("wnbaPlayer"),
+		starter: v.boolean(),
+		active: v.boolean(),
+		minutes: v.number(),
+		points: v.number(),
+		totalRebounds: v.number(),
+		offensiveRebounds: v.number(),
+		defensiveRebounds: v.number(),
+		assists: v.number(),
+		steals: v.number(),
+		blocks: v.number(),
+		turnovers: v.number(),
+		fouls: v.number(),
+		fieldGoalsMade: v.number(),
+		fieldGoalsAttempted: v.number(),
+		threePointMade: v.number(),
+		threePointAttempted: v.number(),
+		freeThrowsMade: v.number(),
+		freeThrowsAttempted: v.number(),
+		plusMinus: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_gameEventId", ["gameEventId"])
+		.index("by_playerId", ["playerId"])
+		.index("by_teamId", ["teamId"]),
+
+	// ============================================================
+	// G-League Tables (same structure, different table/ID references)
+	// ============================================================
+
+	gleagueTeam: defineTable({
+		espnTeamId: v.string(),
+		season: v.string(),
+		name: v.string(),
+		abbreviation: v.string(),
+		location: v.string(),
+		slug: v.string(),
+		conference: v.optional(v.string()),
+		division: v.optional(v.string()),
+		conferenceRank: v.optional(v.number()),
+		divisionRank: v.optional(v.number()),
+		wins: v.number(),
+		losses: v.number(),
+		winPct: v.optional(v.number()),
+		streak: v.optional(v.string()),
+		homeRecord: v.optional(v.string()),
+		awayRecord: v.optional(v.string()),
+		gamesBack: v.optional(v.string()),
+		last10: v.optional(v.string()),
+		divisionRecord: v.optional(v.string()),
+		conferenceRecord: v.optional(v.string()),
+		pointsFor: v.optional(v.number()),
+		pointsAgainst: v.optional(v.number()),
+		margin: v.optional(v.number()),
+		pace: v.optional(v.number()),
+		offensiveRating: v.optional(v.number()),
+		defensiveRating: v.optional(v.number()),
+		netRating: v.optional(v.number()),
+		fgPct: v.optional(v.number()),
+		threePct: v.optional(v.number()),
+		ftPct: v.optional(v.number()),
+		efgPct: v.optional(v.number()),
+		tsPct: v.optional(v.number()),
+		rpg: v.optional(v.number()),
+		orpg: v.optional(v.number()),
+		drpg: v.optional(v.number()),
+		apg: v.optional(v.number()),
+		tovPg: v.optional(v.number()),
+		astToRatio: v.optional(v.number()),
+		spg: v.optional(v.number()),
+		bpg: v.optional(v.number()),
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
+		rankPpg: v.optional(v.number()),
+		rankOppPpg: v.optional(v.number()),
+		rankMargin: v.optional(v.number()),
+		rankPace: v.optional(v.number()),
+		rankOrtg: v.optional(v.number()),
+		rankDrtg: v.optional(v.number()),
+		rankNetRtg: v.optional(v.number()),
+		rankFgPct: v.optional(v.number()),
+		rankThreePct: v.optional(v.number()),
+		rankFtPct: v.optional(v.number()),
+		rankEfgPct: v.optional(v.number()),
+		rankTsPct: v.optional(v.number()),
+		rankRpg: v.optional(v.number()),
+		rankOrpg: v.optional(v.number()),
+		rankDrpg: v.optional(v.number()),
+		rankApg: v.optional(v.number()),
+		rankTov: v.optional(v.number()),
+		rankAstToRatio: v.optional(v.number()),
+		rankSpg: v.optional(v.number()),
+		rankBpg: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnTeamId_season", ["espnTeamId", "season"])
+		.index("by_season", ["season"]),
+
+	gleaguePlayer: defineTable({
+		espnPlayerId: v.string(),
+		season: v.string(),
+		teamId: v.id("gleagueTeam"),
+		name: v.string(),
+		firstName: v.optional(v.string()),
+		lastName: v.optional(v.string()),
+		jersey: v.optional(v.string()),
+		position: v.optional(v.string()),
+		headshot: v.optional(v.string()),
+		height: v.optional(v.string()),
+		weight: v.optional(v.string()),
+		age: v.optional(v.number()),
+		experience: v.optional(v.string()),
+		college: v.optional(v.string()),
+		gamesPlayed: v.optional(v.number()),
+		gamesStarted: v.optional(v.number()),
+		minutesPerGame: v.optional(v.number()),
+		pointsPerGame: v.optional(v.number()),
+		reboundsPerGame: v.optional(v.number()),
+		assistsPerGame: v.optional(v.number()),
+		stealsPerGame: v.optional(v.number()),
+		blocksPerGame: v.optional(v.number()),
+		turnoversPerGame: v.optional(v.number()),
+		fieldGoalPct: v.optional(v.number()),
+		threePointPct: v.optional(v.number()),
+		freeThrowPct: v.optional(v.number()),
+		offRebPerGame: v.optional(v.number()),
+		defRebPerGame: v.optional(v.number()),
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnPlayerId_season", ["espnPlayerId", "season"])
+		.index("by_teamId", ["teamId"])
+		.index("by_season", ["season"]),
+
+	gleagueGameEvent: defineTable({
+		espnGameId: v.string(),
+		season: v.string(),
+		homeTeamId: v.id("gleagueTeam"),
+		awayTeamId: v.id("gleagueTeam"),
+		gameDate: v.string(),
+		scheduledStart: v.number(),
+		eventStatus: eventStatusValidator,
+		statusDetail: v.optional(v.string()),
+		venue: v.optional(v.string()),
+		homeScore: v.optional(v.number()),
+		awayScore: v.optional(v.number()),
+		lastFetchedAt: v.optional(v.number()),
+		checkCount: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_espnGameId", ["espnGameId"])
+		.index("by_gameDate", ["gameDate"])
+		.index("by_status", ["eventStatus"])
+		.index("by_season", ["season"])
+		.index("by_homeTeam", ["homeTeamId"])
+		.index("by_awayTeam", ["awayTeamId"]),
+
+	gleagueTeamEvent: defineTable({
+		gameEventId: v.id("gleagueGameEvent"),
+		teamId: v.id("gleagueTeam"),
+		isHome: v.boolean(),
+		score: v.number(),
+		winner: v.optional(v.boolean()),
+		fieldGoalsMade: v.number(),
+		fieldGoalsAttempted: v.number(),
+		fieldGoalPct: v.number(),
+		threePointMade: v.number(),
+		threePointAttempted: v.number(),
+		threePointPct: v.number(),
+		freeThrowsMade: v.number(),
+		freeThrowsAttempted: v.number(),
+		freeThrowPct: v.number(),
+		totalRebounds: v.number(),
+		offensiveRebounds: v.number(),
+		defensiveRebounds: v.number(),
+		assists: v.number(),
+		steals: v.number(),
+		blocks: v.number(),
+		turnovers: v.number(),
+		fouls: v.number(),
+		pointsInPaint: v.optional(v.number()),
+		fastBreakPoints: v.optional(v.number()),
+		largestLead: v.optional(v.number()),
+		pace: v.optional(v.number()),
+		offensiveRating: v.optional(v.number()),
+		defensiveRating: v.optional(v.number()),
+		netRating: v.optional(v.number()),
+		efgPct: v.optional(v.number()),
+		tsPct: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_gameEventId", ["gameEventId"])
+		.index("by_teamId", ["teamId"]),
+
+	gleaguePlayerEvent: defineTable({
+		gameEventId: v.id("gleagueGameEvent"),
+		teamId: v.id("gleagueTeam"),
+		playerId: v.id("gleaguePlayer"),
+		starter: v.boolean(),
+		active: v.boolean(),
+		minutes: v.number(),
+		points: v.number(),
+		totalRebounds: v.number(),
+		offensiveRebounds: v.number(),
+		defensiveRebounds: v.number(),
+		assists: v.number(),
+		steals: v.number(),
+		blocks: v.number(),
+		turnovers: v.number(),
+		fouls: v.number(),
+		fieldGoalsMade: v.number(),
+		fieldGoalsAttempted: v.number(),
+		threePointMade: v.number(),
+		threePointAttempted: v.number(),
+		freeThrowsMade: v.number(),
+		freeThrowsAttempted: v.number(),
+		plusMinus: v.optional(v.number()),
+		updatedAt: v.number(),
+	})
+		.index("by_gameEventId", ["gameEventId"])
+		.index("by_playerId", ["playerId"])
+		.index("by_teamId", ["teamId"]),
+
+	// ============================================================
+	// Legacy tables (will be removed in Phase 5)
+	// ============================================================
+
 	// Player stats (updated nightly via cron)
 	// Stores stats not available from the roster endpoint (GP, 3P%, minutes, etc.)
 	playerStats: defineTable({
 		league: leagueValidator,
-		playerId: v.string(), // ESPN player ID
-		teamId: v.string(), // ESPN team ID
+		playerId: v.string(), // API provider player ID
+		teamId: v.string(), // API provider team ID
 		// Basic info (for display without needing another API call)
 		name: v.string(),
 		// Season stats
@@ -135,28 +780,6 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_token", ["token"]),
-
-  // Game queue for smart player stats polling
-  // Tracks games to check for completion and trigger player stats updates
-  gameQueue: defineTable({
-    league: leagueValidator,
-    gameId: v.string(), // ESPN game ID
-    homeTeamId: v.string(),
-    awayTeamId: v.string(),
-    scheduledStart: v.number(), // Unix timestamp (ms)
-    firstCheckTime: v.number(), // scheduledStart + 2h15m
-    status: v.union(
-      v.literal("pending"), // Waiting for first check time
-      v.literal("checking"), // Actively being polled
-      v.literal("processed"), // Stats fetched, done
-      v.literal("abandoned") // Gave up after 5+ hours
-    ),
-    checkCount: v.number(), // Number of times we've checked
-    processedAt: v.optional(v.number()),
-  })
-    .index("by_status", ["status"])
-    .index("by_league_game", ["league", "gameId"])
-    .index("by_first_check_time", ["firstCheckTime"]),
 
   // Historical team stats snapshots (weekly)
   teamStatsHistory: defineTable({
@@ -303,7 +926,7 @@ export default defineSchema({
   favoriteTeams: defineTable({
     userId: v.string(), // User ID from Better Auth (stored as string for compatibility)
     league: leagueValidator, // "nba" | "wnba" | "gleague"
-    teamId: v.string(), // ESPN team ID (e.g., "1")
+    teamId: v.string(), // API provider team ID (e.g., "1")
     teamSlug: v.string(), // For routing (e.g., "atl")
     addedAt: v.number(), // Timestamp
   })

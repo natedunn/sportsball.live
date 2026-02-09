@@ -4,7 +4,6 @@ import { api } from "~api";
 import { Image } from "@/components/ui/image";
 import { FavoriteStar } from "@/components/ui/favorite-star";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
-import { cn } from "@/lib/utils";
 import { useFavorites } from "@/lib/use-favorites";
 import { getTeamStaticData } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
@@ -16,7 +15,7 @@ interface TeamHeaderProps {
 }
 
 export function TeamHeader({ overview, league }: TeamHeaderProps) {
-	const { wins, losses, winPct, streak } = overview.record;
+	const { wins, losses, winPct } = overview.record;
 	const record = `${wins}-${losses}`;
 	const teamName = overview.name.replace(overview.location, "").trim();
 
@@ -113,28 +112,10 @@ export function TeamHeader({ overview, league }: TeamHeaderProps) {
 											<span className="md:text-xl font-semibold text-foreground">
 												{getOrdinal(overview.standings.conferenceRank)}
 											</span>{" "}
-											in {overview.standings.conference}
+											in {overview.standings.conference.toLowerCase()}
 										</span>
 									)}
 
-								{/* Streak */}
-								{streak && (
-									<>
-										<span className="hidden sm:block text-border">|</span>
-										<span
-											className={cn(
-												"text-sm font-medium",
-												streak.startsWith("W")
-													? "text-green-600 dark:text-green-400"
-													: streak.startsWith("L")
-														? "text-red-600 dark:text-red-400"
-														: "text-muted-foreground",
-											)}
-										>
-											{streak}
-										</span>
-									</>
-								)}
 							</div>
 						</div>
 

@@ -289,7 +289,7 @@ export function TeamSearchModal({ open, onOpenChange }: TeamSearchModalProps) {
 						value={selectedLeague}
 						onValueChange={(v) => setSelectedLeague(v as "all" | League)}
 					>
-						<TabsList className="w-full">
+						<TabsList className="w-full" responsive={false}>
 							<TabsTrigger value="all" className="flex-1">
 								All
 							</TabsTrigger>

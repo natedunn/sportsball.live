@@ -138,6 +138,47 @@ export const getTeamSchedule = query({
 	},
 });
 
+// Get team game log (box score stats per game, for trend charts)
+export const getTeamGameLog = query({
+	args: { teamId: v.id("gleagueTeam") },
+	handler: async (ctx, args) => {
+		const teamEvents = await ctx.db
+			.query("gleagueTeamEvent")
+			.withIndex("by_teamId", (q) => q.eq("teamId", args.teamId))
+			.collect();
+
+		const enriched = await Promise.all(
+			teamEvents.map(async (te) => {
+				const gameEvent = await ctx.db.get(te.gameEventId);
+				if (!gameEvent) return null;
+				const oppScore = te.isHome ? gameEvent.awayScore : gameEvent.homeScore;
+				return {
+					gameDate: gameEvent.gameDate,
+					scheduledStart: gameEvent.scheduledStart,
+					score: te.score,
+					oppScore: oppScore ?? 0,
+					winner: te.winner ?? te.score > (oppScore ?? 0),
+					fieldGoalsMade: te.fieldGoalsMade,
+					fieldGoalsAttempted: te.fieldGoalsAttempted,
+					threePointMade: te.threePointMade,
+					threePointAttempted: te.threePointAttempted,
+					freeThrowsMade: te.freeThrowsMade,
+					freeThrowsAttempted: te.freeThrowsAttempted,
+					totalRebounds: te.totalRebounds,
+					assists: te.assists,
+					steals: te.steals,
+					blocks: te.blocks,
+					turnovers: te.turnovers,
+				};
+			}),
+		);
+
+		return enriched
+			.filter((e) => e !== null)
+			.sort((a, b) => a.scheduledStart - b.scheduledStart);
+	},
+});
+
 // Get all players for a team with averages (roster)
 export const getTeamRoster = query({
 	args: { teamId: v.id("gleagueTeam") },

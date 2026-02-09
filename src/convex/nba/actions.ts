@@ -34,6 +34,12 @@ function getSeasonStartDate(season: string): string {
 	return `${startYear}1022`;
 }
 
+/** Get the end date for the regular season (mid-April). */
+function getSeasonEndDate(season: string): string {
+	const endYear = parseInt(season.split("-")[0], 10) + 1;
+	return `${endYear}0420`;
+}
+
 // Daily cron: discover today's games, update standings
 export const discoverTodaysGames = internalAction({
 	args: {},
@@ -877,7 +883,7 @@ export const backfillGames = internalAction({
 	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 		const startDate = args.startDate ?? getSeasonStartDate(season);
-		const endDate = args.endDate ?? getTodayDateUTC();
+		const endDate = args.endDate ?? getSeasonEndDate(season);
 		const dates = getDateRange(startDate, endDate);
 
 		const teamLabel = args.targetEspnTeamId ? ` for team ${args.targetEspnTeamId}` : "";
@@ -1056,6 +1062,25 @@ export const backfillDateChunk = internalAction({
 			offset: args.offset + 1,
 			targetEspnTeamId: args.targetEspnTeamId,
 			bootstrapRunId: args.bootstrapRunId,
+		});
+	},
+});
+
+// Standalone: backfill only upcoming scheduled games (today → season end)
+// Use this to fill in missing schedule without re-running the full backfill.
+export const backfillUpcomingSchedule = internalAction({
+	args: {},
+	handler: async (ctx) => {
+		const season = getCurrentSeason();
+		const startDate = getTodayDateUTC();
+		const endDate = getSeasonEndDate(season);
+		const dates = getDateRange(startDate, endDate);
+
+		console.log(`[NBA Schedule] Backfilling upcoming schedule: ${startDate} to ${endDate} (${dates.length} dates)`);
+
+		await ctx.scheduler.runAfter(100, internal.nba.actions.backfillDateChunk, {
+			dates,
+			offset: 0,
 		});
 	},
 });

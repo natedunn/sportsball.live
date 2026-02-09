@@ -1,6 +1,14 @@
 import * as React from "react";
 import { Tabs as BaseTabs } from "@base-ui/react/tabs";
+import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
+
+// Context to pass value/onValueChange from Tabs down to the responsive TabsMenu
+const TabsContext = React.createContext<{
+	value?: string;
+	onValueChange?: (value: string) => void;
+} | null>(null);
 
 interface TabsProps {
 	children: React.ReactNode;
@@ -18,33 +26,59 @@ export function Tabs({
 	className,
 }: TabsProps) {
 	return (
-		<BaseTabs.Root
-			defaultValue={defaultValue}
-			value={value}
-			onValueChange={onValueChange}
-			className={className}
-		>
-			{children}
-		</BaseTabs.Root>
+		<TabsContext.Provider value={{ value, onValueChange }}>
+			<BaseTabs.Root
+				defaultValue={defaultValue}
+				value={value}
+				onValueChange={onValueChange}
+				className={className}
+			>
+				{children}
+			</BaseTabs.Root>
+		</TabsContext.Provider>
 	);
 }
 
 interface TabsListProps {
 	children: React.ReactNode;
 	className?: string;
+	/** When true, collapses to a dropdown menu on small screens. Default: true */
+	responsive?: boolean;
 }
 
-export function TabsList({ children, className }: TabsListProps) {
+export function TabsList({ children, className, responsive = true }: TabsListProps) {
+	if (!responsive) {
+		return (
+			<BaseTabs.List
+				className={cn(
+					"relative inline-flex h-11 items-center justify-center rounded-lg bg-muted p-1.5 text-muted-foreground border",
+					className,
+				)}
+			>
+				{children}
+				<TabsIndicator />
+			</BaseTabs.List>
+		);
+	}
+
 	return (
-		<BaseTabs.List
-			className={cn(
-				"relative inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground border",
-				className,
-			)}
-		>
-			{children}
-			<TabsIndicator />
-		</BaseTabs.List>
+		<>
+			{/* Desktop: normal tabs */}
+			<BaseTabs.List
+				className={cn(
+					"relative hidden sm:inline-flex h-11 items-center justify-center rounded-lg bg-muted p-1.5 text-muted-foreground border",
+					className,
+				)}
+			>
+				{children}
+				<TabsIndicator />
+			</BaseTabs.List>
+
+			{/* Mobile: menu dropdown */}
+			<div className="sm:hidden">
+				<TabsMenu>{children}</TabsMenu>
+			</div>
+		</>
 	);
 }
 
@@ -69,7 +103,7 @@ export function TabsTrigger({
 				"relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all",
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 				"disabled:pointer-events-none disabled:opacity-50",
-				"data-active:text-foreground",
+				"data-active:text-amber-50",
 				className,
 			)}
 		>
@@ -82,9 +116,9 @@ function TabsIndicator() {
 	return (
 		<BaseTabs.Indicator
 			className={cn(
-				"absolute rounded-md bg-background shadow-sm transition-all duration-200",
-				"top-[var(--active-tab-top)] left-[var(--active-tab-left)]",
-				"h-[var(--active-tab-height)] w-[var(--active-tab-width)]",
+				"absolute rounded-md bg-foreground/10 shadow-sm transition-all duration-200",
+				"top-(--active-tab-top) left-(--active-tab-left)",
+				"h-(--active-tab-height) w-(--active-tab-width)",
 			)}
 		/>
 	);
@@ -107,5 +141,66 @@ export function TabsContent({ children, value, className }: TabsContentProps) {
 		>
 			{children}
 		</BaseTabs.Panel>
+	);
+}
+
+// --- Responsive menu fallback (mobile) ---
+
+/** Extracts tab info from TabsTrigger children */
+function extractTabs(children: React.ReactNode): Array<{ value: string; label: React.ReactNode }> {
+	const tabs: Array<{ value: string; label: React.ReactNode }> = [];
+	React.Children.forEach(children, (child) => {
+		if (React.isValidElement<TabsTriggerProps>(child) && child.props.value) {
+			tabs.push({ value: child.props.value, label: child.props.children });
+		}
+	});
+	return tabs;
+}
+
+function TabsMenu({ children }: { children: React.ReactNode }) {
+	const context = React.useContext(TabsContext);
+	const tabs = extractTabs(children);
+	const activeTab = tabs.find((t) => t.value === context?.value);
+
+	return (
+		<BaseMenu.Root>
+			<BaseMenu.Trigger
+				className={cn(
+					"inline-flex h-11 items-center justify-between gap-2 rounded-lg bg-muted px-4 py-1.5 text-sm font-medium text-amber-50 border min-w-[160px]",
+					"hover:bg-foreground/5 transition-colors cursor-pointer",
+				)}
+			>
+				<span className="flex items-center gap-1.5">
+					{activeTab?.label ?? "Select"}
+				</span>
+				<ChevronDown className="h-4 w-4 text-muted-foreground" />
+			</BaseMenu.Trigger>
+			<BaseMenu.Portal>
+				<BaseMenu.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
+					<BaseMenu.Popup
+						className={cn(
+							"z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg outline-none",
+							"origin-[var(--transform-origin)] will-change-[transform,opacity] transition-[transform,opacity] duration-150 ease-out",
+							"data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
+							"data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
+						)}
+					>
+						{tabs.map((tab) => (
+							<BaseMenu.Item
+								key={tab.value}
+								onClick={() => context?.onValueChange?.(tab.value)}
+								className={cn(
+									"relative flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors",
+									"hover:bg-accent focus:bg-accent",
+									tab.value === context?.value && "text-amber-50 bg-foreground/10",
+								)}
+							>
+								{tab.label}
+							</BaseMenu.Item>
+						))}
+					</BaseMenu.Popup>
+				</BaseMenu.Positioner>
+			</BaseMenu.Portal>
+		</BaseMenu.Root>
 	);
 }

@@ -49,18 +49,25 @@ export function UserMenu({ user }: UserMenuProps) {
 						<User className="size-4 text-muted-foreground" />
 					</div>
 				)}
-				<span className="hidden max-w-[100px] truncate text-sm sm:inline">
+				<span className="hidden max-w-25 truncate text-sm sm:inline">
 					{user.name || "Account"}
 				</span>
-				<ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+				<ChevronDown
+					className="size-4 text-muted-foreground"
+					aria-hidden="true"
+				/>
 			</MenuTrigger>
 
 			<MenuContent align="end">
 				<MenuLabel>
 					<div className="flex flex-col">
-						<span className="font-medium text-foreground">{user.name || "User"}</span>
+						<span className="font-medium text-foreground">
+							{user.name || "User"}
+						</span>
 						{user.username && (
-							<span className="text-xs font-normal">@{user.displayUsername || user.username}</span>
+							<span className="text-xs font-normal">
+								@{user.displayUsername || user.username}
+							</span>
 						)}
 					</div>
 				</MenuLabel>
@@ -80,7 +87,10 @@ export function UserMenu({ user }: UserMenuProps) {
 					</MenuItem>
 				</Link>
 				<MenuSeparator />
-				<MenuItem onSelect={handleSignOut} className="text-destructive focus:text-destructive">
+				<MenuItem
+					onSelect={handleSignOut}
+					className="text-destructive focus:text-destructive"
+				>
 					<LogOut className="size-4" aria-hidden="true" />
 					Sign out
 				</MenuItem>

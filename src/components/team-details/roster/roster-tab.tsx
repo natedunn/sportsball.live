@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ChevronUp, ChevronDown, Settings2, Check } from "lucide-react";
+import { useHasTabAnimated } from "../animation-context";
 import type { RosterPlayer } from "@/lib/types/team";
 import type { League } from "@/lib/shared/league";
 
@@ -163,6 +164,23 @@ interface RosterTabProps {
 export function RosterTab({ roster, league }: RosterTabProps) {
   // G-League doesn't have detailed player stats from the cron job
   const hasDetailedStats = league !== "gleague";
+
+  // Fade-up animation (only on first tab visit)
+  const hasTabAnimated = useHasTabAnimated();
+  const animate = useRef(!hasTabAnimated).current;
+  const [cardVisible, setCardVisible] = useState(!animate);
+  const [visibleRows, setVisibleRows] = useState(!animate ? roster.length : 0);
+  useEffect(() => {
+    if (!animate) return;
+    const cardTimeout = setTimeout(() => setCardVisible(true), 100);
+    return () => clearTimeout(cardTimeout);
+  }, [animate]);
+  useEffect(() => {
+    if (!animate || !cardVisible) return;
+    if (visibleRows >= roster.length) return;
+    const rowTimeout = setTimeout(() => setVisibleRows((v) => v + 1), 10);
+    return () => clearTimeout(rowTimeout);
+  }, [animate, cardVisible, visibleRows, roster.length]);
 
   const [sortField, setSortField] = useState<SortField>(hasDetailedStats ? "ppg" : "name");
   const [sortDirection, setSortDirection] = useState<SortDirection>(hasDetailedStats ? "desc" : "asc");
@@ -412,7 +430,17 @@ export function RosterTab({ roster, league }: RosterTabProps) {
       )}
 
       {/* Table */}
-      <Card classNames={{ inner: "flex-col p-0" }}>
+      <Card
+        classNames={{
+          wrapper: animate
+            ? cn(
+                "transition-[opacity,transform] duration-700 ease-out",
+                cardVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
+              )
+            : undefined,
+          inner: "flex-col p-0",
+        }}
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted">
@@ -445,8 +473,17 @@ export function RosterTab({ roster, league }: RosterTabProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-card">
-              {sortedRoster.map((player) => (
-                <tr key={player.id}>
+              {sortedRoster.map((player, index) => (
+                <tr
+                  key={player.id}
+                  className={animate
+                    ? cn(
+                        "transition-opacity duration-300 ease-out",
+                        index < visibleRows ? "opacity-100" : "opacity-0",
+                      )
+                    : undefined
+                  }
+                >
                   {/* Player name, photo, jersey, and college */}
                   <td className="px-3 py-3 sticky left-0 z-10 bg-card shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center gap-3">

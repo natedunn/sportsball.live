@@ -1,7 +1,10 @@
+import { useEffect, useRef, useState } from "react";
 import { Calendar, Zap, Shield, TrendingUp, TrendingDown, Target, BarChart3 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { StatCard } from "../stat-card";
 import { SectionHeader } from "../section-header";
 import { fmt, fmtPlusMinus } from "../format-utils";
+import { useHasTabAnimated } from "../animation-context";
 import { TopPerformers } from "./top-performers";
 import { InjuryReport } from "./injury-report";
 import { GamesTable } from "./games-table";
@@ -42,6 +45,16 @@ export function OverviewTab({
   const quickStats = stats?.scoring ?? overview.stats;
   const ranks = stats?.ranks;
 
+  // Fade-up animation for content below stats (only on first tab visit)
+  const hasTabAnimated = useHasTabAnimated();
+  const animate = useRef(!hasTabAnimated).current;
+  const [visible, setVisible] = useState(!animate);
+  useEffect(() => {
+    if (!animate) return;
+    const timeout = setTimeout(() => setVisible(true), 300);
+    return () => clearTimeout(timeout);
+  }, [animate]);
+
   return (
     <div className="space-y-8">
       {/* Quick Stats - Full width */}
@@ -57,7 +70,15 @@ export function OverviewTab({
       </section>
 
       {/* Main content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className={cn(
+        "grid grid-cols-1 lg:grid-cols-3 gap-8",
+        animate
+          ? cn(
+              "transition-[opacity,transform] duration-700 ease-out",
+              visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
+            )
+          : "",
+      )}>
         {/* Games + News - 2 columns */}
         <div className="lg:col-span-2 space-y-8">
           <div>

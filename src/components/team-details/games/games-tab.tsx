@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { MarginBar } from "./margin-bar";
 import { StatCard } from "../stat-card";
+import { useHasTabAnimated } from "../animation-context";
 import { Home, Plane, TrendingUp, Trophy, ChevronDown } from "lucide-react";
 import type { ScheduleGame } from "@/lib/types/team";
 import type { League } from "@/lib/shared/league";
@@ -52,6 +53,12 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
   const [locationFilter, setLocationFilter] = useState<Filter>("all");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const nextGameRef = useRef<HTMLTableRowElement>(null);
+
+  // Fade-up animation (only on first tab visit)
+  const hasTabAnimated = useHasTabAnimated();
+  const animate = useRef(!hasTabAnimated).current;
+  const [contentVisible, setContentVisible] = useState(!animate);
+  const [visibleRows, setVisibleRows] = useState(!animate ? Infinity : 0);
 
   // Compute records with safe defaults
   const records = useMemo(() => {
@@ -109,6 +116,19 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
     return nextGame?.id;
   }, [sortedGames]);
 
+  // Animation effects (after sortedGames is available)
+  useEffect(() => {
+    if (!animate) return;
+    const timeout = setTimeout(() => setContentVisible(true), 150);
+    return () => clearTimeout(timeout);
+  }, [animate]);
+  useEffect(() => {
+    if (!animate || !contentVisible) return;
+    if (visibleRows >= sortedGames.length) return;
+    const timeout = setTimeout(() => setVisibleRows((v) => v + 5), 10);
+    return () => clearTimeout(timeout);
+  }, [animate, contentVisible, visibleRows, sortedGames.length]);
+
   const scrollToNextGame = useCallback(() => {
     if (nextGameRef.current) {
       nextGameRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -163,7 +183,15 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
       </div>
 
       {/* Filters and Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className={cn(
+        "flex flex-wrap items-center justify-between gap-4",
+        animate
+          ? cn(
+              "transition-[opacity,transform] duration-400 ease-out",
+              contentVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
+            )
+          : "",
+      )}>
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground font-medium">Location</span>
@@ -199,7 +227,15 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
       </div>
 
       {/* Games Table */}
-      <Card classNames={{ inner: "flex-col p-0" }}>
+      <Card classNames={{
+        wrapper: animate
+          ? cn(
+              "transition-[opacity,transform] duration-400 ease-out",
+              contentVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2",
+            )
+          : undefined,
+        inner: "flex-col p-0",
+      }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -226,7 +262,7 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
                   </td>
                 </tr>
               ) : (
-                sortedGames.map((game) => {
+                sortedGames.map((game, index) => {
                   const isCompleted = game.state === "post";
                   const { date, time } = formatScheduleDate(game.date, isCompleted);
                   const isNextGame = game.id === nextGameId;
@@ -235,7 +271,13 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
                     <tr
                       key={game.id}
                       ref={isNextGame ? nextGameRef : null}
-                      className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
+                      className={cn(
+                        "border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors",
+                        animate && cn(
+                          "transition-opacity duration-150 ease-out",
+                          index < visibleRows ? "opacity-100" : "opacity-0",
+                        ),
+                      )}
                     >
                       {/* Date */}
                       <td className="px-4 py-3 whitespace-nowrap">

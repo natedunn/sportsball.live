@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { getCurrentSeason, getTodayDateUTC, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange } from "../shared/seasonHelpers";
+import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
 import type {
 	ApiScoreboardResponse,
@@ -45,7 +45,7 @@ export const discoverTodaysGames = internalAction({
 	args: {},
 	handler: async (ctx) => {
 		const season = getCurrentSeason();
-		const date = getTodayDateUTC();
+		const date = getTodayDate();
 		const baseUrl = getSiteApi();
 
 		console.log(`[NBA] Discovering games for ${date}, season ${season}...`);
@@ -1072,7 +1072,7 @@ export const backfillUpcomingSchedule = internalAction({
 	args: {},
 	handler: async (ctx) => {
 		const season = getCurrentSeason();
-		const startDate = getTodayDateUTC();
+		const startDate = getTodayDate();
 		const endDate = getSeasonEndDate(season);
 		const dates = getDateRange(startDate, endDate);
 

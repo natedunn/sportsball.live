@@ -10,8 +10,8 @@ import {
 	ScoresPagePending,
 } from "@/components/scores/scores-page-layout";
 
-const TITLE = "Daily WNBA scores";
-const DESCRIPTION = "View current, upcoming, and past games for the WNBA.";
+const TITLE = "WNBA Scores & Schedule";
+const DESCRIPTION = "Live scores, results, and upcoming games for the WNBA.";
 
 interface WnbaSearchParams {
 	date?: string;

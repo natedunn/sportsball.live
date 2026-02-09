@@ -10,8 +10,8 @@ import {
 	ScoresPagePending,
 } from "@/components/scores/scores-page-layout";
 
-const TITLE = "Daily G League scores";
-const DESCRIPTION = "View current, upcoming, and past games for the G League.";
+const TITLE = "G League Scores & Schedule";
+const DESCRIPTION = "Live scores, results, and upcoming games for the G League.";
 
 interface GLeagueSearchParams {
 	date?: string;

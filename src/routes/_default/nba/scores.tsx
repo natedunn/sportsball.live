@@ -10,8 +10,8 @@ import {
 	ScoresPagePending,
 } from "@/components/scores/scores-page-layout";
 
-const TITLE = "Daily NBA scores";
-const DESCRIPTION = "View current, upcoming, and past games for the NBA.";
+const TITLE = "NBA Scores & Schedule";
+const DESCRIPTION = "Live scores, results, and upcoming games for the NBA.";
 
 interface NbaSearchParams {
 	date?: string;

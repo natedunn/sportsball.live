@@ -589,7 +589,7 @@ export const syncLiveGameData = internalAction({
 			season,
 			homeTeamId,
 			awayTeamId,
-			gameDate: formatGameDate(scheduledStart),
+			gameDate: existingGame?.gameDate ?? formatGameDate(scheduledStart),
 			scheduledStart,
 			eventStatus,
 			statusDetail: detail,

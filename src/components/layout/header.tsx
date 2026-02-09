@@ -3,7 +3,7 @@ import { NavigationMenu } from "@base-ui/react/navigation-menu";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { api } from "~api";
 import { convexQuery } from "@convex-dev/react-query";
-import { Newspaper, BarChart3, Trophy, Users, ChevronDown } from "lucide-react";
+import { LayoutDashboard, BarChart3, Trophy, Users, ShieldHalf, ChevronDown } from "lucide-react";
 import { UserMenu } from "./user-menu";
 
 function NavLink(props: NavigationMenu.Link.Props) {
@@ -36,16 +36,10 @@ const navItems = [
 		href: "/nba",
 		children: [
 			{
-				label: "News",
-				href: "/nba",
-				icon: Newspaper,
-				description: "Latest NBA news and updates",
-			},
-			{
-				label: "Scores",
+				label: "Scores & Schedule",
 				href: "/nba/scores",
 				icon: BarChart3,
-				description: "Live and recent game scores",
+				description: "Live scores and upcoming games",
 			},
 			{
 				label: "Standings",
@@ -54,11 +48,25 @@ const navItems = [
 				description: "League standings",
 			},
 			{
+				label: "Teams",
+				href: "/nba/teams",
+				icon: ShieldHalf,
+				description: "Team pages and rosters",
+				disabled: true,
+			},
+			{
 				label: "Players",
 				href: "/nba/players",
 				icon: Users,
 				description: "Player stats and profiles",
 				disabled: true,
+			},
+			{
+				label: "Overview",
+				href: "/nba",
+				icon: LayoutDashboard,
+				description: "News, scores, and stats",
+				fullWidth: true,
 			},
 		],
 	},
@@ -67,16 +75,10 @@ const navItems = [
 		href: "/wnba",
 		children: [
 			{
-				label: "News",
-				href: "/wnba",
-				icon: Newspaper,
-				description: "Latest WNBA news and updates",
-			},
-			{
-				label: "Scores",
+				label: "Scores & Schedule",
 				href: "/wnba/scores",
 				icon: BarChart3,
-				description: "Live and recent game scores",
+				description: "Live scores and upcoming games",
 			},
 			{
 				label: "Standings",
@@ -85,11 +87,25 @@ const navItems = [
 				description: "League standings",
 			},
 			{
+				label: "Teams",
+				href: "/wnba/teams",
+				icon: ShieldHalf,
+				description: "Team pages and rosters",
+				disabled: true,
+			},
+			{
 				label: "Players",
 				href: "/wnba/players",
 				icon: Users,
 				description: "Player stats and profiles",
 				disabled: true,
+			},
+			{
+				label: "Overview",
+				href: "/wnba",
+				icon: LayoutDashboard,
+				description: "News, scores, and stats",
+				fullWidth: true,
 			},
 		],
 	},
@@ -98,16 +114,10 @@ const navItems = [
 		href: "/gleague",
 		children: [
 			{
-				label: "News",
-				href: "/gleague",
-				icon: Newspaper,
-				description: "Latest G League news and updates",
-			},
-			{
-				label: "Scores",
+				label: "Scores & Schedule",
 				href: "/gleague/scores",
 				icon: BarChart3,
-				description: "Live and recent game scores",
+				description: "Live scores and upcoming games",
 			},
 			{
 				label: "Standings",
@@ -116,11 +126,25 @@ const navItems = [
 				description: "League standings",
 			},
 			{
+				label: "Teams",
+				href: "/gleague/teams",
+				icon: ShieldHalf,
+				description: "Team pages and rosters",
+				disabled: true,
+			},
+			{
 				label: "Players",
 				href: "/gleague/players",
 				icon: Users,
 				description: "Player stats and profiles",
 				disabled: true,
+			},
+			{
+				label: "Overview",
+				href: "/gleague",
+				icon: LayoutDashboard,
+				description: "News, scores, and stats",
+				fullWidth: true,
 			},
 		],
 	},
@@ -151,37 +175,36 @@ export function Header() {
 	return (
 		<nav className="relative z-50 border-b border-border bg-background py-2 backdrop-blur-xl">
 			<div className="container flex items-center justify-between">
-				<div className="flex items-center gap-1">
-					<Link
-						to="/"
-						className="group inline-flex items-center justify-center gap-2 px-2 py-2"
-					>
-						<span className="py-0.5 text-lg leading-none">◍</span>
-						<span className="group-hover:underline group-focus:underline">
-							Sportsball™
-						</span>
-						<span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
-							BETA
-						</span>
-					</Link>
+				<Link
+					to="/"
+					className="group inline-flex items-center justify-center gap-2 px-2 py-2"
+				>
+					<span className="py-0.5 text-lg leading-none">🏀</span>
+					<span className="group-hover:underline group-focus:underline">
+						Sportsball
+					</span>
+					<span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
+						BETA
+					</span>
+				</Link>
 
-					{/* Desktop nav */}
-					<NavigationMenu.Root className="hidden sm:block">
-						<NavigationMenu.List className="flex items-center gap-1">
+				{/* Desktop nav - centered */}
+				<NavigationMenu.Root className="absolute left-1/2 -translate-x-1/2 hidden sm:block">
+					<NavigationMenu.List className="flex items-center gap-1">
 							{navItems.map((item) => (
 								<NavigationMenu.Item key={item.label}>
 									<NavigationMenu.Trigger className={triggerClassName}>
 										{item.label}
 										<NavigationMenu.Icon className="transition-transform duration-200 ease-out data-popup-open:rotate-180">
-											<ChevronDown className="h-4 w-4" />
+											<ChevronDown className="h-4 w-4 text-muted-foreground" />
 										</NavigationMenu.Icon>
 									</NavigationMenu.Trigger>
 									<NavigationMenu.Content className={contentClassName}>
 										<ul className="grid grid-cols-2 gap-1">
 											{item.children.map((child) => (
-												<li key={child.href}>
+												<li key={child.href} className={child.fullWidth ? "col-span-2 border-t border-border mt-1 pt-1" : ""}>
 													{child.disabled ? (
-														<div className="flex items-start gap-3 rounded-md p-3 opacity-50 cursor-not-allowed">
+														<div className="flex h-full items-start gap-3 rounded-md p-3 opacity-50 cursor-not-allowed">
 															<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 															<div className="flex flex-col gap-0.5">
 																<span className="text-sm font-medium">
@@ -195,7 +218,7 @@ export function Header() {
 													) : (
 														<NavLink
 															href={child.href}
-															className="flex items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
+															className="flex h-full items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent/50 focus:bg-accent/50 focus:outline-none"
 														>
 															<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
 															<div className="flex flex-col gap-0.5">
@@ -237,27 +260,26 @@ export function Header() {
 						</NavigationMenu.Portal>
 					</NavigationMenu.Root>
 
-					{/* Mobile nav links */}
-					<div className="flex items-center gap-2 sm:hidden">
-						<Link
-							to="/nba"
-							className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
-						>
-							NBA
-						</Link>
-						<Link
-							to="/wnba"
-							className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
-						>
-							WNBA
-						</Link>
-						<Link
-							to="/gleague"
-							className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
-						>
-							G League
-						</Link>
-					</div>
+				{/* Mobile nav links */}
+				<div className="flex items-center gap-2 sm:hidden">
+					<Link
+						to="/nba"
+						className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
+					>
+						NBA
+					</Link>
+					<Link
+						to="/wnba"
+						className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
+					>
+						WNBA
+					</Link>
+					<Link
+						to="/gleague"
+						className="inline-flex px-2 py-2 text-sm hover:underline focus:underline"
+					>
+						G League
+					</Link>
 				</div>
 
 				<div className="flex items-center">

@@ -65,6 +65,7 @@ function buildGameTeam(
 		return {
 			id: "",
 			uid: undefined,
+			slug: undefined,
 			location: undefined,
 			name: "Unknown",
 			score: String(score ?? 0),
@@ -90,6 +91,7 @@ function buildGameTeam(
 	return {
 		id: team.espnTeamId,
 		uid: undefined,
+		slug: staticData?.api.slug,
 		location: team.location,
 		name: shortName || team.name,
 		score: String(score ?? 0),

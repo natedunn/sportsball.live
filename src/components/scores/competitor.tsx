@@ -1,7 +1,10 @@
+import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
 import { Image } from "@/components/ui/image";
 import { FavoriteStar } from "@/components/ui/favorite-star";
+import { leagueTeamRoutes } from "@/lib/league-routes";
+import type { League } from "@/lib/shared/league";
 import type { GameData } from "@/lib/types";
 
 type Team = GameData["home"] | GameData["away"];
@@ -9,6 +12,7 @@ type Team = GameData["home"] | GameData["away"];
 interface CompetitorProps {
 	team: Team;
 	homeAway: "home" | "away";
+	league: League;
 	isFavorited?: boolean;
 	classes?: {
 		wrapper?: string;
@@ -21,23 +25,19 @@ interface CompetitorProps {
 export function Competitor({
 	team,
 	homeAway,
+	league,
 	isFavorited = false,
 	classes,
 }: CompetitorProps) {
 	const isJazz = team.name === "Jazz";
 
-	return (
-		<div
-			className={cn(
-				"relative flex flex-col items-center gap-2 overflow-hidden",
-				classes?.wrapper,
-			)}
-		>
+	const content = (
+		<>
 			<div
 				className={cn(
 					"absolute inset-0 z-10 from-card from-40% to-transparent",
-					homeAway === "home" && "bg-gradient-to-tr",
-					homeAway === "away" && "bg-gradient-to-tl",
+					homeAway === "home" && "bg-linear-to-tr",
+					homeAway === "away" && "bg-linear-to-tl",
 				)}
 			/>
 			<TeamFlickeringGrid
@@ -53,7 +53,7 @@ export function Competitor({
 						width={40}
 						height={40}
 						className={cn(
-							"w-7 sm:w-8 md:w-10",
+							"w-7 sm:w-8 md:w-10 group-hover:scale-110 transition-transform",
 							classes?.logo,
 							isJazz && "dark:invert",
 						)}
@@ -65,7 +65,12 @@ export function Competitor({
 					)}
 				</div>
 				<div className="flex flex-col items-center">
-					<span className={cn("text-sm font-bold", classes?.team)}>
+					<span
+						className={cn(
+							"text-sm font-bold group-hover:underline decoration-2 decoration-foreground/75",
+							classes?.team,
+						)}
+					>
 						{team.name}
 					</span>
 					<span
@@ -78,6 +83,25 @@ export function Competitor({
 					</span>
 				</div>
 			</div>
-		</div>
+		</>
 	);
+
+	const wrapperClassName = cn(
+		"relative flex flex-col items-center gap-2 overflow-hidden",
+		classes?.wrapper,
+	);
+
+	if (team.slug) {
+		return (
+			<Link
+				to={leagueTeamRoutes[league]}
+				params={{ teamId: team.slug }}
+				className={cn(wrapperClassName, "group")}
+			>
+				{content}
+			</Link>
+		);
+	}
+
+	return <div className={wrapperClassName}>{content}</div>;
 }

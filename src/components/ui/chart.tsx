@@ -1,6 +1,40 @@
 import * as React from "react";
-import { Tooltip, TooltipProps } from "recharts";
+import { Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
+
+/**
+ * Hook that measures a container's dimensions via ResizeObserver.
+ * Returns null until the element has non-zero size, so charts can
+ * defer their first render until real dimensions are available.
+ * This avoids the ResponsiveContainer double-render that kills animations.
+ *
+ * Dimensions are rounded and only update state when they actually change,
+ * preventing unnecessary re-renders that would interrupt chart animations.
+ */
+export function useChartSize(ref: React.RefObject<HTMLElement | null>) {
+  const [size, setSize] = React.useState<{ width: number; height: number } | null>(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect;
+      const w = Math.round(width);
+      const h = Math.round(height);
+      if (w > 0 && h > 0) {
+        setSize((prev) => {
+          if (prev && prev.width === w && prev.height === h) return prev;
+          return { width: w, height: h };
+        });
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return size;
+}
 
 // Chart configuration type
 export type ChartConfig = Record<

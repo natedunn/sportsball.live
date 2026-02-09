@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
 	Area,
@@ -6,17 +6,18 @@ import {
 	CartesianGrid,
 	XAxis,
 	YAxis,
-	ResponsiveContainer,
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import {
 	ChartContainer,
 	ChartTooltip,
 	ChartTooltipContent,
+	useChartSize,
 	type ChartConfig,
 } from "@/components/ui/chart";
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "@/components/ui/menu";
 import { cn } from "@/lib/utils";
+import { AnimatedValue } from "../animated-value";
 import type { TeamGameData } from "./trend-chart";
 
 // Stat series configuration
@@ -193,9 +194,55 @@ const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
 
 // Chart data point type
 interface ChartDataPoint {
+	idx: number;
 	date: number;
 	dateLabel: string;
 	[key: string]: string | number;
+}
+
+const NORMALIZED_POINTS = 20;
+
+// Resample data to a fixed number of points via linear interpolation.
+// Keeps the line always full-width so range changes only morph y-values.
+function normalizeChartData(
+	data: ChartDataPoint[],
+	targetLength: number,
+	seriesKeys: string[],
+): ChartDataPoint[] {
+	if (data.length === 0) return [];
+	if (data.length === 1) {
+		return Array.from({ length: targetLength }, (_, i) => ({
+			...data[0],
+			idx: i,
+		}));
+	}
+
+	const result: ChartDataPoint[] = [];
+	for (let i = 0; i < targetLength; i++) {
+		const t = i / (targetLength - 1);
+		const srcIdx = t * (data.length - 1);
+		const lo = Math.floor(srcIdx);
+		const hi = Math.min(lo + 1, data.length - 1);
+		const frac = srcIdx - lo;
+
+		const point: ChartDataPoint = {
+			idx: i,
+			date:
+				(data[lo].date as number) +
+				((data[hi].date as number) - (data[lo].date as number)) * frac,
+			dateLabel: frac < 0.5 ? data[lo].dateLabel : data[hi].dateLabel,
+		};
+
+		for (const key of seriesKeys) {
+			const loVal = data[lo][key] as number;
+			const hiVal = data[hi][key] as number;
+			point[key] = loVal + (hiVal - loVal) * frac;
+		}
+
+		result.push(point);
+	}
+
+	return result;
 }
 
 // Extract stat values from game data
@@ -263,6 +310,7 @@ function calculateRollingAverages(
 	return gameStats.map((currentGame, idx) => {
 		const gamesUpToHere = gameStats.slice(0, idx + 1);
 		const result: ChartDataPoint = {
+			idx,
 			date: currentGame.date,
 			dateLabel: format(new Date(currentGame.date), "MMM d"),
 		};
@@ -374,7 +422,9 @@ interface TrendSectionProps {
 }
 
 function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
-	const seriesKeys = preset.series.map((s) => s.key);
+	const chartRef = useRef<HTMLDivElement>(null);
+	const chartSize = useChartSize(chartRef);
+	const seriesKeys = useMemo(() => preset.series.map((s) => s.key), [preset.series]);
 
 	const chartConfig = useMemo(() => {
 		const cfg: ChartConfig = {};
@@ -390,8 +440,11 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 	const chartData = useMemo(() => {
 		if (games.length === 0) return [];
 		const rawStats = extractGameStats(games, seriesKeys);
-		return calculateRollingAverages(rawStats, seriesKeys);
+		const rolling = calculateRollingAverages(rawStats, seriesKeys);
+		return normalizeChartData(rolling, NORMALIZED_POINTS, seriesKeys);
 	}, [games, seriesKeys]);
+
+
 
 	const summaryData = useMemo(() => {
 		if (chartData.length < 2) return null;
@@ -496,13 +549,17 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 								summaryData.derived ? "grid-cols-3" : "grid-cols-2",
 							)}
 						>
-							{summaryData.series.map((s) => (
+							{summaryData.series.map((s, i) => (
 								<div key={s.key} className="text-center py-4 px-3">
 									<div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
 										{s.label}
 									</div>
 									<div className="text-2xl font-bold tabular-nums">
-										{s.format(s.current)}
+										<AnimatedValue
+											value={s.current}
+											format={s.format}
+											delay={i * 100}
+										/>
 									</div>
 									<div
 										className={cn(
@@ -512,8 +569,14 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 												: "text-red-500",
 										)}
 									>
-										{s.trend >= 0 ? "+" : ""}
-										{s.format(s.trend)} {trendLabel}
+										<AnimatedValue
+											value={s.trend}
+											format={(v) =>
+												`${v >= 0 ? "+" : ""}${s.format(v)} ${trendLabel}`
+											}
+											delay={i * 100 + 200}
+											duration={600}
+										/>
 									</div>
 								</div>
 							))}
@@ -523,7 +586,11 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 										{summaryData.derived.label}
 									</div>
 									<div className="text-2xl font-bold tabular-nums">
-										{summaryData.derived.format(summaryData.derived.current)}
+										<AnimatedValue
+											value={summaryData.derived.current}
+											format={summaryData.derived.format}
+											delay={summaryData.series.length * 100}
+										/>
 									</div>
 									<div
 										className={cn(
@@ -537,8 +604,14 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 												: "text-red-500",
 										)}
 									>
-										{summaryData.derived.format(summaryData.derived.trend)}{" "}
-										{trendLabel}
+										<AnimatedValue
+											value={summaryData.derived.trend}
+											format={(v) =>
+												`${summaryData.derived!.format(v)} ${trendLabel}`
+											}
+											delay={summaryData.series.length * 100 + 200}
+											duration={600}
+										/>
 									</div>
 								</div>
 							)}
@@ -548,9 +621,11 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 
 				{/* Chart */}
 				<div className="p-6">
-					<ChartContainer config={chartConfig} className="h-[250px] w-full">
-						<ResponsiveContainer width="100%" height="100%">
+					<ChartContainer ref={chartRef} config={chartConfig} className="h-[250px] w-full">
+						{chartSize && (
 							<AreaChart
+								width={chartSize.width}
+								height={chartSize.height}
 								data={chartData}
 								margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
 							>
@@ -579,14 +654,19 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 								</defs>
 								<CartesianGrid strokeDasharray="3 3" vertical={false} />
 								<XAxis
-									dataKey="dateLabel"
+									dataKey="idx"
+									type="number"
+									domain={[0, NORMALIZED_POINTS - 1]}
+									tickFormatter={(idx: number) =>
+										chartData[Math.round(idx)]?.dateLabel ?? ""
+									}
+									ticks={Array.from({ length: 5 }, (_, i) =>
+										Math.round((i * (NORMALIZED_POINTS - 1)) / 4),
+									)}
 									tickLine={false}
 									axisLine={false}
 									tickMargin={8}
 									fontSize={11}
-									interval={
-										chartData.length > 12 ? Math.floor(chartData.length / 6) : 0
-									}
 								/>
 								<YAxis
 									domain={[minY, maxY]}
@@ -620,12 +700,13 @@ function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
 										stroke={series.color}
 										strokeWidth={2}
 										fill={`url(#fill-trends-${series.key})`}
-										dot={{ fill: series.color, strokeWidth: 0, r: 3 }}
+										dot={false}
 										activeDot={{ r: 5, strokeWidth: 0 }}
+										animationDuration={300}
 									/>
 								))}
 							</AreaChart>
-						</ResponsiveContainer>
+						)}
 					</ChartContainer>
 				</div>
 

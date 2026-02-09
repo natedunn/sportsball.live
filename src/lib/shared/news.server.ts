@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getTeamStaticData } from "@/lib/teams";
 import type { League } from "./league";
 import { getLeagueSiteApi } from "./league";
 
@@ -80,3 +81,56 @@ export const fetchGLeagueNews = createServerFn({ method: "GET" }).handler(
 		return fetchNewsForLeague("gleague");
 	},
 );
+
+// ============================================================================
+// Team-Specific News
+// ============================================================================
+
+interface TeamNewsInput {
+	league: League;
+	teamSlug: string;
+}
+
+async function fetchTeamNewsForLeague(
+	league: League,
+	teamSlug: string,
+): Promise<NewsArticle[]> {
+	const teamData = getTeamStaticData(league, teamSlug);
+	if (!teamData) {
+		return [];
+	}
+
+	const teamId = teamData.api.id;
+	const baseUrl = getLeagueSiteApi(league);
+
+	const response = await fetch(`${baseUrl}/news?limit=10&team=${teamId}`, {
+		headers: { "Content-Type": "application/json" },
+	});
+
+	if (!response.ok) {
+		return [];
+	}
+
+	const apiData = (await response.json()) as ApiResponse;
+
+	if (!apiData.articles) {
+		return [];
+	}
+
+	return apiData.articles.map(
+		(article): NewsArticle => ({
+			id: article.dataSourceIdentifier ?? crypto.randomUUID(),
+			headline: article.headline ?? "",
+			description: article.description ?? "",
+			published: article.published ?? "",
+			link: article.links?.web?.href ?? "",
+			image: article.images?.[0]?.url,
+		}),
+	);
+}
+
+export const fetchTeamNews = createServerFn({ method: "GET" })
+	.inputValidator((d: TeamNewsInput) => d)
+	.handler(async ({ data }): Promise<NewsArticle[]> => {
+		return fetchTeamNewsForLeague(data.league, data.teamSlug);
+	});

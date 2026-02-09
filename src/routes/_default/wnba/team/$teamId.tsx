@@ -162,6 +162,7 @@ function WnbaTeamPage() {
 			injuries={injuries ?? []}
 			gameLog={gameLog}
 			league="wnba"
+			teamSlug={teamSlug}
 			activeTab={activeTab}
 			onTabChange={handleTabChange}
 		/>

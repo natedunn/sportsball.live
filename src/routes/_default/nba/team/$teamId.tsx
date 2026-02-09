@@ -163,6 +163,7 @@ function NbaTeamPage() {
 			injuries={injuries ?? []}
 			gameLog={gameLog}
 			league="nba"
+			teamSlug={teamSlug}
 			activeTab={activeTab}
 			onTabChange={handleTabChange}
 		/>

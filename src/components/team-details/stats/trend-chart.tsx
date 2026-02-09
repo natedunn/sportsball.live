@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
   Area,
@@ -6,13 +6,13 @@ import {
   CartesianGrid,
   XAxis,
   YAxis,
-  ResponsiveContainer,
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  useChartSize,
   type ChartConfig,
 } from "@/components/ui/chart";
 import {
@@ -86,6 +86,8 @@ export function TrendChart({
   title = "Efficiency Trends",
   subtitle = "Offensive & Defensive Rating",
 }: TrendChartProps) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartSize = useChartSize(chartRef);
   const [timeRange, setTimeRange] = useState<TimeRange>("season");
 
   const selectedOption = TIME_RANGE_OPTIONS.find((o) => o.value === timeRange)!;
@@ -310,9 +312,11 @@ export function TrendChart({
         )}
 
         {/* Chart */}
-        <ChartContainer config={chartConfig} className="h-[250px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <ChartContainer ref={chartRef} config={chartConfig} className="h-[250px] w-full">
+          {chartSize && (
             <AreaChart
+              width={chartSize.width}
+              height={chartSize.height}
               data={chartData}
               margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
             >
@@ -386,7 +390,7 @@ export function TrendChart({
                 activeDot={{ r: 5, strokeWidth: 0 }}
               />
             </AreaChart>
-          </ResponsiveContainer>
+          )}
         </ChartContainer>
 
         {/* Legend */}

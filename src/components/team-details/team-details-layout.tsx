@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, LayoutDashboard, Users, Calendar, BarChart3, TrendingUp } from "lucide-react";
+import {
+	ArrowLeft,
+	LayoutDashboard,
+	Users,
+	Calendar,
+	BarChart3,
+	TrendingUp,
+} from "lucide-react";
+import { AnimationProvider } from "./animation-context";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TeamHeader } from "./team-header";
 import { OverviewTab } from "./overview/overview-tab";
@@ -28,6 +36,7 @@ interface TeamDetailsLayoutProps {
 	injuries: InjuredPlayer[];
 	gameLog: TeamGameData[];
 	league: League;
+	teamSlug: string;
 	activeTab: string;
 	onTabChange: (tab: string) => void;
 }
@@ -41,6 +50,7 @@ export function TeamDetailsLayout({
 	injuries,
 	gameLog,
 	league,
+	teamSlug,
 	activeTab,
 	onTabChange,
 }: TeamDetailsLayoutProps) {
@@ -57,104 +67,126 @@ export function TeamDetailsLayout({
 		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 	return (
-		<div className="flex flex-col pb-16 lg:pb-24">
-			{/* Header with team info */}
-			<TeamHeader overview={overview} league={league} />
+		<AnimationProvider activeTab={activeTab}>
+			<div className="flex flex-col pb-16 lg:pb-24">
+				{/* Header with team info */}
+				<TeamHeader overview={overview} league={league} />
 
-			{/* Tabbed Content */}
-			<div className="relative bg-background">
-				<Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-					{/* Navigation row with full-width border */}
-					<div className="border-b border-border">
-						<div className="container">
-							<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
-								{/* Back link */}
-								<Link
-									to={leagueRoutes[league]}
-									className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors sm:w-30"
-								>
-									<ArrowLeft className="h-4 w-4" />
-									<span>Back to {leagueLabels[league]}</span>
-								</Link>
-
-								{/* Tabs */}
-								<TabsList className="w-full sm:w-auto">
-									<TabsTrigger
-										value="overview"
-										className="flex-1 sm:flex-initial"
+				{/* Tabbed Content */}
+				<div className="relative bg-background">
+					<Tabs
+						value={activeTab}
+						onValueChange={onTabChange}
+						className="w-full"
+					>
+						{/* Navigation row with full-width border */}
+						<div className="border-b border-border">
+							<div className="container">
+								<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
+									{/* Back link */}
+									<Link
+										to={leagueRoutes[league]}
+										className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors sm:w-30"
 									>
-										<LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
-										Overview
-									</TabsTrigger>
-									<TabsTrigger
-										value="roster"
-										className="flex-1 sm:flex-initial"
-									>
-										<Users className="h-3.5 w-3.5 mr-1.5" />
-										Roster
-									</TabsTrigger>
-									<TabsTrigger value="games" className="flex-1 sm:flex-initial">
-										<Calendar className="h-3.5 w-3.5 mr-1.5" />
-										Games
-									</TabsTrigger>
-									<TabsTrigger value="stats" className="flex-1 sm:flex-initial">
-										<BarChart3 className="h-3.5 w-3.5 mr-1.5" />
-										Stats
-									</TabsTrigger>
-									<TabsTrigger value="trends" className="flex-1 sm:flex-initial">
-										<TrendingUp className="h-3.5 w-3.5 mr-1.5" />
-										Trends
-									</TabsTrigger>
-								</TabsList>
+										<ArrowLeft className="h-4 w-4" />
+										<span>Back to {leagueLabels[league]}</span>
+									</Link>
 
-								{/* Spacer for desktop alignment */}
-								<div className="hidden sm:block w-[120px]" />
+									{/* Tabs */}
+									<TabsList className="w-full sm:w-auto">
+										<TabsTrigger
+											value="overview"
+											className="flex-1 sm:flex-initial"
+										>
+											<LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
+											Overview
+										</TabsTrigger>
+										<TabsTrigger
+											value="roster"
+											className="flex-1 sm:flex-initial"
+										>
+											<Users className="h-3.5 w-3.5 mr-1.5" />
+											Roster
+										</TabsTrigger>
+										<TabsTrigger
+											value="games"
+											className="flex-1 sm:flex-initial"
+										>
+											<Calendar className="h-3.5 w-3.5 mr-1.5" />
+											Games
+										</TabsTrigger>
+										<TabsTrigger
+											value="stats"
+											className="flex-1 sm:flex-initial"
+										>
+											<BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+											Stats
+										</TabsTrigger>
+										<TabsTrigger
+											value="trends"
+											className="flex-1 sm:flex-initial"
+										>
+											<TrendingUp className="h-3.5 w-3.5 mr-1.5" />
+											Trends
+										</TabsTrigger>
+									</TabsList>
+
+									{/* Spacer for desktop alignment */}
+									<div className="hidden sm:block w-30" />
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<div className="container py-8">
-						<TabsContent value="overview" className="mt-0">
-							<OverviewTab
-								overview={overview}
-								stats={stats}
-								leaders={leaders}
-								injuries={injuries}
-								recentGames={pastGames.slice(0, 3)}
-								upcomingGames={upcomingGames.slice(0, 3)}
-								league={league}
-								onTabChange={onTabChange}
-							/>
-						</TabsContent>
+						<div className="container py-8">
+							<TabsContent value="overview" className="mt-0">
+								<OverviewTab
+									overview={overview}
+									stats={stats}
+									leaders={leaders}
+									injuries={injuries}
+									recentGames={pastGames.slice(0, 3)}
+									upcomingGames={upcomingGames.slice(0, 3)}
+									league={league}
+									teamSlug={teamSlug}
+									onTabChange={onTabChange}
+								/>
+							</TabsContent>
 
-						<TabsContent value="roster" className="mt-0">
-							<RosterTab roster={roster} league={league} />
-						</TabsContent>
+							<TabsContent value="roster" className="mt-0">
+								<RosterTab roster={roster} league={league} />
+							</TabsContent>
 
-						<TabsContent value="games" className="mt-0">
-							<GamesTab games={schedule} teamId={overview.id} league={league} />
-						</TabsContent>
+							<TabsContent value="games" className="mt-0">
+								<GamesTab
+									games={schedule}
+									teamId={overview.id}
+									league={league}
+								/>
+							</TabsContent>
 
-						<TabsContent value="stats" className="mt-0">
-							<StatsTab stats={stats} />
-						</TabsContent>
+							<TabsContent value="stats" className="mt-0">
+								<StatsTab stats={stats} />
+							</TabsContent>
 
-						<TabsContent value="trends" className="mt-0">
-							{gameLog.length >= 2 ? (
-								<TrendsCard gameData={gameLog} />
-							) : (
-								<div className="flex flex-col items-center justify-center py-16 text-center">
-									<h3 className="text-lg font-semibold mb-1">Trends Unavailable</h3>
-									<p className="text-sm text-muted-foreground max-w-sm">
-										Need at least 2 games of data to show trends.
-									</p>
-								</div>
-							)}
-						</TabsContent>
-					</div>
-				</Tabs>
+							<TabsContent value="trends" className="mt-0">
+								{gameLog.length >= 2 ? (
+									<TrendsCard gameData={gameLog} />
+								) : (
+									<div className="flex flex-col items-center justify-center py-16 text-center">
+										<h3 className="text-lg font-semibold mb-1">
+											Trends Unavailable
+										</h3>
+										<p className="text-sm text-muted-foreground max-w-sm">
+											Need at least 2 games of data to show trends.
+										</p>
+									</div>
+								)}
+							</TabsContent>
+						</div>
+					</Tabs>
+				</div>
 			</div>
-		</div>
+		</AnimationProvider>
 	);
 }
 

@@ -1,6 +1,7 @@
 import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
 import { Trophy } from "lucide-react";
+import { SectionHeader } from "../section-header";
 import type { TeamLeader } from "@/lib/types/team";
 
 interface TopPerformersProps {
@@ -20,10 +21,7 @@ export function TopPerformers({ leaders }: TopPerformersProps) {
 
   return (
     <div>
-      <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-        <Trophy className="h-5 w-5" />
-        Team Leaders
-      </h3>
+      <SectionHeader icon={Trophy} title="Team Leaders" />
       <Card classNames={{ inner: "flex-col p-0" }}>
         <div>
           {leaders.map((leader, index) => (

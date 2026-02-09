@@ -2,6 +2,7 @@ import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
 import { HeartPulse } from "lucide-react";
+import { SectionHeader } from "../section-header";
 import type { InjuredPlayer } from "@/lib/types/team";
 
 function formatPlayerName(name: string): string {
@@ -27,15 +28,15 @@ const statusColors: Record<string, string> = {
 export function InjuryReport({ injuries }: InjuryReportProps) {
   return (
     <div>
-      <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-        <HeartPulse className="h-5 w-5" />
-        Injury Report
-        {injuries.length > 0 && (
+      <SectionHeader
+        icon={HeartPulse}
+        title="Injury Report"
+        badge={injuries.length > 0 && (
           <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {injuries.length}
           </span>
         )}
-      </h3>
+      />
       <Card classNames={{ inner: "flex-col p-0" }}>
         {injuries.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-muted-foreground">

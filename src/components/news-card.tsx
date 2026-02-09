@@ -1,11 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-
-interface NewsArticle {
-	headline: string;
-	description: string;
-	published: string;
-	link: string;
-}
+import type { NewsArticle } from "@/lib/shared/news.server";
 
 export function NewsCard({ article }: { article: NewsArticle }) {
 	const timeAgo = article.published

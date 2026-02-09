@@ -136,18 +136,21 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
           value={formatRecord(records.overall.wins, records.overall.losses)}
           subtitle={formatWinPct(records.overall.wins, records.overall.losses)}
           icon={Trophy}
+          delay={0}
         />
         <StatCard
           label="Home"
           value={formatRecord(records.home.wins, records.home.losses)}
           subtitle={formatWinPct(records.home.wins, records.home.losses)}
           icon={Home}
+          delay={50}
         />
         <StatCard
           label="Away"
           value={formatRecord(records.away.wins, records.away.losses)}
           subtitle={formatWinPct(records.away.wins, records.away.losses)}
           icon={Plane}
+          delay={100}
         />
         <StatCard
           label="Last 10"
@@ -155,6 +158,7 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
           subtitle={formatWinPct(records.last10.wins, records.last10.losses)}
           icon={TrendingUp}
           highlight
+          delay={150}
         />
       </div>
 

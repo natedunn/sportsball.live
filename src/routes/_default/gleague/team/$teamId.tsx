@@ -162,6 +162,7 @@ function GleagueTeamPage() {
 			injuries={injuries ?? []}
 			gameLog={gameLog}
 			league="gleague"
+			teamSlug={teamSlug}
 			activeTab={activeTab}
 			onTabChange={handleTabChange}
 		/>

@@ -121,7 +121,7 @@ interface SelectContentProps {
 export function SelectContent({ children, className }: SelectContentProps) {
 	return (
 		<BaseSelect.Portal>
-			<BaseSelect.Positioner sideOffset={4}>
+			<BaseSelect.Positioner sideOffset={4} className="z-50">
 				<BaseSelect.Popup
 					className={cn(
 						"z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 shadow-md",

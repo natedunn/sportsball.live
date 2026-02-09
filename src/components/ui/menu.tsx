@@ -51,7 +51,7 @@ export function MenuContent({
 }: MenuContentProps) {
 	return (
 		<BaseMenu.Portal>
-			<BaseMenu.Positioner side="bottom" align={align} sideOffset={sideOffset}>
+			<BaseMenu.Positioner side="bottom" align={align} sideOffset={sideOffset} className="z-50">
 				<BaseMenu.Popup
 					className={cn(
 						"z-50 min-w-[180px] rounded-lg border border-border bg-popover p-1 shadow-lg outline-none",

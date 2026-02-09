@@ -11,6 +11,7 @@ import {
 	convexRosterToPlayers,
 	convexScheduleToGames,
 	deriveTeamLeaders,
+	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
 import { teamInjuriesQueryOptions } from "@/lib/gleague/team.queries";
 import {
@@ -86,6 +87,11 @@ function GleagueTeamPage() {
 		enabled: !!teamId,
 	});
 
+	const { data: rawGameLog } = useQuery({
+		...convexQuery(api.gleague.queries.getTeamGameLog, { teamId: teamId! }),
+		enabled: !!teamId,
+	});
+
 	// Injuries still from ESPN
 	const { data: injuries } = useQuery(teamInjuriesQueryOptions(teamSlug));
 
@@ -113,6 +119,11 @@ function GleagueTeamPage() {
 	const leaders = useMemo(
 		() => deriveTeamLeaders(roster),
 		[roster],
+	);
+
+	const gameLog = useMemo(
+		() => convexGameLogToTrendData(rawGameLog ?? []),
+		[rawGameLog],
 	);
 
 	// Local state for immediate UI feedback
@@ -149,6 +160,7 @@ function GleagueTeamPage() {
 			providerStats={stats}
 			leaders={leaders}
 			injuries={injuries ?? []}
+			gameLog={gameLog}
 			league="gleague"
 			activeTab={activeTab}
 			onTabChange={handleTabChange}

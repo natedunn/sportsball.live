@@ -23,6 +23,7 @@ import type {
 	TeamStats,
 	TeamLeader,
 } from "@/lib/types/team";
+import type { TeamGameData } from "@/components/team-details/stats/trend-chart";
 
 // ============================================================
 // Event status → State mapping
@@ -525,6 +526,33 @@ export function convexScheduleToGames(
 			venue: game.venue,
 		};
 	});
+}
+
+// ============================================================
+// Team Page → TeamGameData[] (for trend charts)
+// ============================================================
+
+export function convexGameLogToTrendData(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	gameLog: any[],
+): TeamGameData[] {
+	return gameLog.map((event) => ({
+		gameDate: event.gameDate,
+		pointsFor: event.score,
+		pointsAgainst: event.oppScore,
+		won: event.winner,
+		fgMade: event.fieldGoalsMade,
+		fgAttempted: event.fieldGoalsAttempted,
+		threeMade: event.threePointMade,
+		threeAttempted: event.threePointAttempted,
+		ftMade: event.freeThrowsMade,
+		ftAttempted: event.freeThrowsAttempted,
+		rebounds: event.totalRebounds,
+		assists: event.assists,
+		steals: event.steals,
+		blocks: event.blocks,
+		turnovers: event.turnovers,
+	}));
 }
 
 // ============================================================

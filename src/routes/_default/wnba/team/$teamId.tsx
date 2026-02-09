@@ -11,6 +11,7 @@ import {
 	convexRosterToPlayers,
 	convexScheduleToGames,
 	deriveTeamLeaders,
+	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
 import { teamInjuriesQueryOptions } from "@/lib/wnba/team.queries";
 import {
@@ -86,6 +87,11 @@ function WnbaTeamPage() {
 		enabled: !!teamId,
 	});
 
+	const { data: rawGameLog } = useQuery({
+		...convexQuery(api.wnba.queries.getTeamGameLog, { teamId: teamId! }),
+		enabled: !!teamId,
+	});
+
 	// Injuries still from ESPN
 	const { data: injuries } = useQuery(teamInjuriesQueryOptions(teamSlug));
 
@@ -113,6 +119,11 @@ function WnbaTeamPage() {
 	const leaders = useMemo(
 		() => deriveTeamLeaders(roster),
 		[roster],
+	);
+
+	const gameLog = useMemo(
+		() => convexGameLogToTrendData(rawGameLog ?? []),
+		[rawGameLog],
 	);
 
 	// Local state for immediate UI feedback
@@ -149,6 +160,7 @@ function WnbaTeamPage() {
 			providerStats={stats}
 			leaders={leaders}
 			injuries={injuries ?? []}
+			gameLog={gameLog}
 			league="wnba"
 			activeTab={activeTab}
 			onTabChange={handleTabChange}

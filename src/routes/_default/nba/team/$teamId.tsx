@@ -11,6 +11,7 @@ import {
 	convexRosterToPlayers,
 	convexScheduleToGames,
 	deriveTeamLeaders,
+	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
 import { teamInjuriesQueryOptions } from "@/lib/nba/team.queries";
 import {
@@ -46,10 +47,14 @@ export const Route = createFileRoute("/_default/nba/team/$teamId")({
 				// Fetch roster and schedule in parallel
 				await Promise.all([
 					context.queryClient.ensureQueryData(
-						convexQuery(api.nba.queries.getTeamRoster, { teamId: team._id as Id<"nbaTeam"> }),
+						convexQuery(api.nba.queries.getTeamRoster, {
+							teamId: team._id as Id<"nbaTeam">,
+						}),
 					),
 					context.queryClient.ensureQueryData(
-						convexQuery(api.nba.queries.getTeamSchedule, { teamId: team._id as Id<"nbaTeam"> }),
+						convexQuery(api.nba.queries.getTeamSchedule, {
+							teamId: team._id as Id<"nbaTeam">,
+						}),
 					),
 				]);
 			}
@@ -86,17 +91,22 @@ function NbaTeamPage() {
 		enabled: !!teamId,
 	});
 
+	const { data: rawGameLog } = useQuery({
+		...convexQuery(api.nba.queries.getTeamGameLog, { teamId: teamId! }),
+		enabled: !!teamId,
+	});
+
 	// Injuries still from ESPN
 	const { data: injuries } = useQuery(teamInjuriesQueryOptions(teamSlug));
 
 	// Transform Convex data to component types
 	const overview = useMemo(
-		() => rawTeam ? convexTeamToOverview(rawTeam, "nba") : null,
+		() => (rawTeam ? convexTeamToOverview(rawTeam, "nba") : null),
 		[rawTeam],
 	);
 
 	const stats = useMemo(
-		() => rawTeam ? convexTeamToStats(rawTeam) : undefined,
+		() => (rawTeam ? convexTeamToStats(rawTeam) : undefined),
 		[rawTeam],
 	);
 
@@ -110,9 +120,11 @@ function NbaTeamPage() {
 		[rawSchedule],
 	);
 
-	const leaders = useMemo(
-		() => deriveTeamLeaders(roster),
-		[roster],
+	const leaders = useMemo(() => deriveTeamLeaders(roster), [roster]);
+
+	const gameLog = useMemo(
+		() => convexGameLogToTrendData(rawGameLog ?? []),
+		[rawGameLog],
 	);
 
 	// Local state for immediate UI feedback
@@ -149,6 +161,7 @@ function NbaTeamPage() {
 			providerStats={stats}
 			leaders={leaders}
 			injuries={injuries ?? []}
+			gameLog={gameLog}
 			league="nba"
 			activeTab={activeTab}
 			onTabChange={handleTabChange}

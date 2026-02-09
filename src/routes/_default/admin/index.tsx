@@ -80,11 +80,14 @@ function LeagueCard({ league }: { league: League }) {
 
 	const startMutation = useConvexMutation(api.bootstrapAdmin.startBootstrap);
 	const cancelMutation = useConvexMutation(api.bootstrapAdmin.cancelBootstrap);
+	const resetMutation = useConvexMutation(api.bootstrapAdmin.resetBootstrap);
 
 	const status = statuses?.[league];
 	const isRunning = status?.status === "running";
 	const isCancelling = status?.status === "cancelling";
+	const isFailed = status?.status === "failed";
 	const isBusy = isRunning || isCancelling;
+	const isStuck = isFailed || isCancelling;
 
 	const handleStart = async () => {
 		setError(null);
@@ -104,6 +107,15 @@ function LeagueCard({ league }: { league: League }) {
 		}
 	};
 
+	const handleReset = async () => {
+		setError(null);
+		try {
+			await resetMutation({ league });
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to reset");
+		}
+	};
+
 	return (
 		<div className="rounded-xl border border-border bg-card p-6">
 			<div className="flex items-start justify-between">
@@ -119,6 +131,11 @@ function LeagueCard({ league }: { league: League }) {
 				</div>
 
 				<div className="flex gap-2">
+					{isStuck && !isRunning && (
+						<Button variant="outline" size="sm" onClick={handleReset}>
+							Reset
+						</Button>
+					)}
 					{isBusy ? (
 						<Button
 							variant="destructive"

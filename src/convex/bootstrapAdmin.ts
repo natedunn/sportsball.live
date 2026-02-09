@@ -171,13 +171,55 @@ export const cancelBootstrap = mutation({
 			.withIndex("by_league", (q) => q.eq("league", args.league))
 			.first();
 
-		if (!existing || existing.status !== "running") {
-			throw new Error(`No running bootstrap to cancel for ${args.league}`);
+		if (!existing || existing.status === "idle" || existing.status === "completed") {
+			throw new Error(`No active bootstrap to cancel for ${args.league}`);
+		}
+
+		// If already failed or stuck cancelling, force-reset to idle
+		if (existing.status === "failed" || existing.status === "cancelling") {
+			await ctx.db.patch(existing._id, {
+				status: "idle",
+				currentStep: undefined,
+				progress: undefined,
+				error: undefined,
+				updatedAt: Date.now(),
+			});
+			return;
 		}
 
 		await ctx.db.patch(existing._id, {
 			status: "cancelling",
 			progress: "Cancelling...",
+			updatedAt: Date.now(),
+		});
+	},
+});
+
+export const resetBootstrap = mutation({
+	args: { league: leagueValidator },
+	handler: async (ctx, args) => {
+		// Auth check
+		const user = await authComponent.safeGetAuthUser(ctx);
+		if (!user?.email) throw new Error("Not authenticated");
+		const superAdminEmail = process.env.SUPER_ADMIN;
+		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
+			throw new Error("Not authorized");
+		}
+
+		const existing = await ctx.db
+			.query("bootstrapStatus")
+			.withIndex("by_league", (q) => q.eq("league", args.league))
+			.first();
+
+		if (!existing || existing.status === "idle") {
+			return; // Nothing to reset
+		}
+
+		await ctx.db.patch(existing._id, {
+			status: "idle",
+			currentStep: undefined,
+			progress: undefined,
+			error: undefined,
 			updatedAt: Date.now(),
 		});
 	},
@@ -289,6 +331,18 @@ export const markFailed = internalMutation({
 			.first();
 
 		if (status) {
+			// If the user already requested cancellation, honor that over the failure
+			if (status.status === "cancelling") {
+				await ctx.db.patch(status._id, {
+					status: "idle",
+					currentStep: undefined,
+					progress: undefined,
+					error: undefined,
+					updatedAt: Date.now(),
+				});
+				return;
+			}
+
 			await ctx.db.patch(status._id, {
 				status: "failed",
 				error: args.error,

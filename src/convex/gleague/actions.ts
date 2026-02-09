@@ -901,6 +901,7 @@ export const backfillDateChunk = internalAction({
 				await ctx.scheduler.runAfter(BACKFILL_DELAY_MS, internal.gleague.actions.backfillDateChunk, {
 					dates: args.dates,
 					offset: args.offset + 1,
+					bootstrapRunId: args.bootstrapRunId,
 				});
 				return;
 			}

@@ -955,6 +955,7 @@ export const backfillDateChunk = internalAction({
 					dates: args.dates,
 					offset: args.offset + 1,
 					targetEspnTeamId: args.targetEspnTeamId,
+					bootstrapRunId: args.bootstrapRunId,
 				});
 				return;
 			}

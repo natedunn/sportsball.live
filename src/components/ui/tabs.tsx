@@ -107,7 +107,7 @@ export function TabsTrigger({
 				"relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all",
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 				"disabled:pointer-events-none disabled:opacity-50",
-				"data-active:text-amber-50",
+				"hover:text-foreground data-active:text-amber-50 data-active:[&_svg]:text-amber-500",
 				className,
 			)}
 		>
@@ -120,7 +120,7 @@ function TabsIndicator() {
 	return (
 		<BaseTabs.Indicator
 			className={cn(
-				"absolute rounded-md bg-foreground/10 shadow-sm transition-all duration-200",
+				"absolute rounded-md border border-border bg-linear-to-b from-foreground/9 to-foreground/7 shadow-sm transition-all duration-200",
 				"top-(--active-tab-top) left-(--active-tab-left)",
 				"h-(--active-tab-height) w-(--active-tab-width)",
 			)}

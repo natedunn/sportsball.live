@@ -140,7 +140,7 @@ export function GameDetailsLayout({
 								Back to scores
 							</Link>
 							<TabsList>
-								<TabsTrigger value="box-score">Game Details</TabsTrigger>
+								<TabsTrigger value="box-score">Box Score</TabsTrigger>
 								<TabsTrigger value="team-stats">Team Stats</TabsTrigger>
 								{game.allSeries && game.allSeries.length > 0 && (
 									<TabsTrigger value="matchups">Matchups</TabsTrigger>

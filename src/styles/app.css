@@ -238,6 +238,6 @@ html {
 
 .dark .bg-halftone {
 	background-image:
-		radial-gradient(circle at center, #00000075 0.05rem, transparent 0),
-		radial-gradient(circle at center, #ffffff25 0.05rem, transparent 0);
+		radial-gradient(circle at center, #00000050 0.1rem, transparent 0),
+		radial-gradient(circle at center, #ffffff15 0.1rem, transparent 0);
 }

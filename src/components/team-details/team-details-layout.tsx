@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Users, Calendar, BarChart3, TrendingUp } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TeamHeader } from "./team-header";
 import { OverviewTab } from "./overview/overview-tab";
 import { RosterTab } from "./roster/roster-tab";
 import { GamesTab } from "./games/games-tab";
 import { StatsTab } from "./stats/stats-tab";
+import { TrendsCard } from "./stats/trends-card";
 import { leagueLabels, type League } from "@/lib/teams";
 import { leagueRoutes } from "@/lib/league-routes";
 import type {
@@ -16,6 +17,7 @@ import type {
 	TeamLeader,
 	InjuredPlayer,
 } from "@/lib/types/team";
+import type { TeamGameData } from "./stats/trend-chart";
 
 interface TeamDetailsLayoutProps {
 	overview: TeamOverview;
@@ -24,6 +26,7 @@ interface TeamDetailsLayoutProps {
 	providerStats: TeamStats | undefined;
 	leaders: TeamLeader[];
 	injuries: InjuredPlayer[];
+	gameLog: TeamGameData[];
 	league: League;
 	activeTab: string;
 	onTabChange: (tab: string) => void;
@@ -36,6 +39,7 @@ export function TeamDetailsLayout({
 	providerStats,
 	leaders,
 	injuries,
+	gameLog,
 	league,
 	activeTab,
 	onTabChange,
@@ -79,19 +83,27 @@ export function TeamDetailsLayout({
 										value="overview"
 										className="flex-1 sm:flex-initial"
 									>
+										<LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
 										Overview
 									</TabsTrigger>
 									<TabsTrigger
 										value="roster"
 										className="flex-1 sm:flex-initial"
 									>
+										<Users className="h-3.5 w-3.5 mr-1.5" />
 										Roster
 									</TabsTrigger>
 									<TabsTrigger value="games" className="flex-1 sm:flex-initial">
+										<Calendar className="h-3.5 w-3.5 mr-1.5" />
 										Games
 									</TabsTrigger>
 									<TabsTrigger value="stats" className="flex-1 sm:flex-initial">
+										<BarChart3 className="h-3.5 w-3.5 mr-1.5" />
 										Stats
+									</TabsTrigger>
+									<TabsTrigger value="trends" className="flex-1 sm:flex-initial">
+										<TrendingUp className="h-3.5 w-3.5 mr-1.5" />
+										Trends
 									</TabsTrigger>
 								</TabsList>
 
@@ -125,6 +137,19 @@ export function TeamDetailsLayout({
 
 						<TabsContent value="stats" className="mt-0">
 							<StatsTab stats={stats} />
+						</TabsContent>
+
+						<TabsContent value="trends" className="mt-0">
+							{gameLog.length >= 2 ? (
+								<TrendsCard gameData={gameLog} />
+							) : (
+								<div className="flex flex-col items-center justify-center py-16 text-center">
+									<h3 className="text-lg font-semibold mb-1">Trends Unavailable</h3>
+									<p className="text-sm text-muted-foreground max-w-sm">
+										Need at least 2 games of data to show trends.
+									</p>
+								</div>
+							)}
 						</TabsContent>
 					</div>
 				</Tabs>

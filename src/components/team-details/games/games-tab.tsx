@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
 import { Image } from "@/components/ui/image";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { MarginBar } from "./margin-bar";
 import { StatCard } from "../stat-card";
@@ -162,42 +163,23 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground font-medium">Location</span>
-            <div className="inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground border">
-              {(["all", "home", "away"] as Filter[]).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setLocationFilter(filter)}
-                  className={cn(
-                    "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all",
-                    locationFilter === filter
-                      ? "bg-background text-foreground shadow-sm"
-                      : "hover:text-foreground"
-                  )}
-                >
-                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </button>
-              ))}
-            </div>
+            <Tabs value={locationFilter} onValueChange={(v) => setLocationFilter(v as Filter)}>
+              <TabsList responsive={false}>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="home">Home</TabsTrigger>
+                <TabsTrigger value="away">Away</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs text-muted-foreground font-medium">Show</span>
-            <div className="inline-flex h-10 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground border">
-              {(["all", "upcoming"] as TimeFilter[]).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setTimeFilter(filter)}
-                  className={cn(
-                    "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all",
-                    timeFilter === filter
-                      ? "bg-background text-foreground shadow-sm"
-                      : "hover:text-foreground"
-                  )}
-                >
-                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </button>
-              ))}
-            </div>
+            <Tabs value={timeFilter} onValueChange={(v) => setTimeFilter(v as TimeFilter)}>
+              <TabsList responsive={false}>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
 

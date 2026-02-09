@@ -19,3 +19,10 @@ export function fmtPlusMinus(value: number | undefined | null): string {
   if (value === undefined || value === null || isNaN(value)) return "—";
   return value >= 0 ? `+${value.toFixed(1)}` : value.toFixed(1);
 }
+
+/** Get ordinal suffix for a number (e.g. 1st, 2nd, 3rd, 4th) */
+export function getOrdinalSuffix(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}

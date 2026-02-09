@@ -1,19 +1,15 @@
 import { cn } from "@/lib/utils";
+import { getOrdinalSuffix } from "./format-utils";
 
 interface StatCardProps {
   label: string;
   value: string;
   description?: string;
   subtitle?: string; // For custom subtitle text (e.g., "85% win rate")
+  detail?: string; // Secondary detail line (e.g., "35.2 / 82.1 per game")
   icon?: React.ComponentType<{ className?: string }>;
   rank?: number; // If provided, generates subtitle like "3rd in league"
   highlight?: boolean; // Force highlight regardless of rank
-}
-
-function getOrdinalSuffix(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 export function StatCard({
@@ -21,6 +17,7 @@ export function StatCard({
   value,
   description,
   subtitle,
+  detail,
   icon: Icon,
   rank,
   highlight: forceHighlight,
@@ -78,6 +75,13 @@ export function StatCard({
           )}
         >
           {displaySubtitle}
+        </div>
+      )}
+
+      {/* Detail line (e.g., made/attempted) */}
+      {detail && (
+        <div className="text-[11px] mt-1 tabular-nums text-muted-foreground">
+          {detail}
         </div>
       )}
 

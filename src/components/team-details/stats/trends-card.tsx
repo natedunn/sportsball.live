@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
-import { TrendingUp } from "lucide-react";
 import {
 	Area,
 	AreaChart,
@@ -16,12 +15,7 @@ import {
 	ChartTooltipContent,
 	type ChartConfig,
 } from "@/components/ui/chart";
-import {
-	Select,
-	SelectTrigger,
-	SelectContent,
-	SelectItem,
-} from "@/components/ui/select";
+import { Menu, MenuTrigger, MenuContent, MenuItem } from "@/components/ui/menu";
 import { cn } from "@/lib/utils";
 import type { TeamGameData } from "./trend-chart";
 
@@ -50,8 +44,8 @@ interface StatPreset {
 }
 
 // Preset stat configurations
-const STAT_PRESETS: Record<string, StatPreset> = {
-	efficiency: {
+const STAT_PRESETS: StatPreset[] = [
+	{
 		title: "Efficiency",
 		subtitle: "Offensive & Defensive Rating",
 		series: [
@@ -59,7 +53,7 @@ const STAT_PRESETS: Record<string, StatPreset> = {
 				key: "ortg",
 				label: "Offensive Rating",
 				shortLabel: "ORTG",
-				color: "hsl(142, 76%, 36%)",
+				color: "hsl(217, 91%, 60%)",
 				higherIsBetter: true,
 				format: (v: number) => v.toFixed(1),
 			},
@@ -67,7 +61,7 @@ const STAT_PRESETS: Record<string, StatPreset> = {
 				key: "drtg",
 				label: "Defensive Rating",
 				shortLabel: "DRTG",
-				color: "hsl(0, 84%, 60%)",
+				color: "hsl(38, 92%, 50%)",
 				higherIsBetter: false,
 				format: (v: number) => v.toFixed(1),
 			},
@@ -79,7 +73,7 @@ const STAT_PRESETS: Record<string, StatPreset> = {
 			format: (v: number) => (v >= 0 ? "+" : "") + v.toFixed(1),
 		},
 	},
-	scoring: {
+	{
 		title: "Scoring",
 		subtitle: "Points For vs Against",
 		series: [
@@ -107,7 +101,7 @@ const STAT_PRESETS: Record<string, StatPreset> = {
 			format: (v: number) => (v >= 0 ? "+" : "") + v.toFixed(1),
 		},
 	},
-	ballSecurity: {
+	{
 		title: "Ball Security",
 		subtitle: "Assists vs Turnovers",
 		series: [
@@ -136,7 +130,7 @@ const STAT_PRESETS: Record<string, StatPreset> = {
 			format: (v: number) => v.toFixed(2),
 		},
 	},
-	shooting: {
+	{
 		title: "Shooting",
 		subtitle: "Field Goal % vs 3-Point %",
 		series: [
@@ -158,7 +152,7 @@ const STAT_PRESETS: Record<string, StatPreset> = {
 			},
 		],
 	},
-	defense: {
+	{
 		title: "Defense",
 		subtitle: "Steals vs Blocks",
 		series: [
@@ -186,18 +180,9 @@ const STAT_PRESETS: Record<string, StatPreset> = {
 			format: (v: number) => v.toFixed(1),
 		},
 	},
-};
-
-type StatPresetKey = keyof typeof STAT_PRESETS;
-type TimeRange = "5g" | "1m" | "3m" | "season";
-
-const PRESET_OPTIONS: { value: StatPresetKey; label: string }[] = [
-	{ value: "efficiency", label: "Efficiency" },
-	{ value: "scoring", label: "Scoring" },
-	{ value: "ballSecurity", label: "Ball Security" },
-	{ value: "shooting", label: "Shooting" },
-	{ value: "defense", label: "Defense" },
 ];
+
+type TimeRange = "5g" | "1m" | "3m" | "season";
 
 const TIME_RANGE_OPTIONS: { value: TimeRange; label: string }[] = [
 	{ value: "season", label: "Full Season" },
@@ -291,60 +276,123 @@ function calculateRollingAverages(
 	});
 }
 
+// Filter games by time range
+function filterGamesByRange(
+	gameData: TeamGameData[],
+	timeRange: TimeRange,
+): TeamGameData[] {
+	if (timeRange === "5g") {
+		return gameData.slice(-5);
+	}
+	if (timeRange === "1m" || timeRange === "3m") {
+		const now = new Date();
+		const monthsAgo = timeRange === "1m" ? 1 : 3;
+		const cutoffDate = new Date(
+			now.getFullYear(),
+			now.getMonth() - monthsAgo,
+			now.getDate(),
+		);
+		return gameData.filter((game) => {
+			const gameDate = new Date(
+				parseInt(game.gameDate.slice(0, 4)),
+				parseInt(game.gameDate.slice(4, 6)) - 1,
+				parseInt(game.gameDate.slice(6, 8)),
+			);
+			return gameDate >= cutoffDate;
+		});
+	}
+	return gameData;
+}
+
 interface TrendsCardProps {
 	gameData: TeamGameData[];
 }
 
 export function TrendsCard({ gameData }: TrendsCardProps) {
-	const [selectedPreset, setSelectedPreset] =
-		useState<StatPresetKey>("efficiency");
 	const [timeRange, setTimeRange] = useState<TimeRange>("season");
 
-	const config = STAT_PRESETS[selectedPreset];
-	const seriesKeys = config.series.map((s) => s.key);
+	const filteredGames = useMemo(
+		() => filterGamesByRange(gameData, timeRange),
+		[gameData, timeRange],
+	);
 
-	// Build chart config for recharts
+	const trendLabel = useMemo(() => {
+		switch (timeRange) {
+			case "5g":
+				return "over 5 games";
+			case "1m":
+				return "over 1 month";
+			case "3m":
+				return "over 3 months";
+			case "season":
+				return "season trend";
+		}
+	}, [timeRange]);
+
+	return (
+		<div className="space-y-10">
+			{/* Range selector */}
+			<div className="flex flex-col gap-1">
+				<label className="text-xs text-muted-foreground">Range</label>
+				<Menu>
+					<MenuTrigger className="inline-flex h-11 items-center justify-between gap-2 rounded-lg bg-muted px-4 py-1.5 text-sm font-medium text-foreground border w-fit hover:bg-foreground/5 transition-colors cursor-pointer">
+						<span>{TIME_RANGE_OPTIONS.find((o) => o.value === timeRange)?.label}</span>
+						<svg className="h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+					</MenuTrigger>
+					<MenuContent align="start">
+						{TIME_RANGE_OPTIONS.map((option) => (
+							<MenuItem
+								key={option.value}
+								onSelect={() => setTimeRange(option.value)}
+								className={option.value === timeRange ? "text-foreground bg-foreground/10" : ""}
+							>
+								{option.label}
+							</MenuItem>
+						))}
+					</MenuContent>
+				</Menu>
+			</div>
+
+			{/* All trend sections */}
+			{STAT_PRESETS.map((preset) => (
+				<TrendSection
+					key={preset.title}
+					preset={preset}
+					games={filteredGames}
+					trendLabel={trendLabel}
+				/>
+			))}
+		</div>
+	);
+}
+
+// Individual trend section
+interface TrendSectionProps {
+	preset: StatPreset;
+	games: TeamGameData[];
+	trendLabel: string;
+}
+
+function TrendSection({ preset, games, trendLabel }: TrendSectionProps) {
+	const seriesKeys = preset.series.map((s) => s.key);
+
 	const chartConfig = useMemo(() => {
 		const cfg: ChartConfig = {};
-		for (const series of config.series) {
+		for (const series of preset.series) {
 			cfg[series.key] = {
 				label: series.shortLabel || series.label,
 				color: series.color,
 			};
 		}
 		return cfg;
-	}, [config.series]);
+	}, [preset.series]);
 
-	// Process game data into chart data
 	const chartData = useMemo(() => {
-		if (gameData.length === 0) return [];
-
-		let games = gameData;
-		if (timeRange === "5g") {
-			games = gameData.slice(-5);
-		} else if (timeRange === "1m" || timeRange === "3m") {
-			const now = new Date();
-			const monthsAgo = timeRange === "1m" ? 1 : 3;
-			const cutoffDate = new Date(
-				now.getFullYear(),
-				now.getMonth() - monthsAgo,
-				now.getDate(),
-			);
-			games = gameData.filter((game) => {
-				const gameDate = new Date(
-					parseInt(game.gameDate.slice(0, 4)),
-					parseInt(game.gameDate.slice(4, 6)) - 1,
-					parseInt(game.gameDate.slice(6, 8)),
-				);
-				return gameDate >= cutoffDate;
-			});
-		}
-
+		if (games.length === 0) return [];
 		const rawStats = extractGameStats(games, seriesKeys);
 		return calculateRollingAverages(rawStats, seriesKeys);
-	}, [gameData, timeRange, seriesKeys]);
+	}, [games, seriesKeys]);
 
-	// Calculate summary stats
 	const summaryData = useMemo(() => {
 		if (chartData.length < 2) return null;
 
@@ -370,7 +418,7 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 			};
 		} = { series: [] };
 
-		for (const series of config.series) {
+		for (const series of preset.series) {
 			const current = (last[series.key] as number) || 0;
 			const start = (first[series.key] as number) || 0;
 			result.series.push({
@@ -384,105 +432,40 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 			});
 		}
 
-		if (config.derivedStat) {
+		if (preset.derivedStat) {
 			const lastData: Record<string, number> = {};
 			const firstData: Record<string, number> = {};
 			for (const key of seriesKeys) {
 				lastData[key] = (last[key] as number) || 0;
 				firstData[key] = (first[key] as number) || 0;
 			}
-			const currentDerived = config.derivedStat.calculate(lastData);
-			const startDerived = config.derivedStat.calculate(firstData);
+			const currentDerived = preset.derivedStat.calculate(lastData);
+			const startDerived = preset.derivedStat.calculate(firstData);
 			result.derived = {
-				label: config.derivedStat.label,
+				label: preset.derivedStat.label,
 				current: currentDerived,
 				trend: currentDerived - startDerived,
-				higherIsBetter: config.derivedStat.higherIsBetter,
-				format: config.derivedStat.format,
+				higherIsBetter: preset.derivedStat.higherIsBetter,
+				format: preset.derivedStat.format,
 			};
 		}
 
 		return result;
-	}, [chartData, config, seriesKeys]);
+	}, [chartData, preset, seriesKeys]);
 
-	// Get trend label
-	const trendLabel = useMemo(() => {
-		switch (timeRange) {
-			case "5g":
-				return "over 5 games";
-			case "1m":
-				return "over 1 month";
-			case "3m":
-				return "over 3 months";
-			case "season":
-				return "season trend";
-		}
-	}, [timeRange]);
-
-	const hasEnoughData = gameData.length >= 2;
-
-	if (!hasEnoughData || chartData.length < 2) {
+	if (chartData.length < 2) {
 		return (
-			<div>
-				{/* Header outside card */}
-				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-					<div className="flex items-center gap-2">
-						<TrendingUp className="h-5 w-5 text-muted-foreground" />
-						<div>
-							<h2 className="text-lg font-semibold">Trends</h2>
-							<p className="text-sm text-muted-foreground">{config.subtitle}</p>
-						</div>
-					</div>
-					<div className="flex items-center gap-4">
-						<div className="flex flex-col gap-1">
-							<label className="text-xs text-muted-foreground">Stat</label>
-							<Select
-								value={selectedPreset}
-								onValueChange={(v) => setSelectedPreset(v as StatPresetKey)}
-							>
-								<SelectTrigger size="default" className="w-[140px]" />
-								<SelectContent>
-									{PRESET_OPTIONS.map((option) => (
-										<SelectItem
-											key={option.value}
-											value={option.value}
-											size="default"
-										>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-						<div className="flex flex-col gap-1">
-							<label className="text-xs text-muted-foreground">Range</label>
-							<Select
-								value={timeRange}
-								onValueChange={(v) => setTimeRange(v as TimeRange)}
-							>
-								<SelectTrigger size="default" className="w-[160px]" />
-								<SelectContent>
-									{TIME_RANGE_OPTIONS.map((option) => (
-										<SelectItem
-											key={option.value}
-											value={option.value}
-											size="default"
-										>
-											{option.label}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
-					</div>
+			<section>
+				<div className="mb-4">
+					<h3 className="text-lg font-semibold">{preset.title}</h3>
+					<p className="text-sm text-muted-foreground">{preset.subtitle}</p>
 				</div>
 				<Card classNames={{ inner: "flex-col p-8" }}>
 					<div className="text-center text-muted-foreground">
-						<p>Not enough data available.</p>
-						<p className="text-sm mt-1">Need at least 2 games of data.</p>
+						<p>Not enough data available for this range.</p>
 					</div>
 				</Card>
-			</div>
+			</section>
 		);
 	}
 
@@ -497,58 +480,10 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 	const maxY = Math.ceil((maxVal + padding) * 10) / 10;
 
 	return (
-		<div>
-			{/* Header outside card */}
-			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-				<div className="flex items-center gap-2">
-					<TrendingUp className="h-5 w-5 text-muted-foreground" />
-					<div>
-						<h2 className="text-lg font-semibold">Trends</h2>
-						<p className="text-sm text-muted-foreground">{config.subtitle}</p>
-					</div>
-				</div>
-				<div className="flex items-center gap-4">
-					<div className="flex flex-col gap-1">
-						<label className="text-xs text-muted-foreground">Stat</label>
-						<Select
-							value={selectedPreset}
-							onValueChange={(v) => setSelectedPreset(v as StatPresetKey)}
-						>
-							<SelectTrigger size="default" className="w-35" />
-							<SelectContent>
-								{PRESET_OPTIONS.map((option) => (
-									<SelectItem
-										key={option.value}
-										value={option.value}
-										size="default"
-									>
-										{option.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-					<div className="flex flex-col gap-1">
-						<label className="text-xs text-muted-foreground">Range</label>
-						<Select
-							value={timeRange}
-							onValueChange={(v) => setTimeRange(v as TimeRange)}
-						>
-							<SelectTrigger size="default" className="w-40" />
-							<SelectContent>
-								{TIME_RANGE_OPTIONS.map((option) => (
-									<SelectItem
-										key={option.value}
-										value={option.value}
-										size="default"
-									>
-										{option.label}
-									</SelectItem>
-								))}
-							</SelectContent>
-						</Select>
-					</div>
-				</div>
+		<section>
+			<div className="mb-4">
+				<h3 className="text-lg font-semibold">{preset.title}</h3>
+				<p className="text-sm text-muted-foreground">{preset.subtitle}</p>
 			</div>
 
 			<Card classNames={{ inner: "flex-col p-0" }}>
@@ -620,7 +555,7 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 								margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
 							>
 								<defs>
-									{config.series.map((series) => (
+									{preset.series.map((series) => (
 										<linearGradient
 											key={series.key}
 											id={`fill-trends-${series.key}`}
@@ -666,7 +601,7 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 										<ChartTooltipContent
 											labelKey="dateLabel"
 											formatter={(value, name) => {
-												const series = config.series.find(
+												const series = preset.series.find(
 													(s) => s.key === name,
 												);
 												if (series?.format) {
@@ -677,7 +612,7 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 										/>
 									}
 								/>
-								{config.series.map((series) => (
+								{preset.series.map((series) => (
 									<Area
 										key={series.key}
 										type="linear"
@@ -697,7 +632,7 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 				{/* Legend */}
 				<div className="border-t border-border">
 					<div className="flex items-center justify-center gap-6 py-4 px-6 flex-wrap">
-						{config.series.map((series) => (
+						{preset.series.map((series) => (
 							<div key={series.key} className="flex items-center gap-2">
 								<div
 									className="w-3 h-3 rounded-full"
@@ -714,6 +649,6 @@ export function TrendsCard({ gameData }: TrendsCardProps) {
 					</div>
 				</div>
 			</Card>
-		</div>
+		</section>
 	);
 }

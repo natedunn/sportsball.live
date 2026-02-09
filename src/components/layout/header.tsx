@@ -127,13 +127,13 @@ const navItems = [
 ];
 
 const triggerClassName =
-	"inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[popup-open]:bg-accent";
+	"inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring data-popup-open:bg-accent";
 
 const positionerClassName =
-	"z-[9999] box-border h-[var(--positioner-height)] w-[var(--positioner-width)] max-w-[var(--available-width)] transition-[top,left,right,bottom] duration-[var(--duration)] ease-[var(--easing)] data-[instant]:transition-none";
+	"z-9999 box-border h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,left,right,bottom] duration-(--duration) ease-(--easing) data-instant:transition-none";
 
 const popupClassName =
-	"relative h-[var(--popup-height)] w-[var(--popup-width)] origin-[var(--transform-origin)] rounded-lg border border-border bg-background shadow-lg transition-[opacity,transform,width,height,scale,translate] duration-[var(--duration)] ease-[var(--easing)] data-[ending-style]:scale-90 data-[ending-style]:opacity-0 data-[ending-style]:duration-150 data-[starting-style]:scale-90 data-[starting-style]:opacity-0";
+	"relative h-(--popup-height) w-(--popup-width) origin-(--transform-origin) rounded-lg border border-border bg-background shadow-lg transition-[opacity,transform,width,height,scale,translate] duration-(--duration) ease-(--easing) data-ending-style:scale-90 data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:scale-90 data-starting-style:opacity-0";
 
 const arrowClassName =
 	"flex transition-[left] duration-(--duration) ease-(--easing) data-[side=bottom]:-top-2 data-[side=top]:-bottom-2 data-[side=top]:rotate-180";
@@ -149,7 +149,7 @@ export function Header() {
 	);
 
 	return (
-		<nav className="relative z-50 border-b border-border/50 bg-background/20 py-2 backdrop-blur-xl">
+		<nav className="relative z-50 border-b border-border bg-background py-2 backdrop-blur-xl">
 			<div className="container flex items-center justify-between">
 				<div className="flex items-center gap-1">
 					<Link

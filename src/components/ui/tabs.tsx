@@ -46,7 +46,11 @@ interface TabsListProps {
 	responsive?: boolean;
 }
 
-export function TabsList({ children, className, responsive = true }: TabsListProps) {
+export function TabsList({
+	children,
+	className,
+	responsive = true,
+}: TabsListProps) {
 	if (!responsive) {
 		return (
 			<BaseTabs.List
@@ -147,7 +151,9 @@ export function TabsContent({ children, value, className }: TabsContentProps) {
 // --- Responsive menu fallback (mobile) ---
 
 /** Extracts tab info from TabsTrigger children */
-function extractTabs(children: React.ReactNode): Array<{ value: string; label: React.ReactNode }> {
+function extractTabs(
+	children: React.ReactNode,
+): Array<{ value: string; label: React.ReactNode }> {
 	const tabs: Array<{ value: string; label: React.ReactNode }> = [];
 	React.Children.forEach(children, (child) => {
 		if (React.isValidElement<TabsTriggerProps>(child) && child.props.value) {
@@ -166,7 +172,7 @@ function TabsMenu({ children }: { children: React.ReactNode }) {
 		<BaseMenu.Root>
 			<BaseMenu.Trigger
 				className={cn(
-					"inline-flex h-11 items-center justify-between gap-2 rounded-lg bg-muted px-4 py-1.5 text-sm font-medium text-amber-50 border min-w-[160px]",
+					"inline-flex h-11 items-center justify-between gap-2 rounded-lg bg-muted px-4 py-1.5 text-sm font-medium text-amber-50 border min-w-40",
 					"hover:bg-foreground/5 transition-colors cursor-pointer",
 				)}
 			>
@@ -176,13 +182,18 @@ function TabsMenu({ children }: { children: React.ReactNode }) {
 				<ChevronDown className="h-4 w-4 text-muted-foreground" />
 			</BaseMenu.Trigger>
 			<BaseMenu.Portal>
-				<BaseMenu.Positioner side="bottom" align="start" sideOffset={4} className="z-50">
+				<BaseMenu.Positioner
+					side="bottom"
+					align="start"
+					sideOffset={4}
+					className="z-50"
+				>
 					<BaseMenu.Popup
 						className={cn(
-							"z-50 min-w-[160px] rounded-lg border border-border bg-popover p-1 shadow-lg outline-none",
-							"origin-[var(--transform-origin)] will-change-[transform,opacity] transition-[transform,opacity] duration-150 ease-out",
-							"data-[ending-style]:scale-95 data-[ending-style]:opacity-0",
-							"data-[starting-style]:scale-95 data-[starting-style]:opacity-0",
+							"z-50 min-w-40 rounded-lg border border-border bg-popover p-1 shadow-lg outline-none",
+							"origin-(--transform-origin) will-change-[transform,opacity] transition-[transform,opacity] duration-150 ease-out",
+							"data-ending-style:scale-95 data-ending-style:opacity-0",
+							"data-starting-style:scale-95 data-starting-style:opacity-0",
 						)}
 					>
 						{tabs.map((tab) => (
@@ -192,7 +203,8 @@ function TabsMenu({ children }: { children: React.ReactNode }) {
 								className={cn(
 									"relative flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors",
 									"hover:bg-accent focus:bg-accent",
-									tab.value === context?.value && "text-amber-50 bg-foreground/10",
+									tab.value === context?.value &&
+										"text-amber-50 bg-foreground/10",
 								)}
 							>
 								{tab.label}

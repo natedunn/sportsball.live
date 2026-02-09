@@ -130,7 +130,7 @@ function WnbaStandingsPage() {
 					className="w-full"
 				>
 					<div className="flex justify-center mb-6">
-						<TabsList>
+						<TabsList responsive={false}>
 							<TabsTrigger value="combined">League</TabsTrigger>
 							<TabsTrigger value="eastern">Eastern</TabsTrigger>
 							<TabsTrigger value="western">Western</TabsTrigger>

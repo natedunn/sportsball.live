@@ -1,4 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { convexQuery } from "@convex-dev/react-query";
+import { api } from "~api";
 import {
 	ArrowLeft,
 	LayoutDashboard,
@@ -6,15 +9,18 @@ import {
 	Calendar,
 	BarChart3,
 	TrendingUp,
+	Star,
 } from "lucide-react";
 import { AnimationProvider } from "./animation-context";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { TeamHeader } from "./team-header";
 import { OverviewTab } from "./overview/overview-tab";
 import { RosterTab } from "./roster/roster-tab";
 import { GamesTab } from "./games/games-tab";
 import { StatsTab } from "./stats/stats-tab";
 import { TrendsCard } from "./stats/trends-card";
+import { useFavorites } from "@/lib/use-favorites";
 import { leagueLabels, type League } from "@/lib/teams";
 import { leagueRoutes } from "@/lib/league-routes";
 import type {
@@ -57,6 +63,14 @@ export function TeamDetailsLayout({
 	// Data comes pre-computed from the route (no merging needed)
 	const roster = providerRoster;
 	const stats = providerStats;
+
+	// Favorites
+	const { isFavorited, toggleFavorite, isLoading: favoritesLoading } = useFavorites();
+	const favorited = isFavorited(league, overview.id);
+	const { data: currentUser } = useQuery(
+		convexQuery(api.auth.getCurrentUser, {}),
+	);
+	const isAuthenticated = !!currentUser;
 
 	// Separate past and upcoming/active games
 	const pastGames = schedule
@@ -131,8 +145,23 @@ export function TeamDetailsLayout({
 										</TabsTrigger>
 									</TabsList>
 
-									{/* Spacer for desktop alignment */}
-									<div className="hidden sm:block w-30" />
+									{/* Favorite button */}
+									<div className="hidden sm:flex sm:w-30 sm:justify-end">
+										{isAuthenticated && !favoritesLoading && teamSlug && (
+											<Button
+												variant={favorited ? "default" : "outline"}
+												size="sm"
+												onClick={() => toggleFavorite(league, overview.id, teamSlug)}
+												aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+												aria-pressed={favorited}
+											>
+												<Star
+													className={favorited ? "fill-current" : ""}
+												/>
+												Favorite
+											</Button>
+										)}
+									</div>
 								</div>
 							</div>
 						</div>

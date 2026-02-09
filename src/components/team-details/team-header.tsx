@@ -1,11 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { convexQuery } from "@convex-dev/react-query";
-import { api } from "~api";
 import { Image } from "@/components/ui/image";
-import { FavoriteStar } from "@/components/ui/favorite-star";
 import { TeamFlickeringGrid } from "@/components/team-flickering-grid";
-import { useFavorites } from "@/lib/use-favorites";
-import { getTeamStaticData } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
 import type { TeamOverview } from "@/lib/types/team";
 
@@ -14,20 +8,10 @@ interface TeamHeaderProps {
 	league: League;
 }
 
-export function TeamHeader({ overview, league }: TeamHeaderProps) {
+export function TeamHeader({ overview }: TeamHeaderProps) {
 	const { wins, losses, winPct } = overview.record;
 	const record = `${wins}-${losses}`;
 	const teamName = overview.name.replace(overview.location, "").trim();
-
-	// Favorites
-	const { isFavorited, toggleFavorite, isLoading: favoritesLoading } = useFavorites();
-	const teamData = getTeamStaticData(league, overview.id);
-	const teamSlug = teamData?.api.slug ?? "";
-	const favorited = isFavorited(league, overview.id);
-	const { data: currentUser } = useQuery(
-		convexQuery(api.auth.getCurrentUser, {}),
-	);
-	const isAuthenticated = !!currentUser;
 
 	return (
 		<div className="relative overflow-hidden border-b bg-card">
@@ -71,18 +55,9 @@ export function TeamHeader({ overview, league }: TeamHeaderProps) {
 							<span className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-0.5">
 								{overview.location}
 							</span>
-							<div className="flex items-center gap-2 mb-2">
-								<h1 className="text-2xl md:text-4xl font-bold tracking-tight">
-									{teamName}
-								</h1>
-								{isAuthenticated && !favoritesLoading && teamSlug && (
-									<FavoriteStar
-										isFavorited={favorited}
-										onToggle={() => toggleFavorite(league, overview.id, teamSlug)}
-										size="lg"
-									/>
-								)}
-							</div>
+							<h1 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">
+								{teamName}
+							</h1>
 
 							{/* Record and standing row */}
 							<div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2">

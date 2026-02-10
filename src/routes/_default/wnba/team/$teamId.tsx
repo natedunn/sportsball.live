@@ -13,6 +13,7 @@ import {
 	deriveTeamLeaders,
 	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
+import { syncGamesForView } from "@/lib/shared/sync.server";
 import { teamInjuriesQueryOptions } from "@/lib/wnba/team.queries";
 import {
 	TeamDetailsLayout,
@@ -25,6 +26,7 @@ interface TeamSearchParams {
 }
 
 const season = getCurrentSeason();
+const LIVE_REFRESH_INTERVAL_MS = 30_000;
 
 export const Route = createFileRoute("/_default/wnba/team/$teamId")({
 	validateSearch: (search: Record<string, unknown>): TeamSearchParams => {
@@ -44,8 +46,9 @@ export const Route = createFileRoute("/_default/wnba/team/$teamId")({
 			);
 
 			if (team) {
+				const nowMs = Date.now();
 				// Fetch roster and schedule in parallel
-				await Promise.all([
+				const [, rawSchedule] = await Promise.all([
 					context.queryClient.ensureQueryData(
 						convexQuery(api.wnba.queries.getTeamRoster, { teamId: team._id as Id<"wnbaTeam"> }),
 					),
@@ -53,6 +56,41 @@ export const Route = createFileRoute("/_default/wnba/team/$teamId")({
 						convexQuery(api.wnba.queries.getTeamSchedule, { teamId: team._id as Id<"wnbaTeam"> }),
 					),
 				]);
+				const scheduleForSync = (rawSchedule ?? []) as Array<{
+					espnGameId: string;
+					eventStatus?: string;
+					scheduledStart?: number;
+					lastFetchedAt?: number;
+				}>;
+
+				await syncGamesForView({
+					data: {
+						league: "wnba",
+						games: scheduleForSync
+							.filter((game) => {
+								if (
+									game.eventStatus === "completed" ||
+									game.eventStatus === "postponed" ||
+									game.eventStatus === "cancelled"
+								) {
+									return false;
+								}
+								if (typeof game.scheduledStart !== "number") return false;
+								const minutesFromTipoff = (nowMs - game.scheduledStart) / 60_000;
+								return minutesFromTipoff >= -90 && minutesFromTipoff <= 360;
+							})
+							.map((game) => ({
+								espnGameId: game.espnGameId,
+								eventStatus: game.eventStatus,
+								scheduledStart: game.scheduledStart,
+								lastFetchedAt: game.lastFetchedAt,
+							})),
+					},
+				});
+
+				await context.queryClient.ensureQueryData(
+					convexQuery(api.wnba.queries.getTeamSchedule, { teamId: team._id as Id<"wnbaTeam"> }),
+				);
 			}
 		}
 	},
@@ -82,7 +120,7 @@ function WnbaTeamPage() {
 		enabled: !!teamId,
 	});
 
-	const { data: rawSchedule } = useQuery({
+	const { data: rawSchedule, refetch: refetchSchedule } = useQuery({
 		...convexQuery(api.wnba.queries.getTeamSchedule, { teamId: teamId! }),
 		enabled: !!teamId,
 	});
@@ -133,6 +171,70 @@ function WnbaTeamPage() {
 	useEffect(() => {
 		setActiveTab(tab || "overview");
 	}, [tab]);
+
+	useEffect(() => {
+		if (!teamId) return;
+		if (activeTab !== "overview" && activeTab !== "games") return;
+
+		const syncNow = async () => {
+			if (document.visibilityState !== "visible") return;
+
+			const nowMs = Date.now();
+			const scheduleForSync = (rawSchedule ?? []) as Array<{
+				espnGameId: string;
+				eventStatus?: string;
+				scheduledStart?: number;
+				lastFetchedAt?: number;
+			}>;
+			const games = scheduleForSync
+				.filter((game) => {
+					if (
+						game.eventStatus === "completed" ||
+						game.eventStatus === "postponed" ||
+						game.eventStatus === "cancelled"
+					) {
+						return false;
+					}
+					if (typeof game.scheduledStart !== "number") return false;
+					const minutesFromTipoff = (nowMs - game.scheduledStart) / 60_000;
+					return minutesFromTipoff >= -90 && minutesFromTipoff <= 360;
+				})
+				.map((game) => ({
+					espnGameId: game.espnGameId,
+					eventStatus: game.eventStatus,
+					scheduledStart: game.scheduledStart,
+					lastFetchedAt: game.lastFetchedAt,
+				}));
+
+			if (games.length === 0) return;
+
+			await syncGamesForView({
+				data: {
+					league: "wnba",
+					games,
+				},
+			});
+
+			await refetchSchedule();
+		};
+
+		const intervalId = window.setInterval(() => {
+			void syncNow();
+		}, LIVE_REFRESH_INTERVAL_MS);
+
+		const onVisibilityChange = () => {
+			if (document.visibilityState === "visible") {
+				void syncNow();
+			}
+		};
+
+		document.addEventListener("visibilitychange", onVisibilityChange);
+
+		return () => {
+			window.clearInterval(intervalId);
+			document.removeEventListener("visibilitychange", onVisibilityChange);
+		};
+	}, [activeTab, rawSchedule, refetchSchedule, teamId]);
 
 	const handleTabChange = (newTab: string) => {
 		setActiveTab(newTab);

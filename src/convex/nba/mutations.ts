@@ -15,6 +15,12 @@ const eventStatusValidator = v.union(
 	v.literal("cancelled"),
 );
 
+function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+	return Object.fromEntries(
+		Object.entries(obj).filter(([, value]) => value !== undefined),
+	) as T;
+}
+
 // Upsert a team by espnTeamId + season
 export const upsertTeam = internalMutation({
 	args: {
@@ -49,10 +55,10 @@ export const upsertTeam = internalMutation({
 			)
 			.unique();
 
-		const data = {
+		const data = omitUndefined({
 			...args,
 			updatedAt: Date.now(),
-		};
+		});
 
 		if (existing) {
 			await ctx.db.patch(existing._id, data);
@@ -515,6 +521,51 @@ export const updateGameFetchTimestamp = internalMutation({
 	},
 });
 
+// Try to acquire a per-game sync lock to avoid concurrent live sync collisions
+export const tryAcquireGameSyncLock = internalMutation({
+	args: {
+		gameEventId: v.id("nbaGameEvent"),
+		lockMs: v.number(),
+		minIntervalMs: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const game = await ctx.db.get(args.gameEventId);
+		if (!game) return false;
+
+		const now = Date.now();
+		if (game.syncLockUntil && game.syncLockUntil > now) {
+			return false;
+		}
+
+		if (
+			args.minIntervalMs !== undefined &&
+			game.lastFetchedAt !== undefined &&
+			now - game.lastFetchedAt < args.minIntervalMs
+		) {
+			return false;
+		}
+
+		await ctx.db.patch(args.gameEventId, {
+			syncLockUntil: now + args.lockMs,
+			lastFetchedAt: now,
+			updatedAt: now,
+		});
+		return true;
+	},
+});
+
+export const releaseGameSyncLock = internalMutation({
+	args: { gameEventId: v.id("nbaGameEvent") },
+	handler: async (ctx, args) => {
+		const game = await ctx.db.get(args.gameEventId);
+		if (!game) return;
+		await ctx.db.patch(args.gameEventId, {
+			syncLockUntil: Date.now() - 1,
+			updatedAt: Date.now(),
+		});
+	},
+});
+
 // Update game event status and scores
 export const updateGameEventStatus = internalMutation({
 	args: {
@@ -528,9 +579,9 @@ export const updateGameEventStatus = internalMutation({
 	},
 	handler: async (ctx, args) => {
 		const { gameEventId, ...updates } = args;
-		await ctx.db.patch(gameEventId, {
+		await ctx.db.patch(gameEventId, omitUndefined({
 			...updates,
 			updatedAt: Date.now(),
-		});
+		}));
 	},
 });

@@ -153,6 +153,7 @@ export default defineSchema({
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
 		lastFetchedAt: v.optional(v.number()),
+		syncLockUntil: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
 		updatedAt: v.number(),
 	})
@@ -670,6 +671,29 @@ export default defineSchema({
 		updatedAt: v.number(),
 	})
 		.index("by_league", ["league"]),
+
+	// Score anomaly events (for admin visibility and manual re-sync)
+	scoreAnomaly: defineTable({
+		league: leagueValidator,
+		espnGameId: v.string(),
+		anomalyType: v.string(),
+		source: v.string(),
+		message: v.optional(v.string()),
+		eventStatus: v.optional(v.string()),
+		homeScore: v.optional(v.number()),
+		awayScore: v.optional(v.number()),
+		rawHomeScore: v.optional(v.string()),
+		rawAwayScore: v.optional(v.string()),
+		firstSeenAt: v.number(),
+		lastSeenAt: v.number(),
+		lastResyncedAt: v.optional(v.number()),
+		resolvedAt: v.optional(v.number()),
+		occurrenceCount: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_lastSeenAt", ["lastSeenAt"])
+		.index("by_league_lastSeenAt", ["league", "lastSeenAt"])
+		.index("by_league_game_type", ["league", "espnGameId", "anomalyType"]),
 
 	// ============================================================
   // Cached images from external CDN

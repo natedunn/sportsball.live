@@ -28,14 +28,6 @@ export const authComponent = createClient<DataModel>(
 					const generatedUsername = user.username || generateRandomUsername();
 					const finalUsername = generatedUsername.toLowerCase();
 
-					// Update the component's user record with username
-					if (!user.username) {
-						await ctx.db.patch(user._id as any, {
-							username: finalUsername,
-							displayUsername: generatedUsername,
-						});
-					}
-
 					// Sync to our local profile table for public profile queries
 					await ctx.db.insert("profile", {
 						email: user.email,
@@ -64,6 +56,21 @@ export const authComponent = createClient<DataModel>(
 							displayUsername: user.username || existingUser.displayUsername,
 							updatedAt: Date.now(),
 						});
+					} else {
+						// Profile missing (e.g. onCreate failed) — create it now
+						const generatedUsername = user.username || generateRandomUsername();
+						const finalUsername = generatedUsername.toLowerCase();
+						await ctx.db.insert("profile", {
+							email: user.email,
+							name: user.name || undefined,
+							image: user.image || undefined,
+							emailVerified: user.emailVerified || false,
+							username: finalUsername,
+							displayUsername: user.username || generatedUsername,
+							authUserId: String(user._id),
+							createdAt: Date.now(),
+							updatedAt: Date.now(),
+						});
 					}
 				},
 			},
@@ -86,11 +93,23 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 	});
 };
 
-// Get the current authenticated user
+// Get the current authenticated user (merged with profile data)
 export const getCurrentUser = query({
 	args: {},
 	handler: async (ctx) => {
-		return authComponent.safeGetAuthUser(ctx);
+		const authUser = await authComponent.safeGetAuthUser(ctx);
+		if (!authUser) return null;
+
+		const profile = await ctx.db
+			.query("profile")
+			.withIndex("by_email", (q) => q.eq("email", authUser.email))
+			.first();
+
+		return {
+			...authUser,
+			username: profile?.username,
+			displayUsername: profile?.displayUsername,
+		};
 	},
 });
 

@@ -4,6 +4,7 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "~api";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import type { Id } from "@convex/_generated/dataModel";
 
 export const Route = createFileRoute("/_default/admin/")({
 	component: AdminPage,
@@ -62,6 +63,8 @@ function AdminPage() {
 						<LeagueCard key={league} league={league} />
 					))}
 				</div>
+
+				<ScoreAnomaliesCard />
 			</div>
 		</div>
 	);
@@ -198,6 +201,161 @@ function LeagueCard({ league }: { league: League }) {
 							)}
 						</p>
 					)}
+				</div>
+			)}
+
+			{error && (
+				<p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+			)}
+		</div>
+	);
+}
+
+function ScoreAnomaliesCard() {
+	const [error, setError] = useState<string | null>(null);
+	const [resyncingId, setResyncingId] = useState<string | null>(null);
+	const [isScanning, setIsScanning] = useState(false);
+
+	const { data: anomalies } = useQuery(
+		convexQuery(api.bootstrapAdmin.getRecentScoreAnomalies, {
+			limit: 40,
+		}),
+	);
+	const { data: derived } = useQuery(
+		convexQuery(api.bootstrapAdmin.getDerivedScoreAnomalies, {
+			limit: 40,
+		}),
+	);
+
+	const resyncMutation = useConvexMutation(api.bootstrapAdmin.resyncScoreAnomaly);
+	const resyncLeagueGameMutation = useConvexMutation(api.bootstrapAdmin.resyncLeagueGame);
+	const backfillMutation = useConvexMutation(api.bootstrapAdmin.backfillScoreAnomalies);
+
+	const handleResync = async (anomalyId: Id<"scoreAnomaly">) => {
+		setError(null);
+		setResyncingId(anomalyId);
+		try {
+			await resyncMutation({ anomalyId });
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to queue re-sync");
+		} finally {
+			setResyncingId(null);
+		}
+	};
+
+	const handleResyncDerived = async (league: League, espnGameId: string) => {
+		setError(null);
+		const key = `${league}:${espnGameId}`;
+		setResyncingId(key);
+		try {
+			await resyncLeagueGameMutation({ league, espnGameId });
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to queue re-sync");
+		} finally {
+			setResyncingId(null);
+		}
+	};
+
+	const handleScan = async () => {
+		setError(null);
+		setIsScanning(true);
+		try {
+			await backfillMutation({});
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to scan");
+		} finally {
+			setIsScanning(false);
+		}
+	};
+
+	return (
+		<div className="rounded-xl border border-border bg-card p-6">
+			<div className="flex items-center justify-between">
+				<div>
+					<h2 className="text-xl font-semibold">Score Anomalies</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Recent score integrity issues detected by sync guards.
+					</p>
+				</div>
+				<Button variant="outline" size="sm" onClick={handleScan} disabled={isScanning}>
+					{isScanning ? "Scanning..." : "Scan Existing Scores"}
+				</Button>
+			</div>
+
+			{!anomalies || anomalies.length === 0 ? (
+				<div className="mt-4 space-y-3">
+					<p className="text-sm text-muted-foreground">
+						No logged anomalies yet.
+					</p>
+					{derived && derived.length > 0 && (
+						<div className="space-y-2">
+							<p className="text-xs font-medium text-muted-foreground">Derived suspicious scores</p>
+							{derived.map((d) => {
+								const key = `${d.league}:${d.espnGameId}`;
+								return (
+									<div key={key} className="rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+										<div className="flex items-start justify-between gap-4">
+											<div>
+												<p className="text-sm font-medium">
+													{LEAGUE_LABELS[d.league]} &middot; Game {d.espnGameId}
+												</p>
+												<p className="text-xs text-muted-foreground">
+													{d.eventStatus} &middot; score {d.awayScore ?? "?"}-{d.homeScore ?? "?"}
+												</p>
+											</div>
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => handleResyncDerived(d.league, d.espnGameId)}
+												disabled={resyncingId === key}
+											>
+												{resyncingId === key ? "Re-syncing..." : "Re-sync"}
+											</Button>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</div>
+			) : (
+				<div className="mt-4 space-y-2">
+					{anomalies.map((a) => (
+						<div
+							key={a._id}
+							className="rounded-md border border-border/60 bg-muted/30 px-3 py-2"
+						>
+							<div className="flex items-start justify-between gap-4">
+								<div className="min-w-0">
+									<p className="text-sm font-medium">
+										{LEAGUE_LABELS[a.league]} &middot; Game {a.espnGameId}
+									</p>
+									<p className="truncate text-xs text-muted-foreground">
+										{a.anomalyType} &middot; {a.source}
+									</p>
+									{a.message && (
+										<p className="mt-1 text-xs text-muted-foreground">
+											{a.message}
+										</p>
+									)}
+									<p className="mt-1 text-xs text-muted-foreground">
+										Last seen: {new Date(a.lastSeenAt).toLocaleString()} &middot; Count: {a.occurrenceCount}
+										{a.lastResyncedAt && (
+											<> &middot; Re-sync: {new Date(a.lastResyncedAt).toLocaleString()}</>
+										)}
+									</p>
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => handleResync(a._id)}
+									disabled={resyncingId === a._id}
+								>
+									{resyncingId === a._id ? "Re-syncing..." : "Re-sync"}
+								</Button>
+							</div>
+						</div>
+					))}
 				</div>
 			)}
 

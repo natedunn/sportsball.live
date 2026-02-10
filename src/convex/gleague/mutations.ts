@@ -15,6 +15,12 @@ const eventStatusValidator = v.union(
 	v.literal("cancelled"),
 );
 
+function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+	return Object.fromEntries(
+		Object.entries(obj).filter(([, value]) => value !== undefined),
+	) as T;
+}
+
 // Upsert a team by espnTeamId + season
 export const upsertTeam = internalMutation({
 	args: {
@@ -49,10 +55,10 @@ export const upsertTeam = internalMutation({
 			)
 			.unique();
 
-		const data = {
+		const data = omitUndefined({
 			...args,
 			updatedAt: Date.now(),
-		};
+		});
 
 		if (existing) {
 			await ctx.db.patch(existing._id, data);
@@ -528,9 +534,9 @@ export const updateGameEventStatus = internalMutation({
 	},
 	handler: async (ctx, args) => {
 		const { gameEventId, ...updates } = args;
-		await ctx.db.patch(gameEventId, {
+		await ctx.db.patch(gameEventId, omitUndefined({
 			...updates,
 			updatedAt: Date.now(),
-		});
+		}));
 	},
 });

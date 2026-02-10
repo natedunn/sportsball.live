@@ -3,6 +3,7 @@ import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
+import type { Id } from "../_generated/dataModel";
 import type {
 	ApiScoreboardResponse,
 	ApiGameSummaryResponse,
@@ -38,6 +39,49 @@ function getSeasonStartDate(season: string): string {
 function getSeasonEndDate(season: string): string {
 	const endYear = parseInt(season.split("-")[0], 10) + 1;
 	return `${endYear}0420`;
+}
+
+function parseApiScore(rawScore: string | undefined): number | undefined {
+	if (rawScore === undefined) return undefined;
+	const parsed = Number.parseInt(rawScore, 10);
+	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function isSuspiciousBlowoutWithZero(
+	homeScore: number | undefined,
+	awayScore: number | undefined,
+): boolean {
+	if (homeScore === undefined || awayScore === undefined) return false;
+	return (homeScore === 0 && awayScore >= 80) || (awayScore === 0 && homeScore >= 80);
+}
+
+function isWriteConflictError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	return error.message.includes("Documents read from or written");
+}
+
+async function logScoreAnomaly(
+	ctx: any,
+	input: {
+		espnGameId: string;
+		anomalyType: string;
+		source: string;
+		message: string;
+		eventStatus?: string;
+		homeScore?: number;
+		awayScore?: number;
+		rawHomeScore?: string;
+		rawAwayScore?: string;
+	},
+) {
+	try {
+		await ctx.runMutation(internal.bootstrapAdmin.logScoreAnomaly, {
+			league: "nba",
+			...input,
+		});
+	} catch (error) {
+		console.error("[NBA] Failed to persist score anomaly:", error);
+	}
 }
 
 // Daily cron: discover today's games, update standings
@@ -200,8 +244,8 @@ export const discoverTodaysGames = internalAction({
 				eventStatus,
 				statusDetail: event.status?.type?.detail,
 				venue: competition.venue?.fullName,
-				homeScore: parseInt(homeComp.score, 10) || undefined,
-				awayScore: parseInt(awayComp.score, 10) || undefined,
+				homeScore: parseApiScore(homeComp.score),
+				awayScore: parseApiScore(awayComp.score),
 			});
 
 			// Schedule status check: scheduledStart + 2h15m
@@ -249,6 +293,16 @@ export const checkGameStatusV2 = internalAction({
 		espnGameId: v.string(),
 	},
 	handler: async (ctx, args) => {
+		const lockAcquired = await ctx.runMutation(internal.nba.mutations.tryAcquireGameSyncLock, {
+			gameEventId: args.gameEventId,
+			lockMs: 90_000,
+		});
+		if (!lockAcquired) {
+			console.log(`[NBA] Skipping check for ${args.espnGameId}; sync lock held`);
+			return;
+		}
+
+		try {
 		const baseUrl = getSiteApi();
 
 		console.log(`[NBA] Checking game ${args.espnGameId}...`);
@@ -282,8 +336,8 @@ export const checkGameStatusV2 = internalAction({
 		// Get scores
 		const homeComp = competition?.competitors?.find((c) => c.homeAway === "home");
 		const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
-		const homeScore = parseInt(homeComp?.score ?? "0", 10) || 0;
-		const awayScore = parseInt(awayComp?.score ?? "0", 10) || 0;
+		const homeScore = parseApiScore(homeComp?.score);
+		const awayScore = parseApiScore(awayComp?.score);
 
 		// Get current game to check count
 		const currentGame = await ctx.runQuery(internal.nba.queries.getGameEventInternal, {
@@ -312,6 +366,31 @@ export const checkGameStatusV2 = internalAction({
 
 		if (state === "in") {
 			// Game in progress: update scores and stats
+			if (homeScore === undefined || awayScore === undefined) {
+				const message = `[NBA][SCORE_ANOMALY] In-progress game ${args.espnGameId} missing score(s): home=${homeComp?.score ?? "undefined"}, away=${awayComp?.score ?? "undefined"}`;
+				console.error(message);
+				await logScoreAnomaly(ctx, {
+					espnGameId: args.espnGameId,
+					anomalyType: "missing_in_progress_score",
+					source: "checkGameStatusV2",
+					message,
+					eventStatus,
+					rawHomeScore: homeComp?.score,
+					rawAwayScore: awayComp?.score,
+				});
+				await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
+					gameEventId: args.gameEventId,
+					eventStatus,
+					statusDetail: detail,
+					checkCount: currentCheckCount + 1,
+					lastFetchedAt: Date.now(),
+				});
+				if (currentCheckCount + 1 < 24) {
+					await ctx.scheduler.runAfter(2 * 60 * 1000, internal.nba.actions.checkGameStatusV2, args);
+				}
+				return;
+			}
+
 			console.log(`[NBA] Game ${args.espnGameId} in progress: ${awayScore}-${homeScore}`);
 
 			await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
@@ -336,6 +415,56 @@ export const checkGameStatusV2 = internalAction({
 
 		if (state === "post") {
 			// Game completed: final update
+			if (homeScore === undefined || awayScore === undefined) {
+				const message = `[NBA][SCORE_ANOMALY] Final state for game ${args.espnGameId} has incomplete score: home=${homeComp?.score ?? "undefined"}, away=${awayComp?.score ?? "undefined"}`;
+				console.error(message);
+				await logScoreAnomaly(ctx, {
+					espnGameId: args.espnGameId,
+					anomalyType: "missing_final_score",
+					source: "checkGameStatusV2",
+					message,
+					eventStatus,
+					rawHomeScore: homeComp?.score,
+					rawAwayScore: awayComp?.score,
+				});
+				await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
+					gameEventId: args.gameEventId,
+					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
+					statusDetail: detail,
+					checkCount: currentCheckCount + 1,
+					lastFetchedAt: Date.now(),
+				});
+				if (currentCheckCount + 1 < 24) {
+					await ctx.scheduler.runAfter(2 * 60 * 1000, internal.nba.actions.checkGameStatusV2, args);
+				}
+				return;
+			}
+
+			if (isSuspiciousBlowoutWithZero(homeScore, awayScore)) {
+				const message = `[NBA][SCORE_ANOMALY] Suspicious final score for game ${args.espnGameId}: ${awayScore}-${homeScore}. Delaying completion and retrying.`;
+				console.error(message);
+				await logScoreAnomaly(ctx, {
+					espnGameId: args.espnGameId,
+					anomalyType: "suspicious_final_zero_blowout",
+					source: "checkGameStatusV2",
+					message,
+					eventStatus,
+					homeScore,
+					awayScore,
+				});
+				await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
+					gameEventId: args.gameEventId,
+					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
+					statusDetail: detail,
+					checkCount: currentCheckCount + 1,
+					lastFetchedAt: Date.now(),
+				});
+				if (currentCheckCount + 1 < 24) {
+					await ctx.scheduler.runAfter(2 * 60 * 1000, internal.nba.actions.checkGameStatusV2, args);
+				}
+				return;
+			}
+
 			console.log(`[NBA] Game ${args.espnGameId} completed: ${awayScore}-${homeScore}`);
 
 			await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
@@ -389,6 +518,11 @@ export const checkGameStatusV2 = internalAction({
 		if (currentCheckCount + 1 < 24) {
 			await ctx.scheduler.runAfter(15 * 60 * 1000, internal.nba.actions.checkGameStatusV2, args);
 		}
+		} finally {
+			await ctx.runMutation(internal.nba.mutations.releaseGameSyncLock, {
+				gameEventId: args.gameEventId,
+			});
+		}
 	},
 });
 
@@ -426,8 +560,21 @@ async function syncBoxScoreData(
 	const homeStats = parseTeamBoxScore(homeBoxTeam?.statistics);
 	const awayStats = parseTeamBoxScore(awayBoxTeam?.statistics);
 
-	const homeScore = parseInt(headerHome.score, 10) || 0;
-	const awayScore = parseInt(headerAway.score, 10) || 0;
+	const homeScore = parseApiScore(headerHome.score);
+	const awayScore = parseApiScore(headerAway.score);
+	if (homeScore === undefined || awayScore === undefined) {
+		const message = `[NBA][SCORE_ANOMALY] Box score sync skipped for ${espnGameId}; missing header score(s): home=${headerHome.score ?? "undefined"}, away=${headerAway.score ?? "undefined"}`;
+		console.error(message);
+		await logScoreAnomaly(ctx, {
+			espnGameId,
+			anomalyType: "missing_boxscore_header_score",
+			source: "syncBoxScoreData",
+			message,
+			rawHomeScore: headerHome.score,
+			rawAwayScore: headerAway.score,
+		});
+		return;
+	}
 
 	// Upsert team events
 	if (homeBoxTeam) {
@@ -474,30 +621,40 @@ async function syncBoxScoreData(
 			});
 
 			// Upsert player event
-			await ctx.runMutation(internal.nba.mutations.upsertPlayerEvent, {
-				gameEventId: game._id,
-				teamId,
-				playerId,
-				starter: player.starter,
-				active: player.active,
-				minutes: player.minutes,
-				points: player.points,
-				totalRebounds: player.totalRebounds,
-				offensiveRebounds: player.offensiveRebounds,
-				defensiveRebounds: player.defensiveRebounds,
-				assists: player.assists,
-				steals: player.steals,
-				blocks: player.blocks,
-				turnovers: player.turnovers,
-				fouls: player.fouls,
-				fieldGoalsMade: player.fieldGoalsMade,
-				fieldGoalsAttempted: player.fieldGoalsAttempted,
-				threePointMade: player.threePointMade,
-				threePointAttempted: player.threePointAttempted,
-				freeThrowsMade: player.freeThrowsMade,
-				freeThrowsAttempted: player.freeThrowsAttempted,
-				plusMinus: player.plusMinus,
-			});
+			try {
+				await ctx.runMutation(internal.nba.mutations.upsertPlayerEvent, {
+					gameEventId: game._id,
+					teamId,
+					playerId,
+					starter: player.starter,
+					active: player.active,
+					minutes: player.minutes,
+					points: player.points,
+					totalRebounds: player.totalRebounds,
+					offensiveRebounds: player.offensiveRebounds,
+					defensiveRebounds: player.defensiveRebounds,
+					assists: player.assists,
+					steals: player.steals,
+					blocks: player.blocks,
+					turnovers: player.turnovers,
+					fouls: player.fouls,
+					fieldGoalsMade: player.fieldGoalsMade,
+					fieldGoalsAttempted: player.fieldGoalsAttempted,
+					threePointMade: player.threePointMade,
+					threePointAttempted: player.threePointAttempted,
+					freeThrowsMade: player.freeThrowsMade,
+					freeThrowsAttempted: player.freeThrowsAttempted,
+					plusMinus: player.plusMinus,
+				});
+			} catch (error) {
+				if (isWriteConflictError(error)) {
+					console.warn(
+						`[NBA] Player event upsert conflict for game ${espnGameId}, player ${player.espnPlayerId}; skipping row this pass`,
+					);
+					continue;
+				}
+				throw error;
+			}
 		}
 	};
 
@@ -516,27 +673,35 @@ export const syncLiveGameData = internalAction({
 	handler: async (ctx, args) => {
 		const baseUrl = getSiteApi();
 		const season = getCurrentSeason();
+		let lockGameEventId: Id<"nbaGameEvent"> | undefined;
 
-		// Check if recently fetched (15s throttle)
 		const existingGame = await ctx.runQuery(internal.nba.queries.getGameEventInternal, {
 			espnGameId: args.espnGameId,
 		});
-
-		if (existingGame?.lastFetchedAt && Date.now() - existingGame.lastFetchedAt < 15_000) {
-			return; // Data is fresh enough
+		if (existingGame) {
+			const lockAcquired = await ctx.runMutation(internal.nba.mutations.tryAcquireGameSyncLock, {
+				gameEventId: existingGame._id,
+				lockMs: 90_000,
+				minIntervalMs: 15_000,
+			});
+			if (!lockAcquired) {
+				return;
+			}
+			lockGameEventId = existingGame._id;
 		}
 
-		// Fetch from API provider
-		const response = await fetch(`${baseUrl}/summary?event=${args.espnGameId}`, {
-			headers: { "Content-Type": "application/json" },
-		});
+		try {
+			// Fetch from API provider
+			const response = await fetch(`${baseUrl}/summary?event=${args.espnGameId}`, {
+				headers: { "Content-Type": "application/json" },
+			});
 
-		if (!response.ok) {
-			console.error(`[NBA] Live sync fetch failed for ${args.espnGameId}: ${response.status}`);
-			return;
-		}
+			if (!response.ok) {
+				console.error(`[NBA] Live sync fetch failed for ${args.espnGameId}: ${response.status}`);
+				return;
+			}
 
-		const summaryData = (await response.json()) as ApiGameSummaryResponse;
+			const summaryData = (await response.json()) as ApiGameSummaryResponse;
 
 		const competition = summaryData.header?.competitions?.[0];
 		const state = competition?.status?.type?.state;
@@ -547,8 +712,36 @@ export const syncLiveGameData = internalAction({
 		const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
 		if (!homeComp || !awayComp) return;
 
-		const homeScore = parseInt(homeComp.score, 10) || 0;
-		const awayScore = parseInt(awayComp.score, 10) || 0;
+		const homeScore = parseApiScore(homeComp.score);
+		const awayScore = parseApiScore(awayComp.score);
+		const scoresAreComplete = homeScore !== undefined && awayScore !== undefined;
+		const suspiciousFinal = eventStatus === "completed" && isSuspiciousBlowoutWithZero(homeScore, awayScore);
+		if (!scoresAreComplete) {
+			const message = `[NBA][SCORE_ANOMALY] Live sync missing score(s) for ${args.espnGameId}: home=${homeComp.score ?? "undefined"}, away=${awayComp.score ?? "undefined"}, state=${state ?? "unknown"}`;
+			console.error(message);
+			await logScoreAnomaly(ctx, {
+				espnGameId: args.espnGameId,
+				anomalyType: "missing_live_sync_score",
+				source: "syncLiveGameData",
+				message,
+				eventStatus,
+				rawHomeScore: homeComp.score,
+				rawAwayScore: awayComp.score,
+			});
+		}
+		if (suspiciousFinal) {
+			const message = `[NBA][SCORE_ANOMALY] Live sync suspicious final for ${args.espnGameId}: ${awayScore}-${homeScore}. Keeping prior status until next sync.`;
+			console.error(message);
+			await logScoreAnomaly(ctx, {
+				espnGameId: args.espnGameId,
+				anomalyType: "suspicious_final_zero_blowout",
+				source: "syncLiveGameData",
+				message,
+				eventStatus,
+				homeScore,
+				awayScore,
+			});
+		}
 
 		// Look up teams first to avoid overwriting standings data
 		const existingHomeTeam = await ctx.runQuery(internal.nba.queries.getTeamInternal, {
@@ -591,16 +784,25 @@ export const syncLiveGameData = internalAction({
 			awayTeamId,
 			gameDate: existingGame?.gameDate ?? formatGameDate(scheduledStart),
 			scheduledStart,
-			eventStatus,
+			eventStatus: suspiciousFinal
+				? (existingGame?.eventStatus === "completed" ? "in_progress" : (existingGame?.eventStatus ?? "in_progress"))
+				: eventStatus,
 			statusDetail: detail,
 			venue: competition?.venue?.fullName,
-			homeScore,
-			awayScore,
+			homeScore: scoresAreComplete ? homeScore : undefined,
+			awayScore: scoresAreComplete ? awayScore : undefined,
 			lastFetchedAt: Date.now(),
 		});
 
-		// Sync box score data
-		await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+			// Sync box score data
+			await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+		} finally {
+			if (lockGameEventId) {
+				await ctx.runMutation(internal.nba.mutations.releaseGameSyncLock, {
+					gameEventId: lockGameEventId,
+				});
+			}
+		}
 	},
 });
 
@@ -1026,8 +1228,8 @@ export const backfillDateChunk = internalAction({
 					eventStatus,
 					statusDetail: event.status?.type?.detail,
 					venue: competition.venue?.fullName,
-					homeScore: parseInt(homeComp.score, 10) || undefined,
-					awayScore: parseInt(awayComp.score, 10) || undefined,
+					homeScore: parseApiScore(homeComp.score),
+					awayScore: parseApiScore(awayComp.score),
 				});
 
 				// For completed games, fetch full box score

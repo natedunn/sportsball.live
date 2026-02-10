@@ -17,9 +17,7 @@ export function getRouter() {
 	if (!CONVEX_URL) {
 		throw new Error("missing VITE_CONVEX_URL envar");
 	}
-	const convex = new ConvexReactClient(CONVEX_URL, {
-		expectAuth: true,
-	});
+	const convex = new ConvexReactClient(CONVEX_URL);
 
 	const convexQueryClient = new ConvexQueryClient(convex);
 

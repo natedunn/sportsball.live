@@ -28,6 +28,187 @@ function getCommonApi(): string {
 	return url;
 }
 
+function getCoreApi(): string {
+	const url = process.env.NBA_CORE_API;
+	if (!url) throw new Error("NBA_CORE_API not configured");
+	return url;
+}
+
+function getCoreSeasonYear(season: string): number {
+	const startYear = Number.parseInt(season.split("-")[0] ?? "", 10);
+	if (Number.isFinite(startYear)) return startYear + 1;
+	return new Date().getUTCFullYear();
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+	if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+	return value;
+}
+
+type PlayerSeasonStatsPatch = {
+	gamesPlayed?: number;
+	gamesStarted?: number;
+	minutesPerGame?: number;
+	pointsPerGame?: number;
+	reboundsPerGame?: number;
+	assistsPerGame?: number;
+	stealsPerGame?: number;
+	blocksPerGame?: number;
+	turnoversPerGame?: number;
+	fieldGoalPct?: number;
+	threePointPct?: number;
+	freeThrowPct?: number;
+	offRebPerGame?: number;
+	defRebPerGame?: number;
+	totalFgMade?: number;
+	totalFgAttempted?: number;
+	totalThreeMade?: number;
+	totalThreeAttempted?: number;
+	totalFtMade?: number;
+	totalFtAttempted?: number;
+};
+
+type BackfillPlayerStatsArgs = {
+	season?: string;
+	limit?: number;
+	dryRun?: boolean;
+};
+
+function extractCoreStatValue(corePayload: unknown, statName: string): number | undefined {
+	const categories = (corePayload as { splits?: { categories?: Array<{ stats?: Array<{ name?: string; value?: unknown }> }> } })
+		?.splits?.categories;
+
+	if (!categories) return undefined;
+
+	for (const category of categories) {
+		for (const stat of category.stats ?? []) {
+			if (stat.name === statName) return toFiniteNumber(stat.value);
+		}
+	}
+
+	return undefined;
+}
+
+function compactPatch<T extends Record<string, number | undefined>>(patch: T): T {
+	return Object.fromEntries(
+		Object.entries(patch).filter(([, value]) => value !== undefined),
+	) as T;
+}
+
+function playerNeedsPatch(player: Record<string, unknown>, patch: PlayerSeasonStatsPatch): boolean {
+	return Object.entries(patch).some(([key, value]) => {
+		if (value === undefined) return false;
+		return player[key] !== value;
+	});
+}
+
+async function fetchPlayerSeasonStatsFromCore(
+	coreBase: string,
+	coreSeasonYear: number,
+	espnPlayerId: string,
+): Promise<PlayerSeasonStatsPatch | null> {
+	const url = `${coreBase}/seasons/${coreSeasonYear}/types/2/athletes/${espnPlayerId}/statistics/0?lang=en&region=us`;
+	const response = await fetch(url, {
+		headers: { "Content-Type": "application/json" },
+	});
+
+	if (!response.ok) {
+		return null;
+	}
+
+	const corePayload = await response.json();
+
+	const patch = compactPatch<PlayerSeasonStatsPatch>({
+		gamesPlayed: extractCoreStatValue(corePayload, "gamesPlayed"),
+		gamesStarted: extractCoreStatValue(corePayload, "gamesStarted"),
+		minutesPerGame: extractCoreStatValue(corePayload, "avgMinutes"),
+		pointsPerGame: extractCoreStatValue(corePayload, "avgPoints"),
+		reboundsPerGame: extractCoreStatValue(corePayload, "avgRebounds"),
+		assistsPerGame: extractCoreStatValue(corePayload, "avgAssists"),
+		stealsPerGame: extractCoreStatValue(corePayload, "avgSteals"),
+		blocksPerGame: extractCoreStatValue(corePayload, "avgBlocks"),
+		turnoversPerGame: extractCoreStatValue(corePayload, "avgTurnovers"),
+		fieldGoalPct: extractCoreStatValue(corePayload, "fieldGoalPct"),
+		threePointPct: extractCoreStatValue(corePayload, "threePointPct"),
+		freeThrowPct: extractCoreStatValue(corePayload, "freeThrowPct"),
+		offRebPerGame: extractCoreStatValue(corePayload, "avgOffensiveRebounds"),
+		defRebPerGame: extractCoreStatValue(corePayload, "avgDefensiveRebounds"),
+		totalFgMade: extractCoreStatValue(corePayload, "fieldGoalsMade"),
+		totalFgAttempted: extractCoreStatValue(corePayload, "fieldGoalsAttempted"),
+		totalThreeMade: extractCoreStatValue(corePayload, "threePointFieldGoalsMade"),
+		totalThreeAttempted: extractCoreStatValue(corePayload, "threePointFieldGoalsAttempted"),
+		totalFtMade: extractCoreStatValue(corePayload, "freeThrowsMade"),
+		totalFtAttempted: extractCoreStatValue(corePayload, "freeThrowsAttempted"),
+	});
+
+	return Object.keys(patch).length > 0 ? patch : null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function runCorePlayerStatsBackfill(ctx: any, args: BackfillPlayerStatsArgs) {
+	const season = args.season ?? getCurrentSeason();
+	const coreSeasonYear = getCoreSeasonYear(season);
+	const coreBase = getCoreApi();
+	const allPlayers = await ctx.runQuery(internal.nba.queries.getAllPlayersInternal, {
+		season,
+	});
+	const max = args.limit && args.limit > 0 ? args.limit : allPlayers.length;
+	const players = allPlayers.slice(0, max);
+
+	let scanned = 0;
+	let patched = 0;
+	let unchanged = 0;
+	let missing = 0;
+	let errors = 0;
+
+	for (const player of players) {
+		scanned += 1;
+		try {
+			const patch = await fetchPlayerSeasonStatsFromCore(
+				coreBase,
+				coreSeasonYear,
+				player.espnPlayerId,
+			);
+
+			if (!patch) {
+				missing += 1;
+				continue;
+			}
+
+			if (!playerNeedsPatch(player as Record<string, unknown>, patch)) {
+				unchanged += 1;
+				continue;
+			}
+
+			if (!args.dryRun) {
+				await ctx.runMutation(internal.nba.mutations.patchPlayerSeasonStats, {
+					playerId: player._id,
+					...patch,
+				});
+			}
+
+			patched += 1;
+		} catch (error) {
+			errors += 1;
+			console.error(
+				`[NBA] Core stat backfill failed for player ${player.espnPlayerId}:`,
+				error,
+			);
+		}
+	}
+
+	return {
+		season,
+		coreSeasonYear,
+		dryRun: !!args.dryRun,
+		scanned,
+		patched,
+		unchanged,
+		missing,
+		errors,
+	};
+}
+
 /** Get the start date for a season (late October). */
 function getSeasonStartDate(season: string): string {
 	const startYear = parseInt(season.split("-")[0], 10);
@@ -492,18 +673,6 @@ export const checkGameStatusV2 = internalAction({
 					teamId: game.awayTeamId,
 				});
 
-				// Recalculate player averages for all players in the game
-				const playerEvents = await ctx.runQuery(internal.nba.queries.getPlayerEventsByGame, {
-					gameEventId: args.gameEventId,
-				});
-
-				const uniquePlayerIds = [...new Set(playerEvents.map((pe) => pe.playerId))];
-				for (const playerId of uniquePlayerIds) {
-					await ctx.runMutation(internal.nba.mutations.recalculatePlayerAverages, {
-						playerId,
-					});
-				}
-
 				// Update league rankings
 				await ctx.runMutation(internal.nba.mutations.updateLeagueRankings, {
 					season: game.season,
@@ -816,6 +985,30 @@ export const requestGameSync = action({
 	},
 });
 
+// Public action: patch season player rows using ESPN Core athlete statistics endpoint.
+export const backfillPlayerStatsFromCore = action({
+	args: {
+		season: v.optional(v.string()),
+		limit: v.optional(v.number()),
+		dryRun: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		return await runCorePlayerStatsBackfill(ctx, args);
+	},
+});
+
+// Internal variant for crons and admin workflows.
+export const backfillPlayerStatsFromCoreInternal = internalAction({
+	args: {
+		season: v.optional(v.string()),
+		limit: v.optional(v.number()),
+		dryRun: v.optional(v.boolean()),
+	},
+	handler: async (ctx, args) => {
+		return await runCorePlayerStatsBackfill(ctx, args);
+	},
+});
+
 // ============================================================================
 // BOOTSTRAP / BACKFILL ACTIONS
 // These are one-time actions for initial data population.
@@ -896,6 +1089,8 @@ export const bootstrapTeams = internalAction({
 async function fetchAndUpsertRoster(
 	ctx: any,
 	commonBase: string,
+	coreBase: string,
+	coreSeasonYear: number,
 	espnTeamId: string,
 	convexTeamId: string,
 	season: string,
@@ -914,6 +1109,12 @@ async function fetchAndUpsertRoster(
 	const athletes = allGroup?.athletes ?? rosterData.positionGroups?.[0]?.athletes ?? [];
 
 	for (const athlete of athletes) {
+		const coreStats = await fetchPlayerSeasonStatsFromCore(
+			coreBase,
+			coreSeasonYear,
+			athlete.id,
+		);
+
 		await ctx.runMutation(internal.nba.mutations.upsertPlayer, {
 			espnPlayerId: athlete.id,
 			season,
@@ -931,6 +1132,7 @@ async function fetchAndUpsertRoster(
 				? `${athlete.experience.years}`
 				: undefined,
 			college: athlete.college?.name,
+			...(coreStats ?? {}),
 		});
 	}
 
@@ -960,7 +1162,7 @@ export const bootstrapPlayers = internalAction({
 		}
 
 		// Collect team info for chunking
-		const teamInfos = teams.map((t) => ({ espnTeamId: t.espnTeamId, convexTeamId: t._id }));
+		const teamInfos = teams.map((t: any) => ({ espnTeamId: t.espnTeamId, convexTeamId: t._id }));
 
 		console.log(`[NBA Bootstrap] Found ${teams.length} teams, scheduling roster fetches...`);
 
@@ -995,6 +1197,8 @@ export const bootstrapPlayersChunk = internalAction({
 
 		const season = getCurrentSeason();
 		const commonBase = getCommonApi();
+		const coreBase = getCoreApi();
+		const coreSeasonYear = getCoreSeasonYear(season);
 		const chunk = args.teamInfos.slice(args.offset, args.offset + ROSTER_TEAMS_PER_CHUNK);
 
 		if (chunk.length === 0) {
@@ -1020,7 +1224,15 @@ export const bootstrapPlayersChunk = internalAction({
 
 		for (const teamInfo of chunk) {
 			try {
-				const playerCount = await fetchAndUpsertRoster(ctx, commonBase, teamInfo.espnTeamId, teamInfo.convexTeamId, season);
+				const playerCount = await fetchAndUpsertRoster(
+					ctx,
+					commonBase,
+					coreBase,
+					coreSeasonYear,
+					teamInfo.espnTeamId,
+					teamInfo.convexTeamId,
+					season,
+				);
 				console.log(`[NBA Bootstrap] Team ${teamInfo.espnTeamId}: ${playerCount} players`);
 				await sleep(BACKFILL_GAME_DELAY_MS);
 			} catch (error) {
@@ -1056,6 +1268,8 @@ export const bootstrapSingleTeamPlayers = internalAction({
 	handler: async (ctx, args) => {
 		const season = getCurrentSeason();
 		const commonBase = getCommonApi();
+		const coreBase = getCoreApi();
+		const coreSeasonYear = getCoreSeasonYear(season);
 
 		const team = await ctx.runQuery(internal.nba.queries.getTeamInternal, {
 			espnTeamId: args.espnTeamId, season,
@@ -1068,7 +1282,15 @@ export const bootstrapSingleTeamPlayers = internalAction({
 
 		console.log(`[NBA Bootstrap] Fetching roster for ${team.name} (${args.espnTeamId})...`);
 
-		const playerCount = await fetchAndUpsertRoster(ctx, commonBase, args.espnTeamId, team._id, season);
+		const playerCount = await fetchAndUpsertRoster(
+			ctx,
+			commonBase,
+			coreBase,
+			coreSeasonYear,
+			args.espnTeamId,
+			team._id,
+			season,
+		);
 
 		console.log(`[NBA Bootstrap] ${team.name}: ${playerCount} players bootstrapped`);
 	},
@@ -1306,17 +1528,8 @@ export const recalculateAll = internalAction({
 			});
 		}
 
-		console.log(`[NBA Recalculate] Team averages done. Recalculating player averages...`);
-
-		// Recalculate player averages
-		const players = await ctx.runQuery(internal.nba.queries.getAllPlayersInternal, { season });
-		console.log(`[NBA Recalculate] Recalculating averages for ${players.length} players...`);
-
-		for (const player of players) {
-			await ctx.runMutation(internal.nba.mutations.recalculatePlayerAverages, {
-				playerId: player._id,
-			});
-		}
+		console.log(`[NBA Recalculate] Team averages done. Reconciling player season stats from Core...`);
+		await runCorePlayerStatsBackfill(ctx, { season, dryRun: false });
 
 		// Update league rankings
 		console.log(`[NBA Recalculate] Updating league rankings...`);

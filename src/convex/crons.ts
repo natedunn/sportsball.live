@@ -27,4 +27,26 @@ crons.daily(
 	internal.gleague.actions.discoverTodaysGames,
 );
 
+// Reconcile season player stats from ESPN Core to keep non-live stats accurate.
+crons.daily(
+	"reconcile-nba-player-stats",
+	{ hourUTC: 18, minuteUTC: 0 },
+	internal.nba.actions.backfillPlayerStatsFromCoreInternal,
+	{},
+);
+
+crons.daily(
+	"reconcile-wnba-player-stats",
+	{ hourUTC: 18, minuteUTC: 20 },
+	internal.wnba.actions.backfillPlayerStatsFromCoreInternal,
+	{},
+);
+
+crons.daily(
+	"reconcile-gleague-player-stats",
+	{ hourUTC: 18, minuteUTC: 40 },
+	internal.gleague.actions.backfillPlayerStatsFromCoreInternal,
+	{},
+);
+
 export default crons;

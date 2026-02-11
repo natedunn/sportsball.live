@@ -19,6 +19,12 @@ interface StatColumn {
   defaultVisible?: boolean;
 }
 
+function formatRosterPct(value: number): string {
+  if (value <= 0) return "—";
+  const normalized = value <= 1 ? value * 100 : value;
+  return `${normalized.toFixed(1)}%`;
+}
+
 // All available stat columns
 const STAT_COLUMNS: StatColumn[] = [
   {
@@ -98,7 +104,7 @@ const STAT_COLUMNS: StatColumn[] = [
     label: "Field Goal %",
     shortLabel: "FG%",
     getValue: (p) => p.stats.fgPct,
-    format: (v) => (v > 0 ? `${(v * 100).toFixed(1)}%` : "—"),
+    format: formatRosterPct,
     isPercentage: true,
     defaultVisible: true,
   },
@@ -107,7 +113,7 @@ const STAT_COLUMNS: StatColumn[] = [
     label: "3-Point %",
     shortLabel: "3P%",
     getValue: (p) => p.stats.threePct,
-    format: (v) => (v > 0 ? `${(v * 100).toFixed(1)}%` : "—"),
+    format: formatRosterPct,
     isPercentage: true,
     defaultVisible: true,
   },
@@ -116,7 +122,7 @@ const STAT_COLUMNS: StatColumn[] = [
     label: "Free Throw %",
     shortLabel: "FT%",
     getValue: (p) => p.stats.ftPct,
-    format: (v) => (v > 0 ? `${(v * 100).toFixed(1)}%` : "—"),
+    format: formatRosterPct,
     isPercentage: true,
     defaultVisible: false,
   },

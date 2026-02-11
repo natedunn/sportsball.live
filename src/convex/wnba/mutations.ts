@@ -86,6 +86,26 @@ export const upsertPlayer = internalMutation({
 		age: v.optional(v.number()),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
+		gamesPlayed: v.optional(v.number()),
+		gamesStarted: v.optional(v.number()),
+		minutesPerGame: v.optional(v.number()),
+		pointsPerGame: v.optional(v.number()),
+		reboundsPerGame: v.optional(v.number()),
+		assistsPerGame: v.optional(v.number()),
+		stealsPerGame: v.optional(v.number()),
+		blocksPerGame: v.optional(v.number()),
+		turnoversPerGame: v.optional(v.number()),
+		fieldGoalPct: v.optional(v.number()),
+		threePointPct: v.optional(v.number()),
+		freeThrowPct: v.optional(v.number()),
+		offRebPerGame: v.optional(v.number()),
+		defRebPerGame: v.optional(v.number()),
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db
@@ -95,10 +115,10 @@ export const upsertPlayer = internalMutation({
 			)
 			.unique();
 
-		const data = {
+		const data = omitUndefined({
 			...args,
 			updatedAt: Date.now(),
-		};
+		});
 
 		if (existing) {
 			await ctx.db.patch(existing._id, data);
@@ -106,6 +126,43 @@ export const upsertPlayer = internalMutation({
 		} else {
 			return await ctx.db.insert("wnbaPlayer", data);
 		}
+	},
+});
+
+// Patch season-level player stats from external source (ESPN Core).
+export const patchPlayerSeasonStats = internalMutation({
+	args: {
+		playerId: v.id("wnbaPlayer"),
+		gamesPlayed: v.optional(v.number()),
+		gamesStarted: v.optional(v.number()),
+		minutesPerGame: v.optional(v.number()),
+		pointsPerGame: v.optional(v.number()),
+		reboundsPerGame: v.optional(v.number()),
+		assistsPerGame: v.optional(v.number()),
+		stealsPerGame: v.optional(v.number()),
+		blocksPerGame: v.optional(v.number()),
+		turnoversPerGame: v.optional(v.number()),
+		fieldGoalPct: v.optional(v.number()),
+		threePointPct: v.optional(v.number()),
+		freeThrowPct: v.optional(v.number()),
+		offRebPerGame: v.optional(v.number()),
+		defRebPerGame: v.optional(v.number()),
+		totalFgMade: v.optional(v.number()),
+		totalFgAttempted: v.optional(v.number()),
+		totalThreeMade: v.optional(v.number()),
+		totalThreeAttempted: v.optional(v.number()),
+		totalFtMade: v.optional(v.number()),
+		totalFtAttempted: v.optional(v.number()),
+	},
+	handler: async (ctx, args) => {
+		const { playerId, ...stats } = args;
+		await ctx.db.patch(
+			playerId,
+			omitUndefined({
+				...stats,
+				updatedAt: Date.now(),
+			}),
+		);
 	},
 });
 

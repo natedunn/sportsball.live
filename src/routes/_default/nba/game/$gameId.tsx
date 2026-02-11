@@ -5,6 +5,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
 import { convexGameDetailsToGameDetails } from "@/lib/shared/convex-adapters";
 import { syncLiveGame } from "@/lib/shared/sync.server";
+import { useLiveScoreSync } from "@/lib/shared/live-score-sync";
 import {
 	GameDetailsLayout,
 	GameDetailsPending,
@@ -40,9 +41,15 @@ function NbaGameDetailsPage() {
 	const { fromDate, tab } = Route.useSearch();
 	const navigate = useNavigate();
 
-	const { data: rawGame } = useQuery(
+	const { data: rawGame, refetch } = useQuery(
 		convexQuery(api.nba.queries.getGameDetails, { espnGameId: gameId }),
 	);
+
+	useLiveScoreSync({
+		league: "nba",
+		rawGames: rawGame ? [rawGame as any] : [],
+		refetch,
+	});
 
 	const game = useMemo(
 		() => convexGameDetailsToGameDetails(rawGame, "nba"),

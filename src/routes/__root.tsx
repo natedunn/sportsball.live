@@ -21,6 +21,8 @@ import { initThemeObserver } from "@/lib/store";
 import appCss from "../styles/app.css?url";
 import { Footer } from "@/components/layout/footer";
 
+const SITE_TITLE = import.meta.env.DEV ? "🚧 Sportsball" : "Sportsball";
+
 const getAuth = createServerFn({ method: "GET" }).handler(async () => {
 	return await getToken();
 });
@@ -39,7 +41,7 @@ export const Route = createRootRouteWithContext<{
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "Sportsball",
+				title: SITE_TITLE,
 			},
 		],
 		links: [

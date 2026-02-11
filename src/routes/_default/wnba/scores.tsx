@@ -1,11 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, type FetchQueryOptions } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
 import { formatDate } from "@/lib/date";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
-import { syncGamesForView } from "@/lib/shared/sync.server";
+import {
+	syncLeagueGamesForView,
+	useLiveScoreSync,
+	type RawSyncableGame,
+} from "@/lib/shared/live-score-sync";
 import {
 	ScoresPageLayout,
 	ScoresPagePending,
@@ -17,8 +21,6 @@ const DESCRIPTION = "Live scores, results, and upcoming games for the WNBA.";
 interface WnbaSearchParams {
 	date?: string;
 }
-
-const LIVE_REFRESH_INTERVAL_MS = 30_000;
 
 const scoreboardQuery = (date: string) =>
 	convexQuery(api.wnba.queries.getScoreboard, { gameDate: date });
@@ -38,25 +40,12 @@ export const Route = createFileRoute("/_default/wnba/scores")({
 		const rawGames = await context.queryClient.ensureQueryData(
 			scoreboardQuery(formattedDate),
 		);
-		const gamesForSync = (rawGames ?? []) as Array<{
-			espnGameId: string;
-			eventStatus?: string;
-			scheduledStart?: number;
-			lastFetchedAt?: number;
-		}>;
 
 		if (formattedDate === today) {
-			await syncGamesForView({
-				data: {
-					league: "wnba",
-					games: gamesForSync.map((game) => ({
-						espnGameId: game.espnGameId,
-						eventStatus: game.eventStatus,
-						scheduledStart: game.scheduledStart,
-						lastFetchedAt: game.lastFetchedAt,
-					})),
-				},
-			});
+			await syncLeagueGamesForView(
+				"wnba",
+				(rawGames ?? []) as RawSyncableGame[],
+			);
 			await context.queryClient.ensureQueryData(scoreboardQuery(formattedDate));
 		}
 	},
@@ -71,56 +60,16 @@ function WnbaScoresPage() {
 	const currentDate = date ?? formatDate(new Date(), "YYYY-MM-DD");
 	const formattedDate = formatDate(currentDate, "YYYYMMDD");
 	const today = formatDate(new Date(), "YYYYMMDD");
+	const isToday = formattedDate === today;
 
 	const { data: rawGames, refetch } = useQuery(scoreboardQuery(formattedDate));
 
-	useEffect(() => {
-		if (formattedDate !== today) return;
-
-		const syncNow = async () => {
-			if (document.visibilityState !== "visible") return;
-
-			const gamesForSync = (rawGames ?? []) as Array<{
-				espnGameId: string;
-				eventStatus?: string;
-				scheduledStart?: number;
-				lastFetchedAt?: number;
-			}>;
-
-			if (gamesForSync.length === 0) return;
-
-			await syncGamesForView({
-				data: {
-					league: "wnba",
-					games: gamesForSync.map((game) => ({
-						espnGameId: game.espnGameId,
-						eventStatus: game.eventStatus,
-						scheduledStart: game.scheduledStart,
-						lastFetchedAt: game.lastFetchedAt,
-					})),
-				},
-			});
-
-			await refetch();
-		};
-
-		const intervalId = window.setInterval(() => {
-			void syncNow();
-		}, LIVE_REFRESH_INTERVAL_MS);
-
-		const onVisibilityChange = () => {
-			if (document.visibilityState === "visible") {
-				void syncNow();
-			}
-		};
-
-		document.addEventListener("visibilitychange", onVisibilityChange);
-
-		return () => {
-			window.clearInterval(intervalId);
-			document.removeEventListener("visibilitychange", onVisibilityChange);
-		};
-	}, [formattedDate, today, rawGames, refetch]);
+	useLiveScoreSync({
+		league: "wnba",
+		rawGames: (rawGames ?? []) as RawSyncableGame[],
+		refetch,
+		enabled: isToday,
+	});
 
 	const games = useMemo(
 		() => convexScoreboardToGameData(rawGames ?? [], "wnba"),

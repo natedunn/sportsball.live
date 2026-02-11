@@ -8,6 +8,11 @@ import { wnbaNewsQueryOptions } from "@/lib/wnba/news.queries";
 import { wnbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
+import {
+	syncLeagueGamesForView,
+	useLiveScoreSync,
+	type RawSyncableGame,
+} from "@/lib/shared/live-score-sync";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
 import { PlayerLeaders } from "@/components/leaders/player-leaders";
@@ -16,10 +21,15 @@ import { SmartTeamRankings } from "@/components/leaders/smart-team-rankings";
 export const Route = createFileRoute("/_default/wnba/")({
 	loader: async ({ context }) => {
 		const today = formatDate(new Date(), "YYYYMMDD");
+		const scoreboardQuery = convexQuery(api.wnba.queries.getScoreboard, {
+			gameDate: today,
+		});
+
+		const rawGames = await context.queryClient.ensureQueryData(scoreboardQuery);
+		await syncLeagueGamesForView("wnba", (rawGames ?? []) as RawSyncableGame[]);
+
 		await Promise.all([
-			context.queryClient.ensureQueryData(
-				convexQuery(api.wnba.queries.getScoreboard, { gameDate: today }),
-			),
+			context.queryClient.ensureQueryData(scoreboardQuery),
 			context.queryClient.ensureQueryData(wnbaNewsQueryOptions()),
 			context.queryClient.ensureQueryData(wnbaLeadersQueryOptions()),
 		]);
@@ -29,11 +39,17 @@ export const Route = createFileRoute("/_default/wnba/")({
 
 function WnbaHomePage() {
 	const today = formatDate(new Date(), "YYYYMMDD");
-	const { data: rawGames } = useQuery(
+	const { data: rawGames, refetch } = useQuery(
 		convexQuery(api.wnba.queries.getScoreboard, { gameDate: today }),
 	);
 	const { data: news = [] } = useQuery(wnbaNewsQueryOptions());
 	const { data: leaders } = useQuery(wnbaLeadersQueryOptions());
+
+	useLiveScoreSync({
+		league: "wnba",
+		rawGames: (rawGames ?? []) as RawSyncableGame[],
+		refetch,
+	});
 
 	const games = useMemo(
 		() => convexScoreboardToGameData(rawGames ?? [], "wnba"),

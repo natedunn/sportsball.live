@@ -8,6 +8,11 @@ import { gleagueNewsQueryOptions } from "@/lib/gleague/news.queries";
 import { gleagueLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
+import {
+	syncLeagueGamesForView,
+	useLiveScoreSync,
+	type RawSyncableGame,
+} from "@/lib/shared/live-score-sync";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
 import { PlayerLeaders } from "@/components/leaders/player-leaders";
@@ -16,10 +21,18 @@ import { SmartTeamRankings } from "@/components/leaders/smart-team-rankings";
 export const Route = createFileRoute("/_default/gleague/")({
 	loader: async ({ context }) => {
 		const today = formatDate(new Date(), "YYYYMMDD");
+		const scoreboardQuery = convexQuery(api.gleague.queries.getScoreboard, {
+			gameDate: today,
+		});
+
+		const rawGames = await context.queryClient.ensureQueryData(scoreboardQuery);
+		await syncLeagueGamesForView(
+			"gleague",
+			(rawGames ?? []) as RawSyncableGame[],
+		);
+
 		await Promise.all([
-			context.queryClient.ensureQueryData(
-				convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
-			),
+			context.queryClient.ensureQueryData(scoreboardQuery),
 			context.queryClient.ensureQueryData(gleagueNewsQueryOptions()),
 			context.queryClient.ensureQueryData(gleagueLeadersQueryOptions()),
 		]);
@@ -29,11 +42,17 @@ export const Route = createFileRoute("/_default/gleague/")({
 
 function GLeagueHomePage() {
 	const today = formatDate(new Date(), "YYYYMMDD");
-	const { data: rawGames } = useQuery(
+	const { data: rawGames, refetch } = useQuery(
 		convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
 	);
 	const { data: news = [] } = useQuery(gleagueNewsQueryOptions());
 	const { data: leaders } = useQuery(gleagueLeadersQueryOptions());
+
+	useLiveScoreSync({
+		league: "gleague",
+		rawGames: (rawGames ?? []) as RawSyncableGame[],
+		refetch,
+	});
 
 	const games = useMemo(
 		() => convexScoreboardToGameData(rawGames ?? [], "gleague"),

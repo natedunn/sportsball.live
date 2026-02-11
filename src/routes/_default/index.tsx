@@ -15,6 +15,11 @@ const DitheredBasketball = lazy(() =>
 import { getButtonClasses } from "@/components/ui/button";
 import { Scoreboard } from "@/components/scores/scoreboard";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
+import {
+	syncLeagueGamesForView,
+	useLiveScoreSync,
+	type RawSyncableGame,
+} from "@/lib/shared/live-score-sync";
 import { formatDate } from "@/lib/date";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -26,16 +31,38 @@ export const Route = createFileRoute("/_default/")({
 	component: HomePage,
 	loader: async ({ context }) => {
 		const today = formatDate(new Date(), "YYYYMMDD");
+		const nbaScoreboardQuery = convexQuery(api.nba.queries.getScoreboard, {
+			gameDate: today,
+		});
+		const wnbaScoreboardQuery = convexQuery(api.wnba.queries.getScoreboard, {
+			gameDate: today,
+		});
+		const gleagueScoreboardQuery = convexQuery(api.gleague.queries.getScoreboard, {
+			gameDate: today,
+		});
+
+		const [rawNba, rawWnba, rawGleague] = await Promise.all([
+			context.queryClient.ensureQueryData(
+				nbaScoreboardQuery,
+			),
+			context.queryClient.ensureQueryData(
+				wnbaScoreboardQuery,
+			),
+			context.queryClient.ensureQueryData(
+				gleagueScoreboardQuery,
+			),
+		]);
+
 		await Promise.all([
-			context.queryClient.ensureQueryData(
-				convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
-			),
-			context.queryClient.ensureQueryData(
-				convexQuery(api.wnba.queries.getScoreboard, { gameDate: today }),
-			),
-			context.queryClient.ensureQueryData(
-				convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
-			),
+			syncLeagueGamesForView("nba", (rawNba ?? []) as RawSyncableGame[]),
+			syncLeagueGamesForView("wnba", (rawWnba ?? []) as RawSyncableGame[]),
+			syncLeagueGamesForView("gleague", (rawGleague ?? []) as RawSyncableGame[]),
+		]);
+
+		await Promise.all([
+			context.queryClient.ensureQueryData(nbaScoreboardQuery),
+			context.queryClient.ensureQueryData(wnbaScoreboardQuery),
+			context.queryClient.ensureQueryData(gleagueScoreboardQuery),
 		]);
 	},
 });
@@ -140,16 +167,32 @@ interface LeagueGames {
 
 function TodayGames() {
 	const today = formatDate(new Date(), "YYYYMMDD");
-	const { data: rawNba } = useQuery(
+	const { data: rawNba, refetch: refetchNba } = useQuery(
 		convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
 	);
-	const { data: rawWnba } = useQuery(
+	const { data: rawWnba, refetch: refetchWnba } = useQuery(
 		convexQuery(api.wnba.queries.getScoreboard, { gameDate: today }),
 	);
-	const { data: rawGleague } = useQuery(
+	const { data: rawGleague, refetch: refetchGleague } = useQuery(
 		convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
 	);
 	const { isFavorited } = useFavorites();
+
+	useLiveScoreSync({
+		league: "nba",
+		rawGames: (rawNba ?? []) as RawSyncableGame[],
+		refetch: refetchNba,
+	});
+	useLiveScoreSync({
+		league: "wnba",
+		rawGames: (rawWnba ?? []) as RawSyncableGame[],
+		refetch: refetchWnba,
+	});
+	useLiveScoreSync({
+		league: "gleague",
+		rawGames: (rawGleague ?? []) as RawSyncableGame[],
+		refetch: refetchGleague,
+	});
 
 	const nbaGames = useMemo(
 		() => convexScoreboardToGameData(rawNba ?? [], "nba"),

@@ -8,6 +8,11 @@ import { nbaNewsQueryOptions } from "@/lib/nba/news.queries";
 import { nbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
 import { formatDate } from "@/lib/date";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
+import {
+	syncLeagueGamesForView,
+	useLiveScoreSync,
+	type RawSyncableGame,
+} from "@/lib/shared/live-score-sync";
 import { ScoreTicker } from "@/components/score-ticker";
 import { NewsCard } from "@/components/news-card";
 import { PlayerLeaders } from "@/components/leaders/player-leaders";
@@ -16,10 +21,15 @@ import { SmartTeamRankings } from "@/components/leaders/smart-team-rankings";
 export const Route = createFileRoute("/_default/nba/")({
 	loader: async ({ context }) => {
 		const today = formatDate(new Date(), "YYYYMMDD");
+		const scoreboardQuery = convexQuery(api.nba.queries.getScoreboard, {
+			gameDate: today,
+		});
+
+		const rawGames = await context.queryClient.ensureQueryData(scoreboardQuery);
+		await syncLeagueGamesForView("nba", (rawGames ?? []) as RawSyncableGame[]);
+
 		await Promise.all([
-			context.queryClient.ensureQueryData(
-				convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
-			),
+			context.queryClient.ensureQueryData(scoreboardQuery),
 			context.queryClient.ensureQueryData(nbaNewsQueryOptions()),
 			context.queryClient.ensureQueryData(nbaLeadersQueryOptions()),
 		]);
@@ -29,11 +39,17 @@ export const Route = createFileRoute("/_default/nba/")({
 
 function NbaHomePage() {
 	const today = formatDate(new Date(), "YYYYMMDD");
-	const { data: rawGames } = useQuery(
+	const { data: rawGames, refetch } = useQuery(
 		convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
 	);
 	const { data: news = [] } = useQuery(nbaNewsQueryOptions());
 	const { data: leaders } = useQuery(nbaLeadersQueryOptions());
+
+	useLiveScoreSync({
+		league: "nba",
+		rawGames: (rawGames ?? []) as RawSyncableGame[],
+		refetch,
+	});
 
 	const games = useMemo(
 		() => convexScoreboardToGameData(rawGames ?? [], "nba"),

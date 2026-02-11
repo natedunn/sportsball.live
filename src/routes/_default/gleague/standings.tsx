@@ -7,6 +7,10 @@ import { getCurrentSeason } from "@/lib/shared/season";
 import { convexStandingsToResponse } from "@/lib/shared/convex-adapters";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StandingsTable } from "@/components/standings/standings-table";
+import {
+	EasternConferenceIcon,
+	WesternConferenceIcon,
+} from "@/components/ui/conference-tab-icons";
 
 const TITLE = "G-League Standings";
 const DESCRIPTION = "Current NBA G-League standings by conference.";
@@ -114,8 +118,18 @@ function GLeagueStandingsPage() {
 				>
 					<div className="flex justify-center mb-6">
 						<TabsList responsive={false}>
-							<TabsTrigger value="eastern">Eastern</TabsTrigger>
-							<TabsTrigger value="western">Western</TabsTrigger>
+							<TabsTrigger value="eastern">
+								<span className="inline-flex items-center gap-1.5">
+									<EasternConferenceIcon />
+									Eastern
+								</span>
+							</TabsTrigger>
+							<TabsTrigger value="western">
+								<span className="inline-flex items-center gap-1.5">
+									<WesternConferenceIcon />
+									Western
+								</span>
+							</TabsTrigger>
 						</TabsList>
 					</div>
 

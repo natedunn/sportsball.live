@@ -177,7 +177,6 @@ export function GamesTab({ games, teamId, league }: GamesTabProps) {
           value={formatRecord(records.last10.wins, records.last10.losses)}
           subtitle={formatWinPct(records.last10.wins, records.last10.losses)}
           icon={TrendingUp}
-          highlight
           delay={150}
         />
       </div>

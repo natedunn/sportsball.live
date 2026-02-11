@@ -191,53 +191,53 @@ export function Header() {
 				{/* Desktop nav - centered */}
 				<NavigationMenu.Root className="absolute left-1/2 -translate-x-1/2 hidden sm:block">
 					<NavigationMenu.List className="flex items-center gap-1">
-							{navItems.map((item) => (
-								<NavigationMenu.Item key={item.label}>
-									<NavigationMenu.Trigger className={triggerClassName}>
-										{item.label}
-										<NavigationMenu.Icon className="transition-transform duration-200 ease-out data-popup-open:rotate-180">
-											<ChevronDown className="h-4 w-4 text-muted-foreground" />
-										</NavigationMenu.Icon>
-									</NavigationMenu.Trigger>
-									<NavigationMenu.Content className={contentClassName}>
-										<ul className="grid grid-cols-2 gap-1">
-											{item.children.map((child) => (
-												<li key={child.href} className={child.fullWidth ? "col-span-2 border-t border-border mt-1 pt-1" : ""}>
-													{child.disabled ? (
-														<div className="flex h-full items-start gap-3 rounded-md p-3 opacity-50 cursor-not-allowed">
-															<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-															<div className="flex flex-col gap-0.5">
-																<span className="text-sm font-medium">
-																	{child.label}
-																</span>
-																<span className="text-xs text-muted-foreground">
-																	{child.description}
-																</span>
-															</div>
+						{navItems.map((item) => (
+							<NavigationMenu.Item key={item.label}>
+								<NavigationMenu.Trigger className={triggerClassName}>
+									{item.label}
+									<NavigationMenu.Icon className="transition-transform duration-200 ease-out data-popup-open:rotate-180">
+										<ChevronDown className="h-4 w-4 text-muted-foreground" />
+									</NavigationMenu.Icon>
+								</NavigationMenu.Trigger>
+								<NavigationMenu.Content className={contentClassName}>
+									<ul className="grid grid-cols-2 gap-1">
+										{item.children.map((child) => (
+											<li key={child.href} className={child.fullWidth ? "col-span-2 border-t border-border mt-1 pt-1" : ""}>
+												{child.disabled ? (
+													<div className="flex h-full items-start gap-3 rounded-md p-3 opacity-50 cursor-not-allowed">
+														<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+														<div className="flex flex-col gap-0.5">
+															<span className="text-sm font-medium">
+																{child.label}
+															</span>
+															<span className="text-xs text-muted-foreground">
+																{child.description}
+															</span>
 														</div>
-													) : (
-														<NavLink
-															href={child.href}
-															className="flex h-full items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent/50 focus:bg-accent/50 focus:outline-none"
-														>
-															<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-															<div className="flex flex-col gap-0.5">
-																<span className="text-sm font-medium">
-																	{child.label}
-																</span>
-																<span className="text-xs text-muted-foreground">
-																	{child.description}
-																</span>
-															</div>
-														</NavLink>
-													)}
-												</li>
-											))}
-										</ul>
-									</NavigationMenu.Content>
-								</NavigationMenu.Item>
-							))}
-						</NavigationMenu.List>
+													</div>
+												) : (
+													<NavLink
+														href={child.href}
+														className="flex h-full items-start gap-3 rounded-md p-3 transition-colors hover:bg-accent/50 focus:bg-accent/50 focus:outline-none"
+													>
+														<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+														<div className="flex flex-col gap-0.5">
+															<span className="text-sm font-medium">
+																{child.label}
+															</span>
+															<span className="text-xs text-muted-foreground">
+																{child.description}
+															</span>
+														</div>
+													</NavLink>
+												)}
+											</li>
+										))}
+									</ul>
+								</NavigationMenu.Content>
+							</NavigationMenu.Item>
+						))}
+					</NavigationMenu.List>
 
 						<NavigationMenu.Portal>
 							<NavigationMenu.Positioner

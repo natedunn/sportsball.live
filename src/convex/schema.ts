@@ -137,7 +137,10 @@ export default defineSchema({
 	})
 		.index("by_espnPlayerId_season", ["espnPlayerId", "season"])
 		.index("by_teamId", ["teamId"])
-		.index("by_season", ["season"]),
+		.index("by_season", ["season"])
+		.index("by_season_pointsPerGame", ["season", "pointsPerGame"])
+		.index("by_season_assistsPerGame", ["season", "assistsPerGame"])
+		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"]),
 
 	// NBA Game Event — individual game tracking
 	nbaGameEvent: defineTable({
@@ -348,7 +351,10 @@ export default defineSchema({
 	})
 		.index("by_espnPlayerId_season", ["espnPlayerId", "season"])
 		.index("by_teamId", ["teamId"])
-		.index("by_season", ["season"]),
+		.index("by_season", ["season"])
+		.index("by_season_pointsPerGame", ["season", "pointsPerGame"])
+		.index("by_season_assistsPerGame", ["season", "assistsPerGame"])
+		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"]),
 
 	wnbaGameEvent: defineTable({
 		espnGameId: v.string(),
@@ -554,7 +560,10 @@ export default defineSchema({
 	})
 		.index("by_espnPlayerId_season", ["espnPlayerId", "season"])
 		.index("by_teamId", ["teamId"])
-		.index("by_season", ["season"]),
+		.index("by_season", ["season"])
+		.index("by_season_pointsPerGame", ["season", "pointsPerGame"])
+		.index("by_season_assistsPerGame", ["season", "assistsPerGame"])
+		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"]),
 
 	gleagueGameEvent: defineTable({
 		espnGameId: v.string(),

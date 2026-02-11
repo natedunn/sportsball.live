@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
+import { paginationOptsValidator } from "convex/server";
 
 // Get all games for a specific date (scoreboard)
 export const getScoreboard = query({
@@ -187,6 +188,323 @@ export const getTeamRoster = query({
 			.query("gleaguePlayer")
 			.withIndex("by_teamId", (q) => q.eq("teamId", args.teamId))
 			.collect();
+	},
+});
+
+type EnrichedPlayerEvent = {
+	minutes: number;
+	points: number;
+	rebounds: number;
+	assists: number;
+	blocks: number;
+	fgMade: number;
+	fgAttempted: number;
+	threeMade: number;
+	threeAttempted: number;
+	ftMade: number;
+	ftAttempted: number;
+	isHome: boolean;
+	gameLabel: string;
+	scheduledStart: number;
+};
+
+function safePct(made: number, attempted: number): number {
+	if (attempted <= 0) return 0;
+	return (made / attempted) * 100;
+}
+
+function aggregateEvents(events: EnrichedPlayerEvent[]) {
+	if (events.length === 0) {
+		return {
+			minutes: 0,
+			points: 0,
+			rebounds: 0,
+			assists: 0,
+			blocks: 0,
+			fgMade: 0,
+			fgAttempted: 0,
+			threeMade: 0,
+			threeAttempted: 0,
+			ftMade: 0,
+			ftAttempted: 0,
+		};
+	}
+
+	return events.reduce(
+		(acc, event) => {
+			acc.minutes += event.minutes;
+			acc.points += event.points;
+			acc.rebounds += event.rebounds;
+			acc.assists += event.assists;
+			acc.blocks += event.blocks;
+			acc.fgMade += event.fgMade;
+			acc.fgAttempted += event.fgAttempted;
+			acc.threeMade += event.threeMade;
+			acc.threeAttempted += event.threeAttempted;
+			acc.ftMade += event.ftMade;
+			acc.ftAttempted += event.ftAttempted;
+			return acc;
+		},
+		{
+			minutes: 0,
+			points: 0,
+			rebounds: 0,
+			assists: 0,
+			blocks: 0,
+			fgMade: 0,
+			fgAttempted: 0,
+			threeMade: 0,
+			threeAttempted: 0,
+			ftMade: 0,
+			ftAttempted: 0,
+		},
+	);
+}
+
+function deriveBirthDate(age?: number): string {
+	const currentYear = new Date().getUTCFullYear();
+	const birthYear = currentYear - (age ?? 25);
+	return `${birthYear}-01-01`;
+}
+
+function calculatedStats(player: any) {
+	const fga = player.fieldGoalsAttempted ?? 0;
+	const fgm = player.fieldGoalsMade ?? 0;
+	const fta = player.freeThrowsAttempted ?? 0;
+	const ftm = player.freeThrowsMade ?? 0;
+	const tov = player.turnoversPerGame ?? 0;
+	const ast = player.assistsPerGame ?? 0;
+	const pts = player.pointsPerGame ?? 0;
+	const reb = player.reboundsPerGame ?? 0;
+	const stl = player.stealsPerGame ?? 0;
+	const blk = player.blocksPerGame ?? 0;
+	const tsDenom = 2 * (fga + 0.44 * fta);
+	const tsPct = tsDenom > 0 ? (pts / tsDenom) * 100 : player.fieldGoalPct ?? 0;
+	const efficiency =
+		pts + reb + ast + stl + blk - (fga - fgm) - (fta - ftm) - tov;
+
+	return {
+		trueShootingPct: tsPct,
+		usagePct: Math.min(50, (fga + 0.44 * fta + tov) * 1.5),
+		playerEfficiency: efficiency,
+		assistToTurnover: ast / Math.max(tov, 0.1),
+	};
+}
+
+export const getPlayerDetails = query({
+	args: { season: v.string(), espnPlayerId: v.string() },
+	handler: async (ctx, args) => {
+		const player = await ctx.db
+			.query("gleaguePlayer")
+			.withIndex("by_espnPlayerId_season", (q) =>
+				q.eq("espnPlayerId", args.espnPlayerId).eq("season", args.season),
+			)
+			.unique();
+
+		if (!player) return null;
+
+		const allSeasonPlayers = await ctx.db
+			.query("gleaguePlayer")
+			.withIndex("by_season", (q) => q.eq("season", args.season))
+			.collect();
+
+		const teamIds = Array.from(new Set(allSeasonPlayers.map((p) => p.teamId)));
+		const teams = await Promise.all(teamIds.map((teamId) => ctx.db.get(teamId)));
+		const teamMap = new Map(teams.filter(Boolean).map((team) => [team!._id, team!]));
+
+		const mapToProfile = (entry: any, overrides?: Partial<any>) => {
+			const team = teamMap.get(entry.teamId);
+			return {
+				id: entry.espnPlayerId,
+				name: entry.name,
+				team: team?.abbreviation ?? "UNK",
+				position: entry.position ?? "",
+				bio: {
+					birthDate: deriveBirthDate(entry.age),
+					college: entry.college ?? "Unknown",
+					draftInfo: entry.experience ?? "Unknown",
+					height: entry.height ?? "Unknown",
+					weight: entry.weight ?? "Unknown",
+					status: "Active" as const,
+				},
+				basicStats: {
+					games: entry.gamesPlayed ?? 0,
+					points: entry.pointsPerGame ?? 0,
+					rebounds: entry.reboundsPerGame ?? 0,
+					assists: entry.assistsPerGame ?? 0,
+					steals: entry.stealsPerGame ?? 0,
+					blocks: entry.blocksPerGame ?? 0,
+				},
+				calculatedStats: calculatedStats(entry),
+				splits: [],
+				lastTen: [],
+				teammateIds: [],
+				...overrides,
+			};
+		};
+
+		const teammateIds = allSeasonPlayers
+			.filter((p) => p.teamId === player.teamId && p._id !== player._id)
+			.map((p) => p.espnPlayerId);
+
+		const playerEvents = await ctx.db
+			.query("gleaguePlayerEvent")
+			.withIndex("by_playerId", (q) => q.eq("playerId", player._id))
+			.collect();
+
+		const enrichedEvents: EnrichedPlayerEvent[] = (
+			await Promise.all(
+				playerEvents.map(async (event) => {
+					const game = await ctx.db.get(event.gameEventId);
+					if (!game) return null;
+
+					const isHome = game.homeTeamId === player.teamId;
+					const opponentId = isHome ? game.awayTeamId : game.homeTeamId;
+					const opponent = await ctx.db.get(opponentId);
+
+					return {
+						minutes: event.minutes,
+						points: event.points,
+						rebounds: event.totalRebounds,
+						assists: event.assists,
+						blocks: event.blocks,
+						fgMade: event.fieldGoalsMade,
+						fgAttempted: event.fieldGoalsAttempted,
+						threeMade: event.threePointMade,
+						threeAttempted: event.threePointAttempted,
+						ftMade: event.freeThrowsMade,
+						ftAttempted: event.freeThrowsAttempted,
+						isHome,
+						gameLabel: `${isHome ? "vs" : "@"} ${opponent?.abbreviation ?? "UNK"}`,
+						scheduledStart: game.scheduledStart,
+					};
+				}),
+			)
+		).filter((event): event is EnrichedPlayerEvent => event !== null);
+
+		enrichedEvents.sort((a, b) => b.scheduledStart - a.scheduledStart);
+		const lastGame = enrichedEvents[0];
+		const last10Events = enrichedEvents.slice(0, 10);
+		const homeEvents = enrichedEvents.filter((event) => event.isHome);
+		const roadEvents = enrichedEvents.filter((event) => !event.isHome);
+
+		const makeSplit = (label: string, events: EnrichedPlayerEvent[]) => {
+			const totals = aggregateEvents(events);
+			const count = Math.max(events.length, 1);
+			return {
+				label,
+				minutes: totals.minutes / count,
+				points: totals.points / count,
+				rebounds: totals.rebounds / count,
+				assists: totals.assists / count,
+				fieldGoalPct: safePct(totals.fgMade, totals.fgAttempted),
+				threePointPct: safePct(totals.threeMade, totals.threeAttempted),
+				freeThrowPct: safePct(totals.ftMade, totals.ftAttempted),
+			};
+		};
+
+		const splits = [
+			lastGame
+				? {
+						label: "Last Game",
+						minutes: lastGame.minutes,
+						points: lastGame.points,
+						rebounds: lastGame.rebounds,
+						assists: lastGame.assists,
+						fieldGoalPct: safePct(lastGame.fgMade, lastGame.fgAttempted),
+						threePointPct: safePct(lastGame.threeMade, lastGame.threeAttempted),
+						freeThrowPct: safePct(lastGame.ftMade, lastGame.ftAttempted),
+					}
+				: makeSplit("Last Game", []),
+			makeSplit("Last 10", last10Events),
+			makeSplit("Home", homeEvents),
+			makeSplit("Road", roadEvents),
+		];
+
+		const lastTen = last10Events.map((event) => ({
+			gameLabel: event.gameLabel,
+			minutes: event.minutes,
+			fieldGoalPct: safePct(event.fgMade, event.fgAttempted),
+			threePointPct: safePct(event.threeMade, event.threeAttempted),
+			freeThrowPct: safePct(event.ftMade, event.ftAttempted),
+			rebounds: event.rebounds,
+			assists: event.assists,
+			blocks: event.blocks,
+			points: event.points,
+		}));
+
+		const playerProfile = mapToProfile(player, {
+			teammateIds,
+			splits,
+			lastTen,
+		});
+
+		const allPlayers = allSeasonPlayers.map((entry) => mapToProfile(entry));
+
+		return {
+			player: playerProfile,
+			allPlayers,
+		};
+	},
+});
+
+export const getPlayersPaginated = query({
+	args: {
+		season: v.string(),
+		sortBy: v.union(
+			v.literal("scoring"),
+			v.literal("playmaking"),
+			v.literal("efficiency"),
+		),
+		paginationOpts: paginationOptsValidator,
+	},
+	handler: async (ctx, args) => {
+		const baseQuery =
+			args.sortBy === "playmaking"
+				? ctx.db
+						.query("gleaguePlayer")
+						.withIndex("by_season_assistsPerGame", (q) =>
+							q.eq("season", args.season),
+						)
+						.order("desc")
+				: args.sortBy === "efficiency"
+					? ctx.db
+							.query("gleaguePlayer")
+							.withIndex("by_season_fieldGoalPct", (q) =>
+								q.eq("season", args.season),
+							)
+							.order("desc")
+					: ctx.db
+							.query("gleaguePlayer")
+							.withIndex("by_season_pointsPerGame", (q) =>
+								q.eq("season", args.season),
+							)
+							.order("desc");
+
+		const page = await baseQuery.paginate(args.paginationOpts);
+		const teamIds = Array.from(new Set(page.page.map((player) => player.teamId)));
+		const teams = await Promise.all(teamIds.map((teamId) => ctx.db.get(teamId)));
+		const teamMap = new Map(teams.filter(Boolean).map((team) => [team!._id, team!]));
+
+		return {
+			...page,
+			page: page.page.map((player) => {
+				const team = teamMap.get(player.teamId);
+				return {
+					id: player.espnPlayerId,
+					name: player.name,
+					position: player.position ?? "",
+					games: player.gamesPlayed ?? 0,
+					points: player.pointsPerGame ?? 0,
+					rebounds: player.reboundsPerGame ?? 0,
+					assists: player.assistsPerGame ?? 0,
+					fieldGoalPct: player.fieldGoalPct ?? 0,
+					minutes: player.minutesPerGame ?? 0,
+					steals: player.stealsPerGame ?? 0,
+					team: team?.abbreviation ?? "UNK",
+				};
+			}),
+		};
 	},
 });
 

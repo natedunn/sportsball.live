@@ -17,3 +17,15 @@ export const leagueTeamRoutes: Record<League, string> = {
 	wnba: "/wnba/team/$teamId",
 	gleague: "/gleague/team/$teamId",
 };
+
+export const leaguePlayersRoutes: Record<League, string> = {
+	nba: "/nba/players",
+	wnba: "/wnba/players",
+	gleague: "/gleague/players",
+};
+
+export const leaguePlayerRoutes: Record<League, string> = {
+	nba: "/nba/player/$id",
+	wnba: "/wnba/player/$id",
+	gleague: "/gleague/player/$id",
+};

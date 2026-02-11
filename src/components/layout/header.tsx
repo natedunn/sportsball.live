@@ -36,6 +36,12 @@ const navItems = [
 		href: "/nba",
 		children: [
 			{
+				label: "Overview",
+				href: "/nba",
+				icon: LayoutDashboard,
+				description: "News, scores, and stats",
+			},
+			{
 				label: "Scores & Schedule",
 				href: "/nba/scores",
 				icon: BarChart3,
@@ -45,7 +51,7 @@ const navItems = [
 				label: "Standings",
 				href: "/nba/standings",
 				icon: Trophy,
-				description: "League standings",
+				description: "Up-to-date league standings",
 			},
 			{
 				label: "Teams",
@@ -61,19 +67,18 @@ const navItems = [
 				description: "Player stats and profiles",
 				disabled: true,
 			},
-			{
-				label: "Overview",
-				href: "/nba",
-				icon: LayoutDashboard,
-				description: "News, scores, and stats",
-				fullWidth: true,
-			},
 		],
 	},
 	{
 		label: "WNBA",
 		href: "/wnba",
 		children: [
+			{
+				label: "Overview",
+				href: "/wnba",
+				icon: LayoutDashboard,
+				description: "News, scores, and stats",
+			},
 			{
 				label: "Scores & Schedule",
 				href: "/wnba/scores",
@@ -84,7 +89,7 @@ const navItems = [
 				label: "Standings",
 				href: "/wnba/standings",
 				icon: Trophy,
-				description: "League standings",
+				description: "Up-to-date league standings",
 			},
 			{
 				label: "Teams",
@@ -100,19 +105,18 @@ const navItems = [
 				description: "Player stats and profiles",
 				disabled: true,
 			},
-			{
-				label: "Overview",
-				href: "/wnba",
-				icon: LayoutDashboard,
-				description: "News, scores, and stats",
-				fullWidth: true,
-			},
 		],
 	},
 	{
 		label: "G League",
 		href: "/gleague",
 		children: [
+			{
+				label: "Overview",
+				href: "/gleague",
+				icon: LayoutDashboard,
+				description: "News, scores, and stats",
+			},
 			{
 				label: "Scores & Schedule",
 				href: "/gleague/scores",
@@ -123,7 +127,7 @@ const navItems = [
 				label: "Standings",
 				href: "/gleague/standings",
 				icon: Trophy,
-				description: "League standings",
+				description: "Up-to-date league standings",
 			},
 			{
 				label: "Teams",
@@ -138,13 +142,6 @@ const navItems = [
 				icon: Users,
 				description: "Player stats and profiles",
 				disabled: true,
-			},
-			{
-				label: "Overview",
-				href: "/gleague",
-				icon: LayoutDashboard,
-				description: "News, scores, and stats",
-				fullWidth: true,
 			},
 		],
 	},
@@ -202,7 +199,7 @@ export function Header() {
 								<NavigationMenu.Content className={contentClassName}>
 									<ul className="grid grid-cols-2 gap-1">
 										{item.children.map((child) => (
-											<li key={child.href} className={child.fullWidth ? "col-span-2 border-t border-border mt-1 pt-1" : ""}>
+											<li key={child.href}>
 												{child.disabled ? (
 													<div className="flex h-full items-start gap-3 rounded-md p-3 opacity-50 cursor-not-allowed">
 														<child.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -211,7 +208,7 @@ export function Header() {
 																{child.label}
 															</span>
 															<span className="text-xs text-muted-foreground">
-																{child.description}
+																{child.disabled ? "Coming soon" : child.description}
 															</span>
 														</div>
 													</div>

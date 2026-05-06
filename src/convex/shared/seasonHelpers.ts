@@ -6,6 +6,7 @@
  * use ET (not UTC) when computing date strings.
  */
 const GAME_TIMEZONE = "America/New_York";
+type League = "nba" | "wnba" | "gleague";
 
 /**
  * Extract year, month (1-indexed), and day from a Date in the given timezone.
@@ -40,6 +41,36 @@ export function getCurrentSeason(): string {
 	const startYear = month < 8 ? year - 1 : year;
 	const endYear = startYear + 1;
 	return `${startYear}-${String(endYear).slice(-2)}`;
+}
+
+export function getSeasonStartYear(season: string): number {
+	const firstYear = Number.parseInt(season.split("-")[0] ?? "", 10);
+	if (Number.isFinite(firstYear)) return firstYear;
+	return getDatePartsInTimezone(new Date(), GAME_TIMEZONE).year;
+}
+
+export function getSeasonEndYear(season: string): number {
+	const startYear = getSeasonStartYear(season);
+	const rawEndYear = season.split("-")[1];
+	if (!rawEndYear) return startYear;
+
+	const parsedEndYear = Number.parseInt(rawEndYear, 10);
+	if (!Number.isFinite(parsedEndYear)) return startYear;
+	if (parsedEndYear >= 100) return parsedEndYear;
+
+	const century = Math.floor(startYear / 100) * 100;
+	let endYear = century + parsedEndYear;
+	if (endYear < startYear) endYear += 100;
+	return endYear;
+}
+
+export function getCompetitionYear(league: League, season: string): number {
+	switch (league) {
+		case "nba":
+		case "wnba":
+		case "gleague":
+			return getSeasonEndYear(season);
+	}
 }
 
 /**

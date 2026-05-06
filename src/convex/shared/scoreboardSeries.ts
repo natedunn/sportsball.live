@@ -1,3 +1,4 @@
+import { getCompetitionYear } from "./seasonHelpers";
 type League = "nba" | "wnba" | "gleague";
 
 type SeriesGame = {
@@ -22,22 +23,16 @@ function normalizeDate(date: string): string {
 	return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
 }
 
-function getSeasonStartYear(season: string): number {
-	const firstYear = Number.parseInt(season.split("-")[0] ?? "", 10);
-	return Number.isFinite(firstYear) ? firstYear : 0;
-}
-
 function getPlayoffStartDate(league: League, season: string): string {
-	const startYear = getSeasonStartYear(season);
-	const endYear = league === "wnba" ? startYear : startYear + 1;
+	const competitionYear = getCompetitionYear(league, season);
 
 	switch (league) {
 		case "nba":
-			return `${endYear}-04-14`;
+			return `${competitionYear}-04-14`;
 		case "gleague":
-			return `${endYear}-03-31`;
+			return `${competitionYear}-03-31`;
 		case "wnba":
-			return `${endYear}-09-27`;
+			return `${competitionYear}-09-27`;
 	}
 }
 

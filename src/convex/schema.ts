@@ -165,7 +165,9 @@ export default defineSchema({
 		.index("by_status", ["eventStatus"])
 		.index("by_season", ["season"])
 		.index("by_homeTeam", ["homeTeamId"])
-		.index("by_awayTeam", ["awayTeamId"]),
+		.index("by_awayTeam", ["awayTeamId"])
+		.index("by_homeTeam_season", ["homeTeamId", "season"])
+		.index("by_awayTeam_season", ["awayTeamId", "season"]),
 
 	// NBA Team Event — one team's box score in one game
 	nbaTeamEvent: defineTable({
@@ -377,7 +379,9 @@ export default defineSchema({
 		.index("by_status", ["eventStatus"])
 		.index("by_season", ["season"])
 		.index("by_homeTeam", ["homeTeamId"])
-		.index("by_awayTeam", ["awayTeamId"]),
+		.index("by_awayTeam", ["awayTeamId"])
+		.index("by_homeTeam_season", ["homeTeamId", "season"])
+		.index("by_awayTeam_season", ["awayTeamId", "season"]),
 
 	wnbaTeamEvent: defineTable({
 		gameEventId: v.id("wnbaGameEvent"),
@@ -586,7 +590,9 @@ export default defineSchema({
 		.index("by_status", ["eventStatus"])
 		.index("by_season", ["season"])
 		.index("by_homeTeam", ["homeTeamId"])
-		.index("by_awayTeam", ["awayTeamId"]),
+		.index("by_awayTeam", ["awayTeamId"])
+		.index("by_homeTeam_season", ["homeTeamId", "season"])
+		.index("by_awayTeam_season", ["awayTeamId", "season"]),
 
 	gleagueTeamEvent: defineTable({
 		gameEventId: v.id("gleagueGameEvent"),

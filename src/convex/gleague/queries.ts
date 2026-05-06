@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
-import { getSeriesRecordForGame } from "../shared/scoreboardSeries";
+import {
+	getSeriesRecordForGame,
+	isPlayoffScoreboardDate,
+} from "../shared/scoreboardSeries";
 
 // Get all games for a specific date (scoreboard)
 export const getScoreboard = query({
@@ -15,26 +18,35 @@ export const getScoreboard = query({
 		// Enrich each game with team info
 		const enriched = await Promise.all(
 			games.map(async (game) => {
+				const shouldLoadSeries =
+					isPlayoffScoreboardDate("gleague", game.season, game.gameDate);
 				const [homeTeam, awayTeam, homeGames, awayGames] = await Promise.all([
 					ctx.db.get(game.homeTeamId),
 					ctx.db.get(game.awayTeamId),
-					ctx.db
-						.query("gleagueGameEvent")
-						.withIndex("by_homeTeam", (q) => q.eq("homeTeamId", game.homeTeamId))
-						.collect(),
-					ctx.db
-						.query("gleagueGameEvent")
-						.withIndex("by_awayTeam", (q) => q.eq("awayTeamId", game.homeTeamId))
-						.collect(),
+					shouldLoadSeries
+						? ctx.db
+								.query("gleagueGameEvent")
+								.withIndex("by_homeTeam_season", (q) =>
+									q.eq("homeTeamId", game.homeTeamId).eq("season", game.season),
+								)
+								.collect()
+						: Promise.resolve([]),
+					shouldLoadSeries
+						? ctx.db
+								.query("gleagueGameEvent")
+								.withIndex("by_awayTeam_season", (q) =>
+									q.eq("awayTeamId", game.homeTeamId).eq("season", game.season),
+								)
+								.collect()
+						: Promise.resolve([]),
 				]);
 				return {
 					...game,
 					homeTeam,
 					awayTeam,
-					seriesRecord: getSeriesRecordForGame("gleague", game, [
-						...homeGames,
-						...awayGames,
-					]),
+					seriesRecord: shouldLoadSeries
+						? getSeriesRecordForGame("gleague", game, [...homeGames, ...awayGames])
+						: undefined,
 				};
 			}),
 		);

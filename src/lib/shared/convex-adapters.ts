@@ -269,6 +269,7 @@ function buildGameDetailsTeam(
 	playerEvents: any[],
 	score: number,
 	opponentScore: number,
+	recordOverride?: string,
 ): GameDetailsTeam {
 	const staticData = team ? getTeamStaticData(league, team.espnTeamId) : null;
 	const colors = staticData
@@ -286,7 +287,7 @@ function buildGameDetailsTeam(
 		darkColor: colors.darkColor,
 		lightColor: colors.lightColor,
 		winner: score > opponentScore,
-		record: team ? `${team.wins}-${team.losses}` : undefined,
+		record: recordOverride ?? (team ? `${team.wins}-${team.losses}` : undefined),
 		stats: convexTeamEventToStats(teamEvent),
 		players: playerEvents.map(convexPlayerEventToPlayer),
 	};
@@ -307,8 +308,24 @@ export function convexGameDetailsToGameDetails(data: any, league: League): GameD
 		statusDetail: game.statusDetail,
 		venue: game.venue,
 		date: game.scheduledStart ? new Date(game.scheduledStart).toISOString() : undefined,
-		away: buildGameDetailsTeam(league, awayTeam, awayTeamEvent, awayPlayerEvents ?? [], awayScore, homeScore),
-		home: buildGameDetailsTeam(league, homeTeam, homeTeamEvent, homePlayerEvents ?? [], homeScore, awayScore),
+		away: buildGameDetailsTeam(
+			league,
+			awayTeam,
+			awayTeamEvent,
+			awayPlayerEvents ?? [],
+			awayScore,
+			homeScore,
+			data.seriesRecord?.away,
+		),
+		home: buildGameDetailsTeam(
+			league,
+			homeTeam,
+			homeTeamEvent,
+			homePlayerEvents ?? [],
+			homeScore,
+			awayScore,
+			data.seriesRecord?.home,
+		),
 		allSeries: [],
 	};
 }

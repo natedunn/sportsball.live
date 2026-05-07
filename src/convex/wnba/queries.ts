@@ -66,6 +66,9 @@ export const getGameDetails = query({
 
 		if (!game) return null;
 
+		const shouldLoadSeries =
+			isPlayoffScoreboardDate("wnba", game.season, game.gameDate);
+
 		// Fetch team events
 		const teamEvents = await ctx.db
 			.query("wnbaTeamEvent")
@@ -79,8 +82,26 @@ export const getGameDetails = query({
 			.collect();
 
 		// Fetch team info
-		const homeTeam = await ctx.db.get(game.homeTeamId);
-		const awayTeam = await ctx.db.get(game.awayTeamId);
+		const [homeTeam, awayTeam, homeGames, awayGames] = await Promise.all([
+			ctx.db.get(game.homeTeamId),
+			ctx.db.get(game.awayTeamId),
+			shouldLoadSeries
+				? ctx.db
+						.query("wnbaGameEvent")
+						.withIndex("by_homeTeam_season", (q) =>
+							q.eq("homeTeamId", game.homeTeamId).eq("season", game.season),
+						)
+						.collect()
+				: Promise.resolve([]),
+			shouldLoadSeries
+				? ctx.db
+						.query("wnbaGameEvent")
+						.withIndex("by_awayTeam_season", (q) =>
+							q.eq("awayTeamId", game.homeTeamId).eq("season", game.season),
+						)
+						.collect()
+				: Promise.resolve([]),
+		]);
 
 		const homeTeamEvent = teamEvents.find((te) => te.isHome);
 		const awayTeamEvent = teamEvents.find((te) => !te.isHome);
@@ -110,6 +131,9 @@ export const getGameDetails = query({
 			awayTeamEvent,
 			homePlayerEvents,
 			awayPlayerEvents,
+			seriesRecord: shouldLoadSeries
+				? getSeriesRecordForGame("wnba", game, [...homeGames, ...awayGames])
+				: undefined,
 		};
 	},
 });

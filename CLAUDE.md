@@ -75,7 +75,7 @@ Each league (NBA, WNBA, G-League) follows the same pattern:
 - `~api` → `./src/lib/api.ts` (Convex API re-export)
 
 ### Environment Variables
-Required variables (see `.env.example`):
+Environment variables (see `.env.example`):
 - `VITE_CONVEX_URL` - Convex deployment URL
 - `SITE_URL` - Canonical production URL. Optional in local dev; set it when you want a fixed local auth URL.
 - ESPN API endpoints (per league: NBA, WNBA, GLEAGUE):

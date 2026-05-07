@@ -32,9 +32,19 @@ if (!isProduction) {
 	trustedOrigins.add("http://localhost:5173");
 	trustedOrigins.add("http://localhost:1355");
 	trustedOrigins.add("https://localhost:1355");
-	trustedOrigins.add("http://*.localhost");
-	trustedOrigins.add("https://*.localhost");
 }
+
+const hasTrustedLocalhostOrigin = (origin: string) => {
+	try {
+		const { protocol, hostname } = new URL(origin);
+		return (
+			(protocol === "http:" || protocol === "https:") &&
+			(hostname === "localhost" || hostname.endsWith(".localhost"))
+		);
+	} catch {
+		return false;
+	}
+};
 
 const authFunctions: AuthFunctions = internal.auth as any;
 
@@ -102,7 +112,17 @@ export const authComponent = createClient<DataModel>(
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
 	return betterAuth({
 		baseURL: siteUrl,
-		trustedOrigins: [...trustedOrigins],
+		trustedOrigins: (request) => {
+			const requestOrigin = request?.headers.get("origin");
+			if (
+				!isProduction &&
+				requestOrigin &&
+				hasTrustedLocalhostOrigin(requestOrigin)
+			) {
+				return [...trustedOrigins, requestOrigin];
+			}
+			return [...trustedOrigins];
+		},
 		database: authComponent.adapter(ctx),
 		socialProviders: {
 			google: {

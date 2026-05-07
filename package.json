@@ -6,7 +6,7 @@
 		"dev": "npx convex dev --once && npm-run-all --parallel dev:convex dev:web",
 		"dev:portless": "portless",
 		"dev:convex": "convex dev",
-		"dev:web": "vite dev --host \"${HOST:-0.0.0.0}\" --port \"${PORT:-5173}\"",
+		"dev:web": "vite dev",
 		"build:deploy": "npx convex deploy --cmd 'vite build'",
 		"build": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
 		"preview": "vite preview",

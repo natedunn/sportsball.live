@@ -13,7 +13,28 @@ import { username } from "better-auth/plugins";
 import authConfig from "./auth.config";
 import { generateRandomUsername } from "./randomUsername";
 
-const siteUrl = process.env.SITE_URL!;
+const siteUrl = process.env.SITE_URL;
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction && !siteUrl) {
+	throw new Error("SITE_URL is required in production");
+}
+
+const trustedOrigins = new Set<string>();
+
+if (siteUrl) {
+	trustedOrigins.add(siteUrl);
+}
+
+if (!isProduction) {
+	trustedOrigins.add("http://localhost:3000");
+	trustedOrigins.add("http://localhost:3001");
+	trustedOrigins.add("http://localhost:5173");
+	trustedOrigins.add("http://localhost:1355");
+	trustedOrigins.add("https://localhost:1355");
+	trustedOrigins.add("http://*.localhost");
+	trustedOrigins.add("https://*.localhost");
+}
 
 const authFunctions: AuthFunctions = internal.auth as any;
 
@@ -81,7 +102,7 @@ export const authComponent = createClient<DataModel>(
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
 	return betterAuth({
 		baseURL: siteUrl,
-		trustedOrigins: ["http://localhost:3000", "http://localhost:3001", siteUrl],
+		trustedOrigins: [...trustedOrigins],
 		database: authComponent.adapter(ctx),
 		socialProviders: {
 			google: {

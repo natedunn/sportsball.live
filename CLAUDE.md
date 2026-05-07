@@ -8,7 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Development (starts Convex and Vite in parallel)
 pnpm dev
 
-# Run only the web server (port 3000)
+# Development through Portless (worktree-safe URL)
+pnpm dev:portless
+
+# Run only the web server
 pnpm dev:web
 
 # Run only Convex dev server
@@ -74,6 +77,7 @@ Each league (NBA, WNBA, G-League) follows the same pattern:
 ### Environment Variables
 Required variables (see `.env.example`):
 - `VITE_CONVEX_URL` - Convex deployment URL
+- `SITE_URL` - Canonical production URL. Optional in local dev; set it when you want a fixed local auth URL.
 - ESPN API endpoints (per league: NBA, WNBA, GLEAGUE):
   - `*_SITE_API` - Main site API (scoreboard, games, teams, news)
   - `*_CORE_API` - Core API (detailed injuries)

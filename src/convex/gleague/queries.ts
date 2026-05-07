@@ -20,7 +20,7 @@ export const getScoreboard = query({
 			games.map(async (game) => {
 				const shouldLoadSeries =
 					isPlayoffScoreboardDate("gleague", game.season, game.gameDate);
-				const [homeTeam, awayTeam, homeGames, awayGames] = await Promise.all([
+				const [homeTeam, awayTeam, homeTeamHomeGames, homeTeamAwayGames] = await Promise.all([
 					ctx.db.get(game.homeTeamId),
 					ctx.db.get(game.awayTeamId),
 					shouldLoadSeries
@@ -45,7 +45,10 @@ export const getScoreboard = query({
 					homeTeam,
 					awayTeam,
 					seriesRecord: shouldLoadSeries
-						? getSeriesRecordForGame("gleague", game, [...homeGames, ...awayGames])
+						? getSeriesRecordForGame("gleague", game, [
+								...homeTeamHomeGames,
+								...homeTeamAwayGames,
+							])
 						: undefined,
 				};
 			}),
@@ -82,7 +85,7 @@ export const getGameDetails = query({
 			.collect();
 
 		// Fetch team info
-		const [homeTeam, awayTeam, homeGames, awayGames] = await Promise.all([
+		const [homeTeam, awayTeam, homeTeamHomeGames, homeTeamAwayGames] = await Promise.all([
 			ctx.db.get(game.homeTeamId),
 			ctx.db.get(game.awayTeamId),
 			shouldLoadSeries
@@ -132,7 +135,10 @@ export const getGameDetails = query({
 			homePlayerEvents,
 			awayPlayerEvents,
 			seriesRecord: shouldLoadSeries
-				? getSeriesRecordForGame("gleague", game, [...homeGames, ...awayGames])
+				? getSeriesRecordForGame("gleague", game, [
+						...homeTeamHomeGames,
+						...homeTeamAwayGames,
+					])
 				: undefined,
 		};
 	},

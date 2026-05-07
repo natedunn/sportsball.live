@@ -116,17 +116,17 @@ function GleagueTeamPage() {
 	const teamId = rawTeam?._id as Id<"gleagueTeam"> | undefined;
 
 	const { data: rawRoster } = useQuery({
-		...convexQuery(api.gleague.queries.getTeamRoster, { teamId: teamId! }),
+		...convexQuery(api.gleague.queries.getTeamRoster, { teamId }),
 		enabled: !!teamId,
 	});
 
 	const { data: rawSchedule, refetch: refetchSchedule } = useQuery({
-		...convexQuery(api.gleague.queries.getTeamSchedule, { teamId: teamId! }),
+		...convexQuery(api.gleague.queries.getTeamSchedule, { teamId }),
 		enabled: !!teamId,
 	});
 
 	const { data: rawGameLog } = useQuery({
-		...convexQuery(api.gleague.queries.getTeamGameLog, { teamId: teamId! }),
+		...convexQuery(api.gleague.queries.getTeamGameLog, { teamId }),
 		enabled: !!teamId,
 	});
 

@@ -122,17 +122,17 @@ function NbaTeamPage() {
 	const teamId = rawTeam?._id as Id<"nbaTeam"> | undefined;
 
 	const { data: rawRoster } = useQuery({
-		...convexQuery(api.nba.queries.getTeamRoster, { teamId: teamId! }),
+		...convexQuery(api.nba.queries.getTeamRoster, { teamId }),
 		enabled: !!teamId,
 	});
 
 	const { data: rawSchedule, refetch: refetchSchedule } = useQuery({
-		...convexQuery(api.nba.queries.getTeamSchedule, { teamId: teamId! }),
+		...convexQuery(api.nba.queries.getTeamSchedule, { teamId }),
 		enabled: !!teamId,
 	});
 
 	const { data: rawGameLog } = useQuery({
-		...convexQuery(api.nba.queries.getTeamGameLog, { teamId: teamId! }),
+		...convexQuery(api.nba.queries.getTeamGameLog, { teamId }),
 		enabled: !!teamId,
 	});
 

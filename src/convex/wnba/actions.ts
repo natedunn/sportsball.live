@@ -1,7 +1,15 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange } from "../shared/seasonHelpers";
+import {
+	getCompetitionYear,
+	getCurrentSeason,
+	getTodayDate,
+	formatGameDate,
+	mapApiStateToEventStatus,
+	sleep,
+	getDateRange,
+} from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
 import type {
 	ApiScoreboardResponse,
@@ -34,9 +42,7 @@ function getCoreApi(): string {
 }
 
 function getCoreSeasonYear(season: string): number {
-	const startYear = Number.parseInt(season.split("-")[0] ?? "", 10);
-	if (Number.isFinite(startYear)) return startYear;
-	return new Date().getUTCFullYear();
+	return getCompetitionYear("wnba", season);
 }
 
 function toFiniteNumber(value: unknown): number | undefined {
@@ -209,15 +215,15 @@ async function runCorePlayerStatsBackfill(ctx: any, args: BackfillPlayerStatsArg
 }
 
 function getSeasonStartDate(season: string): string {
-	const startYear = parseInt(season.split("-")[0], 10);
+	const competitionYear = getCompetitionYear("wnba", season);
 	// WNBA season typically starts in May
-	return `${startYear}0501`;
+	return `${competitionYear}0501`;
 }
 
 /** Get the end date for the WNBA regular season (mid-September). */
 function getSeasonEndDate(season: string): string {
-	const startYear = parseInt(season.split("-")[0], 10);
-	return `${startYear}0920`;
+	const competitionYear = getCompetitionYear("wnba", season);
+	return `${competitionYear}0920`;
 }
 
 function parseApiScore(rawScore: string | undefined): number | undefined {

@@ -38,7 +38,7 @@ export const SEASONS: Record<League, LeagueSeasons> = {
   },
   wnba: {
     past: {
-      name: "2025",
+      name: "2024-25",
       preSeasonStart: "2025-05-02",
       preSeasonEnd: "2025-05-12",
       regularSeasonStart: "2025-05-16",
@@ -48,7 +48,7 @@ export const SEASONS: Record<League, LeagueSeasons> = {
       offSeasonStart: "2025-10-11",
     },
     current: {
-      name: "2026",
+      name: "2025-26",
       preSeasonStart: "2026-04-24", // Estimated ~2 weeks before regular season
       preSeasonEnd: "2026-05-04",
       regularSeasonStart: "2026-05-08",

@@ -60,6 +60,7 @@ function buildGameTeam(
 	league: League,
 	team: { espnTeamId: string; name: string; location: string; abbreviation: string; wins: number; losses: number } | null,
 	score: number | undefined,
+	recordOverride?: string,
 ): GameTeam {
 	if (!team) {
 		return {
@@ -99,7 +100,7 @@ function buildGameTeam(
 		primaryColor: colors.darkColor,
 		darkColor: colors.darkColor,
 		lightColor: colors.lightColor,
-		seasonRecord: `${team.wins}-${team.losses}`,
+		seasonRecord: recordOverride ?? `${team.wins}-${team.losses}`,
 	};
 }
 
@@ -117,8 +118,8 @@ export function convexScoreboardToGameData(games: any[], league: League): GameDa
 			start: game.scheduledStart ? new Date(game.scheduledStart).toISOString() : undefined,
 			detail: game.statusDetail,
 		},
-		away: buildGameTeam(league, game.awayTeam, game.awayScore),
-		home: buildGameTeam(league, game.homeTeam, game.homeScore),
+		away: buildGameTeam(league, game.awayTeam, game.awayScore, game.seriesRecord?.away),
+		home: buildGameTeam(league, game.homeTeam, game.homeScore, game.seriesRecord?.home),
 	}));
 }
 

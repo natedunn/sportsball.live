@@ -139,7 +139,7 @@ function NbaPlayoffsPage() {
 								<TabsTrigger value="finals">
 									<span className="inline-flex items-center gap-1.5">
 										<Trophy className="size-4" />
-											Finals
+										Finals
 									</span>
 								</TabsTrigger>
 							</TabsList>

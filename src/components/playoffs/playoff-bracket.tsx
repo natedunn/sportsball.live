@@ -32,8 +32,8 @@ interface PlayoffGame {
 	gameDate: string;
 	scheduledStart: number;
 	eventStatus: string;
-	homeScore: number;
-	awayScore: number;
+	homeScore: number | undefined;
+	awayScore: number | undefined;
 	homeTeam: PlayoffTeamInfo | null;
 	awayTeam: PlayoffTeamInfo | null;
 }
@@ -84,10 +84,10 @@ interface BracketSeries {
 	gameIds: string[];
 }
 
-interface BracketData {
+export interface BracketData {
 	west: BracketSeries[][];
 	east: BracketSeries[][];
-	finals: BracketSeries | null;
+	finals: BracketSeries;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,7 +127,10 @@ function buildTeamInfo(teamData: PlayoffTeamSeed, league: League): BracketTeam {
 	};
 }
 
-function buildBracket(data: PlayoffBracketData, league: League): BracketData {
+export function buildBracket(
+	data: PlayoffBracketData,
+	league: League,
+): BracketData {
 	const { games, teams } = data;
 
 	const eastTeams = teams
@@ -165,6 +168,15 @@ function buildBracket(data: PlayoffBracketData, league: League): BracketData {
 			if (!game.homeTeam || !game.awayTeam) continue;
 			gameIds.push(game.espnGameId);
 			if (game.eventStatus !== "completed") continue;
+			if (
+				game.homeScore === undefined ||
+				game.awayScore === undefined ||
+				!Number.isFinite(game.homeScore) ||
+				!Number.isFinite(game.awayScore) ||
+				game.homeScore === game.awayScore
+			) {
+				continue;
+			}
 			const homeWon = game.homeScore > game.awayScore;
 			const winnerId = homeWon
 				? game.homeTeam.espnTeamId
@@ -789,7 +801,7 @@ export function PlayoffBracket({ data, league, view }: PlayoffBracketProps) {
 	// finals view
 	return (
 		<FinalsView
-			finals={bracket.finals!}
+			finals={bracket.finals}
 			westCF={bracket.west[2]?.[0]}
 			eastCF={bracket.east[2]?.[0]}
 			isDark={isDark}

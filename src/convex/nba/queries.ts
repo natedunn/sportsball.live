@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import {
+	getPlayoffStartDate,
 	getSeriesRecordForGame,
 	isPlayoffScoreboardDate,
 } from "../shared/scoreboardSeries";
@@ -779,14 +780,17 @@ export const getAllPlayersInternal = internalQuery({
 export const getPlayoffBracket = query({
 	args: { season: v.string() },
 	handler: async (ctx, args) => {
-		// Fetch all games for the season
-		const allGames = await ctx.db
+		const playoffStartTimestamp = Date.parse(
+			`${getPlayoffStartDate("nba", args.season)}T00:00:00.000Z`,
+		);
+		const gamesAfterPlayoffStart = await ctx.db
 			.query("nbaGameEvent")
-			.withIndex("by_season", (q) => q.eq("season", args.season))
+			.withIndex("by_season_scheduledStart", (q) =>
+				q.eq("season", args.season).gte("scheduledStart", playoffStartTimestamp),
+			)
 			.collect();
 
-		// Filter to playoff games only
-		const playoffGames = allGames.filter((g) =>
+		const playoffGames = gamesAfterPlayoffStart.filter((g) =>
 			isPlayoffScoreboardDate("nba", args.season, g.gameDate),
 		);
 
@@ -811,8 +815,8 @@ export const getPlayoffBracket = query({
 				gameDate: game.gameDate,
 				scheduledStart: game.scheduledStart,
 				eventStatus: game.eventStatus,
-				homeScore: game.homeScore ?? 0,
-				awayScore: game.awayScore ?? 0,
+				homeScore: game.homeScore,
+				awayScore: game.awayScore,
 				homeTeam: home
 					? {
 							espnTeamId: home.espnTeamId,

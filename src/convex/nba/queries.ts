@@ -775,6 +775,84 @@ export const getAllPlayersInternal = internalQuery({
 	},
 });
 
+// Get all playoff data for bracket display
+export const getPlayoffBracket = query({
+	args: { season: v.string() },
+	handler: async (ctx, args) => {
+		// Fetch all games for the season
+		const allGames = await ctx.db
+			.query("nbaGameEvent")
+			.withIndex("by_season", (q) => q.eq("season", args.season))
+			.collect();
+
+		// Filter to playoff games only
+		const playoffGames = allGames.filter((g) =>
+			isPlayoffScoreboardDate("nba", args.season, g.gameDate),
+		);
+
+		// Sort by date
+		playoffGames.sort((a, b) => a.scheduledStart - b.scheduledStart);
+
+		// Fetch all teams for the season (for conference/seed info)
+		const teams = await ctx.db
+			.query("nbaTeam")
+			.withIndex("by_season", (q) => q.eq("season", args.season))
+			.collect();
+
+		// Build team lookup by Convex ID
+		const teamMap = new Map(teams.map((t) => [t._id, t]));
+
+		// Enrich playoff games with team abbreviations and IDs
+		const enrichedGames = playoffGames.map((game) => {
+			const home = teamMap.get(game.homeTeamId);
+			const away = teamMap.get(game.awayTeamId);
+			return {
+				espnGameId: game.espnGameId,
+				gameDate: game.gameDate,
+				scheduledStart: game.scheduledStart,
+				eventStatus: game.eventStatus,
+				homeScore: game.homeScore ?? 0,
+				awayScore: game.awayScore ?? 0,
+				homeTeam: home
+					? {
+							espnTeamId: home.espnTeamId,
+							name: home.name,
+							abbreviation: home.abbreviation,
+							location: home.location,
+							conference: home.conference,
+							conferenceRank: home.conferenceRank,
+						}
+					: null,
+				awayTeam: away
+					? {
+							espnTeamId: away.espnTeamId,
+							name: away.name,
+							abbreviation: away.abbreviation,
+							location: away.location,
+							conference: away.conference,
+							conferenceRank: away.conferenceRank,
+						}
+					: null,
+			};
+		});
+
+		// Return teams (for seeding) and enriched playoff games
+		return {
+			games: enrichedGames,
+			teams: teams.map((t) => ({
+				espnTeamId: t.espnTeamId,
+				name: t.name,
+				abbreviation: t.abbreviation,
+				location: t.location,
+				conference: t.conference,
+				conferenceRank: t.conferenceRank,
+				wins: t.wins,
+				losses: t.losses,
+			})),
+		};
+	},
+});
+
 // Internal: get player event by game + player
 export const getPlayerEventByGameAndPlayer = internalQuery({
 	args: { gameEventId: v.id("nbaGameEvent"), playerId: v.id("nbaPlayer") },

@@ -3,7 +3,7 @@ import { NavigationMenu } from "@base-ui/react/navigation-menu";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { api } from "~api";
 import { convexQuery } from "@convex-dev/react-query";
-import { LayoutDashboard, BarChart3, Trophy, Users, ShieldHalf, ChevronDown } from "lucide-react";
+import { LayoutDashboard, BarChart3, Trophy, Users, ShieldHalf, ChevronDown, Flame } from "lucide-react";
 import { UserMenu } from "./user-menu";
 
 function NavLink(props: NavigationMenu.Link.Props) {
@@ -52,6 +52,12 @@ const navItems = [
 				href: "/nba/standings",
 				icon: Trophy,
 				description: "Up-to-date league standings",
+			},
+			{
+				label: "Playoffs",
+				href: "/nba/playoffs",
+				icon: Flame,
+				description: "Playoff bracket and series",
 			},
 			{
 				label: "Teams",

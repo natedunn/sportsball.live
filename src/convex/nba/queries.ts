@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import {
+	getPlayoffStartDate,
 	getSeriesRecordForGame,
 	isPlayoffScoreboardDate,
 } from "../shared/scoreboardSeries";
@@ -772,6 +773,87 @@ export const getAllPlayersInternal = internalQuery({
 			.query("nbaPlayer")
 			.withIndex("by_season", (q) => q.eq("season", args.season))
 			.collect();
+	},
+});
+
+// Get all playoff data for bracket display
+export const getPlayoffBracket = query({
+	args: { season: v.string() },
+	handler: async (ctx, args) => {
+		const playoffStartTimestamp = Date.parse(
+			`${getPlayoffStartDate("nba", args.season)}T00:00:00.000Z`,
+		);
+		const gamesAfterPlayoffStart = await ctx.db
+			.query("nbaGameEvent")
+			.withIndex("by_season_scheduledStart", (q) =>
+				q.eq("season", args.season).gte("scheduledStart", playoffStartTimestamp),
+			)
+			.collect();
+
+		const playoffGames = gamesAfterPlayoffStart.filter((g) =>
+			isPlayoffScoreboardDate("nba", args.season, g.gameDate),
+		);
+
+		// Sort by date
+		playoffGames.sort((a, b) => a.scheduledStart - b.scheduledStart);
+
+		// Fetch all teams for the season (for conference/seed info)
+		const teams = await ctx.db
+			.query("nbaTeam")
+			.withIndex("by_season", (q) => q.eq("season", args.season))
+			.collect();
+
+		// Build team lookup by Convex ID
+		const teamMap = new Map(teams.map((t) => [t._id, t]));
+
+		// Enrich playoff games with team abbreviations and IDs
+		const enrichedGames = playoffGames.map((game) => {
+			const home = teamMap.get(game.homeTeamId);
+			const away = teamMap.get(game.awayTeamId);
+			return {
+				espnGameId: game.espnGameId,
+				gameDate: game.gameDate,
+				scheduledStart: game.scheduledStart,
+				eventStatus: game.eventStatus,
+				homeScore: game.homeScore,
+				awayScore: game.awayScore,
+				homeTeam: home
+					? {
+							espnTeamId: home.espnTeamId,
+							name: home.name,
+							abbreviation: home.abbreviation,
+							location: home.location,
+							conference: home.conference,
+							conferenceRank: home.conferenceRank,
+						}
+					: null,
+				awayTeam: away
+					? {
+							espnTeamId: away.espnTeamId,
+							name: away.name,
+							abbreviation: away.abbreviation,
+							location: away.location,
+							conference: away.conference,
+							conferenceRank: away.conferenceRank,
+						}
+					: null,
+			};
+		});
+
+		// Return teams (for seeding) and enriched playoff games
+		return {
+			games: enrichedGames,
+			teams: teams.map((t) => ({
+				espnTeamId: t.espnTeamId,
+				name: t.name,
+				abbreviation: t.abbreviation,
+				location: t.location,
+				conference: t.conference,
+				conferenceRank: t.conferenceRank,
+				wins: t.wins,
+				losses: t.losses,
+			})),
+		};
 	},
 });
 

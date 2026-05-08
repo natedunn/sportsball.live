@@ -164,6 +164,7 @@ export default defineSchema({
 		.index("by_gameDate", ["gameDate"])
 		.index("by_status", ["eventStatus"])
 		.index("by_season", ["season"])
+		.index("by_season_scheduledStart", ["season", "scheduledStart"])
 		.index("by_homeTeam", ["homeTeamId"])
 		.index("by_awayTeam", ["awayTeamId"])
 		.index("by_homeTeam_season", ["homeTeamId", "season"])

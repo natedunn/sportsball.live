@@ -23,7 +23,7 @@ function normalizeDate(date: string): string {
 	return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
 }
 
-function getPlayoffStartDate(league: League, season: string): string {
+export function getPlayoffStartDate(league: League, season: string): string {
 	const competitionYear = getCompetitionYear(league, season);
 
 	switch (league) {

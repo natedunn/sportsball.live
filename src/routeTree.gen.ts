@@ -25,6 +25,7 @@ import { Route as DefaultWnbaPlayersRouteImport } from './routes/_default/wnba/p
 import { Route as DefaultProfileUsernameRouteImport } from './routes/_default/profile/$username'
 import { Route as DefaultNbaStandingsRouteImport } from './routes/_default/nba/standings'
 import { Route as DefaultNbaScoresRouteImport } from './routes/_default/nba/scores'
+import { Route as DefaultNbaPlayoffsRouteImport } from './routes/_default/nba/playoffs'
 import { Route as DefaultNbaPlayersRouteImport } from './routes/_default/nba/players'
 import { Route as DefaultGleagueStandingsRouteImport } from './routes/_default/gleague/standings'
 import { Route as DefaultGleagueScoresRouteImport } from './routes/_default/gleague/scores'
@@ -120,6 +121,11 @@ const DefaultNbaStandingsRoute = DefaultNbaStandingsRouteImport.update({
 const DefaultNbaScoresRoute = DefaultNbaScoresRouteImport.update({
   id: '/nba/scores',
   path: '/nba/scores',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultNbaPlayoffsRoute = DefaultNbaPlayoffsRouteImport.update({
+  id: '/nba/playoffs',
+  path: '/nba/playoffs',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultNbaPlayersRoute = DefaultNbaPlayersRouteImport.update({
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/gleague/scores': typeof DefaultGleagueScoresRoute
   '/gleague/standings': typeof DefaultGleagueStandingsRoute
   '/nba/players': typeof DefaultNbaPlayersRoute
+  '/nba/playoffs': typeof DefaultNbaPlayoffsRoute
   '/nba/scores': typeof DefaultNbaScoresRoute
   '/nba/standings': typeof DefaultNbaStandingsRoute
   '/profile/$username': typeof DefaultProfileUsernameRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/gleague/scores': typeof DefaultGleagueScoresRoute
   '/gleague/standings': typeof DefaultGleagueStandingsRoute
   '/nba/players': typeof DefaultNbaPlayersRoute
+  '/nba/playoffs': typeof DefaultNbaPlayoffsRoute
   '/nba/scores': typeof DefaultNbaScoresRoute
   '/nba/standings': typeof DefaultNbaStandingsRoute
   '/profile/$username': typeof DefaultProfileUsernameRoute
@@ -288,6 +296,7 @@ export interface FileRoutesById {
   '/_default/gleague/scores': typeof DefaultGleagueScoresRoute
   '/_default/gleague/standings': typeof DefaultGleagueStandingsRoute
   '/_default/nba/players': typeof DefaultNbaPlayersRoute
+  '/_default/nba/playoffs': typeof DefaultNbaPlayoffsRoute
   '/_default/nba/scores': typeof DefaultNbaScoresRoute
   '/_default/nba/standings': typeof DefaultNbaStandingsRoute
   '/_default/profile/$username': typeof DefaultProfileUsernameRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/gleague/scores'
     | '/gleague/standings'
     | '/nba/players'
+    | '/nba/playoffs'
     | '/nba/scores'
     | '/nba/standings'
     | '/profile/$username'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/gleague/scores'
     | '/gleague/standings'
     | '/nba/players'
+    | '/nba/playoffs'
     | '/nba/scores'
     | '/nba/standings'
     | '/profile/$username'
@@ -393,6 +404,7 @@ export interface FileRouteTypes {
     | '/_default/gleague/scores'
     | '/_default/gleague/standings'
     | '/_default/nba/players'
+    | '/_default/nba/playoffs'
     | '/_default/nba/scores'
     | '/_default/nba/standings'
     | '/_default/profile/$username'
@@ -543,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultNbaScoresRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/_default/nba/playoffs': {
+      id: '/_default/nba/playoffs'
+      path: '/nba/playoffs'
+      fullPath: '/nba/playoffs'
+      preLoaderRoute: typeof DefaultNbaPlayoffsRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
     '/_default/nba/players': {
       id: '/_default/nba/players'
       path: '/nba/players'
@@ -673,6 +692,7 @@ interface DefaultRouteRouteChildren {
   DefaultGleagueScoresRoute: typeof DefaultGleagueScoresRoute
   DefaultGleagueStandingsRoute: typeof DefaultGleagueStandingsRoute
   DefaultNbaPlayersRoute: typeof DefaultNbaPlayersRoute
+  DefaultNbaPlayoffsRoute: typeof DefaultNbaPlayoffsRoute
   DefaultNbaScoresRoute: typeof DefaultNbaScoresRoute
   DefaultNbaStandingsRoute: typeof DefaultNbaStandingsRoute
   DefaultProfileUsernameRoute: typeof DefaultProfileUsernameRoute
@@ -703,6 +723,7 @@ const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
   DefaultGleagueScoresRoute: DefaultGleagueScoresRoute,
   DefaultGleagueStandingsRoute: DefaultGleagueStandingsRoute,
   DefaultNbaPlayersRoute: DefaultNbaPlayersRoute,
+  DefaultNbaPlayoffsRoute: DefaultNbaPlayoffsRoute,
   DefaultNbaScoresRoute: DefaultNbaScoresRoute,
   DefaultNbaStandingsRoute: DefaultNbaStandingsRoute,
   DefaultProfileUsernameRoute: DefaultProfileUsernameRoute,

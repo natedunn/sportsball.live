@@ -2,10 +2,27 @@ import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import {
-	getPlayoffStartDate,
+	getPlayoffStartDate as getDefaultPlayoffStartDate,
 	getSeriesRecordForGame,
 	isPlayoffScoreboardDate,
 } from "../shared/scoreboardSeries";
+import { getSeasonEndYear, getSeasonStartYear } from "../shared/seasonHelpers";
+
+async function getConfiguredPlayoffStartDate(ctx: any, season: string) {
+	const startYear = getSeasonStartYear(season);
+	const endYear = getSeasonEndYear(season);
+	const seasonRow = await ctx.db
+		.query("seasons")
+		.withIndex("by_league_years_type", (q: any) =>
+			q
+				.eq("league", "nba")
+				.eq("startYear", startYear)
+				.eq("endYear", endYear)
+				.eq("type", "playoffs"),
+		)
+		.first();
+	return seasonRow?.startDate ?? getDefaultPlayoffStartDate("nba", season);
+}
 
 // Get all games for a specific date (scoreboard)
 export const getScoreboard = query({
@@ -19,8 +36,9 @@ export const getScoreboard = query({
 		// Enrich each game with team info
 		const enriched = await Promise.all(
 			games.map(async (game) => {
+				const playoffStartDate = await getConfiguredPlayoffStartDate(ctx, game.season);
 				const shouldLoadSeries =
-					isPlayoffScoreboardDate("nba", game.season, game.gameDate);
+					isPlayoffScoreboardDate("nba", game.season, game.gameDate, playoffStartDate);
 				const [homeTeam, awayTeam, homeTeamHomeGames, homeTeamAwayGames] = await Promise.all([
 					ctx.db.get(game.homeTeamId),
 					ctx.db.get(game.awayTeamId),
@@ -49,7 +67,7 @@ export const getScoreboard = query({
 						? getSeriesRecordForGame("nba", game, [
 								...homeTeamHomeGames,
 								...homeTeamAwayGames,
-							])
+							], playoffStartDate)
 						: undefined,
 				};
 			}),
@@ -70,8 +88,9 @@ export const getGameDetails = query({
 
 		if (!game) return null;
 
+		const playoffStartDate = await getConfiguredPlayoffStartDate(ctx, game.season);
 		const shouldLoadSeries =
-			isPlayoffScoreboardDate("nba", game.season, game.gameDate);
+			isPlayoffScoreboardDate("nba", game.season, game.gameDate, playoffStartDate);
 
 		// Fetch team events
 		const teamEvents = await ctx.db
@@ -139,7 +158,7 @@ export const getGameDetails = query({
 				? getSeriesRecordForGame("nba", game, [
 						...homeTeamHomeGames,
 						...homeTeamAwayGames,
-					])
+					], playoffStartDate)
 				: undefined,
 		};
 	},
@@ -780,8 +799,9 @@ export const getAllPlayersInternal = internalQuery({
 export const getPlayoffBracket = query({
 	args: { season: v.string() },
 	handler: async (ctx, args) => {
+		const playoffStartDate = await getConfiguredPlayoffStartDate(ctx, args.season);
 		const playoffStartTimestamp = Date.parse(
-			`${getPlayoffStartDate("nba", args.season)}T00:00:00.000Z`,
+			`${playoffStartDate}T00:00:00.000Z`,
 		);
 		const gamesAfterPlayoffStart = await ctx.db
 			.query("nbaGameEvent")
@@ -791,7 +811,7 @@ export const getPlayoffBracket = query({
 			.collect();
 
 		const playoffGames = gamesAfterPlayoffStart.filter((g) =>
-			isPlayoffScoreboardDate("nba", args.season, g.gameDate),
+			isPlayoffScoreboardDate("nba", args.season, g.gameDate, playoffStartDate),
 		);
 
 		// Sort by date

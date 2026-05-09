@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
 import type {
@@ -145,7 +145,7 @@ async function fetchPlayerSeasonStatsFromCore(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function runCorePlayerStatsBackfill(ctx: any, args: BackfillPlayerStatsArgs) {
-	const season = args.season ?? getCurrentSeason();
+	const season = args.season ?? (await getCurrentSeasonName(ctx));
 	const coreSeasonYear = getCoreSeasonYear(season);
 	const coreBase = getCoreApi();
 	const allPlayers = await ctx.runQuery(internal.gleague.queries.getAllPlayersInternal, {
@@ -220,6 +220,29 @@ function getSeasonEndDate(season: string): string {
 	return `${endYear}0331`;
 }
 
+function compactIsoDate(date: string): string {
+	return date.replaceAll("-", "");
+}
+
+async function getCurrentSeasonName(ctx: any): Promise<string> {
+	return (
+		(await ctx.runQuery(api.seasons.getCurrentName, { league: "gleague" })) ??
+		getCurrentSeason()
+	);
+}
+
+async function getCurrentSeasonEventDate(
+	ctx: any,
+	eventType: "preseasonStart" | "playoffEnd",
+	fallback: string,
+): Promise<string> {
+	const date = await ctx.runQuery(api.seasons.getCurrentEventDate, {
+		league: "gleague",
+		eventType,
+	});
+	return date ? compactIsoDate(date) : fallback;
+}
+
 function parseApiScore(rawScore: string | undefined): number | undefined {
 	if (rawScore === undefined) return undefined;
 	const parsed = Number.parseInt(rawScore, 10);
@@ -262,7 +285,7 @@ async function logScoreAnomaly(
 export const discoverTodaysGames = internalAction({
 	args: {},
 	handler: async (ctx) => {
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 		const date = getTodayDate();
 		const baseUrl = getSiteApi();
 
@@ -809,7 +832,7 @@ export const syncLiveGameData = internalAction({
 	},
 	handler: async (ctx, args) => {
 		const baseUrl = getSiteApi();
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 
 		// Check if recently fetched (15s throttle)
 		const existingGame = await ctx.runQuery(internal.gleague.queries.getGameEventInternal, {
@@ -971,7 +994,7 @@ export const backfillPlayerStatsFromCoreInternal = internalAction({
 export const bootstrapTeams = internalAction({
 	args: { bootstrapRunId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 		const baseUrl = getSiteApi();
 
 		console.log(`[GLEAGUE Bootstrap] Fetching standings for season ${season}...`);
@@ -1039,7 +1062,7 @@ export const bootstrapTeams = internalAction({
 export const bootstrapPlayers = internalAction({
 	args: { bootstrapRunId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 
 		console.log(`[GLEAGUE Bootstrap] Starting player roster bootstrap for season ${season}...`);
 
@@ -1088,7 +1111,7 @@ export const bootstrapPlayersChunk = internalAction({
 			}
 		}
 
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 		const commonBase = getCommonApi();
 		const coreBase = getCoreApi();
 		const coreSeasonYear = getCoreSeasonYear(season);
@@ -1191,9 +1214,13 @@ export const backfillGames = internalAction({
 		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
-		const season = getCurrentSeason();
-		const startDate = args.startDate ?? getSeasonStartDate(season);
-		const endDate = args.endDate ?? getSeasonEndDate(season);
+		const season = await getCurrentSeasonName(ctx);
+		const startDate =
+			args.startDate ??
+			(await getCurrentSeasonEventDate(ctx, "preseasonStart", getSeasonStartDate(season)));
+		const endDate =
+			args.endDate ??
+			(await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season)));
 		const dates = getDateRange(startDate, endDate);
 
 		console.log(`[GLEAGUE Backfill] Starting game backfill: ${startDate} to ${endDate} (${dates.length} dates)`);
@@ -1243,7 +1270,7 @@ export const backfillDateChunk = internalAction({
 		}
 
 		const date = args.dates[args.offset];
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 		const baseUrl = getSiteApi();
 
 		console.log(`[GLEAGUE Backfill] Processing date ${date} (${args.offset + 1}/${args.dates.length})...`);
@@ -1366,9 +1393,9 @@ export const backfillDateChunk = internalAction({
 export const backfillUpcomingSchedule = internalAction({
 	args: {},
 	handler: async (ctx) => {
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 		const startDate = getTodayDate();
-		const endDate = getSeasonEndDate(season);
+		const endDate = await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season));
 		const dates = getDateRange(startDate, endDate);
 
 		console.log(`[GLEAGUE Schedule] Backfilling upcoming schedule: ${startDate} to ${endDate} (${dates.length} dates)`);
@@ -1384,7 +1411,7 @@ export const backfillUpcomingSchedule = internalAction({
 export const recalculateAll = internalAction({
 	args: { bootstrapRunId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx);
 
 		console.log(`[GLEAGUE Recalculate] Starting full recalculation for season ${season}...`);
 

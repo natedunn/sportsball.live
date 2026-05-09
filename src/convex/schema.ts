@@ -16,6 +16,32 @@ const eventStatusValidator = v.union(
 
 export default defineSchema({
 	// ============================================================
+	// Seasons (league season schedule windows)
+	// ============================================================
+
+	seasons: defineTable({
+		league: leagueValidator,
+		startYear: v.number(),
+		endYear: v.number(),
+		name: v.string(),
+		type: v.union(
+			v.literal("tournament"),
+			v.literal("pre-season"),
+			v.literal("regular-season"),
+			v.literal("playoffs"),
+		),
+		startDate: v.string(),
+		endDate: v.string(),
+		status: v.union(v.literal("confirmed"), v.literal("estimated")),
+		updatedAt: v.number(),
+	})
+		.index("by_league", ["league"])
+		.index("by_league_years", ["league", "startYear", "endYear"])
+		.index("by_league_type", ["league", "type"])
+		.index("by_league_years_type", ["league", "startYear", "endYear", "type"])
+		.index("by_league_startDate", ["league", "startDate"]),
+
+	// ============================================================
 	// NBA Tables (Convex-first architecture)
 	// ============================================================
 

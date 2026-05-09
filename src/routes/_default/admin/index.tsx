@@ -5,6 +5,7 @@ import { api } from "~api";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import type { Id } from "@convex/_generated/dataModel";
+import { AdminPageShell } from "./-components/admin-page-shell";
 
 export const Route = createFileRoute("/_default/admin/")({
 	component: AdminPage,
@@ -49,24 +50,19 @@ const STATUS_STYLES: Record<string, string> = {
 
 function AdminPage() {
 	return (
-		<div className="container py-8">
-			<div className="mx-auto max-w-4xl space-y-8">
-				<div>
-					<h1 className="text-3xl font-bold">Admin Dashboard</h1>
-					<p className="mt-1 text-muted-foreground">
-						Bootstrap controls and data management.
-					</p>
-				</div>
-
-				<div className="space-y-4">
-					{LEAGUES.map((league) => (
-						<LeagueCard key={league} league={league} />
-					))}
-				</div>
-
-				<ScoreAnomaliesCard />
+		<AdminPageShell
+			activePage="bootstrap"
+			title="Admin Dashboard"
+			description="Bootstrap controls and data management."
+		>
+			<div className="space-y-4">
+				{LEAGUES.map((league) => (
+					<LeagueCard key={league} league={league} />
+				))}
 			</div>
-		</div>
+
+			<ScoreAnomaliesCard />
+		</AdminPageShell>
 	);
 }
 

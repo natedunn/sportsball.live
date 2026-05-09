@@ -31,6 +31,7 @@ import { Route as DefaultGleagueStandingsRouteImport } from './routes/_default/g
 import { Route as DefaultGleagueScoresRouteImport } from './routes/_default/gleague/scores'
 import { Route as DefaultGleaguePlayersRouteImport } from './routes/_default/gleague/players'
 import { Route as DefaultAuthSignInRouteImport } from './routes/_default/auth/sign-in'
+import { Route as DefaultAdminSchedulesRouteImport } from './routes/_default/admin/schedules'
 import { Route as ApiWnbaLogoIdRouteImport } from './routes/api/wnba/logo/$id'
 import { Route as ApiNbaLogoIdRouteImport } from './routes/api/nba/logo/$id'
 import { Route as ApiGleagueLogoIdRouteImport } from './routes/api/gleague/logo/$id'
@@ -153,6 +154,11 @@ const DefaultAuthSignInRoute = DefaultAuthSignInRouteImport.update({
   path: '/auth/sign-in',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
+const DefaultAdminSchedulesRoute = DefaultAdminSchedulesRouteImport.update({
+  id: '/admin/schedules',
+  path: '/admin/schedules',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
 const ApiWnbaLogoIdRoute = ApiWnbaLogoIdRouteImport.update({
   id: '/api/wnba/logo/$id',
   path: '/api/wnba/logo/$id',
@@ -219,6 +225,7 @@ const DefaultGleagueGameGameIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof DefaultIndexRoute
   '/settings': typeof DefaultSettingsRoute
+  '/admin/schedules': typeof DefaultAdminSchedulesRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
   '/gleague/players': typeof DefaultGleaguePlayersRoute
   '/gleague/scores': typeof DefaultGleagueScoresRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/settings': typeof DefaultSettingsRoute
   '/': typeof DefaultIndexRoute
+  '/admin/schedules': typeof DefaultAdminSchedulesRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
   '/gleague/players': typeof DefaultGleaguePlayersRoute
   '/gleague/scores': typeof DefaultGleagueScoresRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/_default': typeof DefaultRouteRouteWithChildren
   '/_default/settings': typeof DefaultSettingsRoute
   '/_default/': typeof DefaultIndexRoute
+  '/_default/admin/schedules': typeof DefaultAdminSchedulesRoute
   '/_default/auth/sign-in': typeof DefaultAuthSignInRoute
   '/_default/gleague/players': typeof DefaultGleaguePlayersRoute
   '/_default/gleague/scores': typeof DefaultGleagueScoresRoute
@@ -328,6 +337,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/settings'
+    | '/admin/schedules'
     | '/auth/sign-in'
     | '/gleague/players'
     | '/gleague/scores'
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
   to:
     | '/settings'
     | '/'
+    | '/admin/schedules'
     | '/auth/sign-in'
     | '/gleague/players'
     | '/gleague/scores'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/_default'
     | '/_default/settings'
     | '/_default/'
+    | '/_default/admin/schedules'
     | '/_default/auth/sign-in'
     | '/_default/gleague/players'
     | '/_default/gleague/scores'
@@ -597,6 +609,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultAuthSignInRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/_default/admin/schedules': {
+      id: '/_default/admin/schedules'
+      path: '/admin/schedules'
+      fullPath: '/admin/schedules'
+      preLoaderRoute: typeof DefaultAdminSchedulesRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
     '/api/wnba/logo/$id': {
       id: '/api/wnba/logo/$id'
       path: '/api/wnba/logo/$id'
@@ -687,6 +706,7 @@ declare module '@tanstack/react-router' {
 interface DefaultRouteRouteChildren {
   DefaultSettingsRoute: typeof DefaultSettingsRoute
   DefaultIndexRoute: typeof DefaultIndexRoute
+  DefaultAdminSchedulesRoute: typeof DefaultAdminSchedulesRoute
   DefaultAuthSignInRoute: typeof DefaultAuthSignInRoute
   DefaultGleaguePlayersRoute: typeof DefaultGleaguePlayersRoute
   DefaultGleagueScoresRoute: typeof DefaultGleagueScoresRoute
@@ -718,6 +738,7 @@ interface DefaultRouteRouteChildren {
 const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
   DefaultSettingsRoute: DefaultSettingsRoute,
   DefaultIndexRoute: DefaultIndexRoute,
+  DefaultAdminSchedulesRoute: DefaultAdminSchedulesRoute,
   DefaultAuthSignInRoute: DefaultAuthSignInRoute,
   DefaultGleaguePlayersRoute: DefaultGleaguePlayersRoute,
   DefaultGleagueScoresRoute: DefaultGleagueScoresRoute,

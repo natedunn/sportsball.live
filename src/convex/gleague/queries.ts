@@ -5,6 +5,23 @@ import {
 	getSeriesRecordForGame,
 	isPlayoffScoreboardDate,
 } from "../shared/scoreboardSeries";
+import { getSeasonEndYear, getSeasonStartYear } from "../shared/seasonHelpers";
+
+async function getPlayoffStartDate(ctx: any, season: string) {
+	const startYear = getSeasonStartYear(season);
+	const endYear = getSeasonEndYear(season);
+	const seasonRow = await ctx.db
+		.query("seasons")
+		.withIndex("by_league_years_type", (q: any) =>
+			q
+				.eq("league", "gleague")
+				.eq("startYear", startYear)
+				.eq("endYear", endYear)
+				.eq("type", "playoffs"),
+		)
+		.first();
+	return seasonRow?.startDate;
+}
 
 // Get all games for a specific date (scoreboard)
 export const getScoreboard = query({
@@ -18,8 +35,9 @@ export const getScoreboard = query({
 		// Enrich each game with team info
 		const enriched = await Promise.all(
 			games.map(async (game) => {
+				const playoffStartDate = await getPlayoffStartDate(ctx, game.season);
 				const shouldLoadSeries =
-					isPlayoffScoreboardDate("gleague", game.season, game.gameDate);
+					isPlayoffScoreboardDate("gleague", game.season, game.gameDate, playoffStartDate);
 				const [homeTeam, awayTeam, homeTeamHomeGames, homeTeamAwayGames] = await Promise.all([
 					ctx.db.get(game.homeTeamId),
 					ctx.db.get(game.awayTeamId),
@@ -48,7 +66,7 @@ export const getScoreboard = query({
 						? getSeriesRecordForGame("gleague", game, [
 								...homeTeamHomeGames,
 								...homeTeamAwayGames,
-							])
+							], playoffStartDate)
 						: undefined,
 				};
 			}),
@@ -69,8 +87,9 @@ export const getGameDetails = query({
 
 		if (!game) return null;
 
+		const playoffStartDate = await getPlayoffStartDate(ctx, game.season);
 		const shouldLoadSeries =
-			isPlayoffScoreboardDate("gleague", game.season, game.gameDate);
+			isPlayoffScoreboardDate("gleague", game.season, game.gameDate, playoffStartDate);
 
 		// Fetch team events
 		const teamEvents = await ctx.db
@@ -138,7 +157,7 @@ export const getGameDetails = query({
 				? getSeriesRecordForGame("gleague", game, [
 						...homeTeamHomeGames,
 						...homeTeamAwayGames,
-					])
+					], playoffStartDate)
 				: undefined,
 		};
 	},

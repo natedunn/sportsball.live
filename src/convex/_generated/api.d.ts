@@ -23,6 +23,7 @@ import type * as nba_actions from "../nba/actions.js";
 import type * as nba_mutations from "../nba/mutations.js";
 import type * as nba_queries from "../nba/queries.js";
 import type * as randomUsername from "../randomUsername.js";
+import type * as seasons from "../seasons.js";
 import type * as shared_apiParser from "../shared/apiParser.js";
 import type * as shared_scoreboardSeries from "../shared/scoreboardSeries.js";
 import type * as shared_seasonHelpers from "../shared/seasonHelpers.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   "nba/mutations": typeof nba_mutations;
   "nba/queries": typeof nba_queries;
   randomUsername: typeof randomUsername;
+  seasons: typeof seasons;
   "shared/apiParser": typeof shared_apiParser;
   "shared/scoreboardSeries": typeof shared_scoreboardSeries;
   "shared/seasonHelpers": typeof shared_seasonHelpers;

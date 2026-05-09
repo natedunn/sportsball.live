@@ -172,7 +172,9 @@ export const verifyTeamData = internalAction({
 	},
 	handler: async (ctx, args) => {
 		const { getCurrentSeason } = await import("./shared/seasonHelpers");
-		const season = getCurrentSeason();
+		const season =
+			(await ctx.runQuery(api.seasons.getCurrentName, { league: "nba" })) ??
+			getCurrentSeason();
 		const issues: string[] = [];
 
 		console.log(`\n[Verify] ════════════════════════════════════════`);

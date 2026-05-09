@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { getCurrentSeason } from "@/lib/shared/season";
+import { useCurrentSeasonName } from "@/lib/use-current-season";
 import { Card } from "@/components/ui/card";
 import { Image } from "@/components/ui/image";
 import { FavoriteStar } from "@/components/ui/favorite-star";
@@ -36,9 +36,7 @@ interface RankedTeam extends TeamStat {
 	lightColor: string;
 }
 
-const season = getCurrentSeason();
-
-function getTeamStatsQuery(league: League): any {
+function getTeamStatsQuery(league: League, season: string): any {
 	switch (league) {
 		case "nba":
 			return convexQuery(api.nba.queries.getAllTeamStats, { season });
@@ -189,9 +187,11 @@ function RankingCard({
 
 export function AdvancedTeamRankings({ league }: AdvancedTeamRankingsProps) {
 	const { isFavorited } = useFavorites();
-	const { data: teams = [], isLoading } = useQuery(
-		getTeamStatsQuery(league),
-	) as {
+	const season = useCurrentSeasonName(league);
+	const { data: teams = [], isLoading } = useQuery({
+		...getTeamStatsQuery(league, season ?? ""),
+		enabled: !!season,
+	}) as {
 		data: TeamStat[] | undefined;
 		isLoading: boolean;
 	};

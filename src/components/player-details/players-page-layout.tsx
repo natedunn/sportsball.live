@@ -10,7 +10,7 @@ import type { League } from "@/lib/shared/league";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { getCurrentSeason } from "@/lib/shared/season";
+import { useCurrentSeasonName } from "@/lib/use-current-season";
 
 export type RankingView = "scoring" | "playmaking" | "efficiency";
 const PAGE_SIZE = 25;
@@ -47,7 +47,7 @@ export function PlayersPageLayout({
 	view,
 	onViewChange,
 }: PlayersPageLayoutProps) {
-	const season = getCurrentSeason();
+	const season = useCurrentSeasonName(league);
 	const queryRef = useMemo(() => {
 		const queryMap = {
 			nba: (api as any).nba.queries.getPlayersPaginated,
@@ -66,16 +66,17 @@ export function PlayersPageLayout({
 	const [rightPlayerId, setRightPlayerId] = useState("");
 	const cursorKey = cursor ?? "__start__";
 
-	const { data: pageData, isLoading, isFetching } = useQuery(
-		convexQuery(queryRef, {
-			season,
+	const { data: pageData, isLoading, isFetching } = useQuery({
+		...convexQuery(queryRef, {
+			season: season ?? "",
 			sortBy: view,
 			paginationOpts: {
 				cursor,
 				numItems: PAGE_SIZE,
 			},
 		}),
-	);
+		enabled: !!season,
+	});
 
 	useEffect(() => {
 		setCursor(null);

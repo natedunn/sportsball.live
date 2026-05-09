@@ -46,6 +46,34 @@ const TABLE_NAMES = {
 	gleague: { team: "gleagueTeam", player: "gleaguePlayer", game: "gleagueGameEvent" },
 } as const;
 
+function formatSeasonKey(startYear: number, endYear: number) {
+	if (startYear === endYear) return String(startYear);
+	return `${startYear}-${String(endYear).slice(-2)}`;
+}
+
+async function getCurrentSeasonName(ctx: any, league: League): Promise<string> {
+	const seasons = await ctx.db
+		.query("seasons")
+		.withIndex("by_league", (q: any) => q.eq("league", league))
+		.collect();
+	const seasonsWithStart = await Promise.all(
+		seasons.map(async (season: any) => ({
+			season,
+			start: season.startDate,
+			end: season.endDate,
+		})),
+	);
+	const today = new Date().toISOString().split("T")[0];
+	const sorted = seasonsWithStart.sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""));
+	const currentSeason =
+		sorted.find((row) => row.start && row.end && today >= row.start && today <= row.end)?.season ??
+		[...sorted].reverse().find((row) => row.start && today >= row.start)?.season ??
+		sorted[0]?.season;
+	return currentSeason
+		? formatSeasonKey(currentSeason.startYear, currentSeason.endYear)
+		: getCurrentSeason();
+}
+
 function isSuspiciousZeroBlowout(homeScore: number | undefined, awayScore: number | undefined): boolean {
 	if (homeScore === undefined || awayScore === undefined) return false;
 	return (homeScore === 0 && awayScore >= 80) || (awayScore === 0 && homeScore >= 80);
@@ -84,7 +112,7 @@ export const getAllBootstrapStatuses = query({
 export const getDataCounts = query({
 	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
-		const season = getCurrentSeason();
+		const season = await getCurrentSeasonName(ctx, args.league);
 		const tables = TABLE_NAMES[args.league];
 
 		const teams = await ctx.db
@@ -174,7 +202,6 @@ export const getDerivedScoreAnomalies = query({
 			throw new Error("Not authorized");
 		}
 
-		const season = getCurrentSeason();
 		const limit = Math.min(Math.max(args.limit ?? 25, 1), 100);
 		const rows: Array<{
 			league: League;
@@ -186,6 +213,7 @@ export const getDerivedScoreAnomalies = query({
 		}> = [];
 
 		for (const league of ["nba", "wnba", "gleague"] as const) {
+			const season = await getCurrentSeasonName(ctx, league);
 			const table = TABLE_NAMES[league].game;
 			const games = await ctx.db
 				.query(table)
@@ -384,12 +412,12 @@ export const backfillScoreAnomalies = mutation({
 			throw new Error("Not authorized");
 		}
 
-		const season = getCurrentSeason();
 		let inserted = 0;
 		let updated = 0;
 		const now = Date.now();
 
 		for (const league of ["nba", "wnba", "gleague"] as const) {
+			const season = await getCurrentSeasonName(ctx, league);
 			const table = TABLE_NAMES[league].game;
 			const games = await ctx.db
 				.query(table)

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { leaguePlayersRoutes } from "@/lib/league-routes";
 import type { League } from "@/lib/shared/league";
-import { getCurrentSeason } from "@/lib/shared/season";
+import { useCurrentSeasonName } from "@/lib/use-current-season";
 import {
 	PlayerDetailsLayout,
 	PlayerDetailsPending,
@@ -35,7 +35,7 @@ export function PlayerDetailsPage({
 	compare,
 	onNavigate,
 }: PlayerDetailsPageProps) {
-	const season = getCurrentSeason();
+	const season = useCurrentSeasonName(league);
 	const queryRef = useMemo(() => {
 		const queryMap = {
 			nba: (api as any).nba.queries.getPlayerDetails,
@@ -45,9 +45,10 @@ export function PlayerDetailsPage({
 		return queryMap[league];
 	}, [league]);
 
-	const { data, isLoading } = useQuery(
-		convexQuery(queryRef, { season, espnPlayerId: playerId }),
-	);
+	const { data, isLoading } = useQuery({
+		...convexQuery(queryRef, { season: season ?? "", espnPlayerId: playerId }),
+		enabled: !!season,
+	});
 
 	const player = data?.player;
 	const allPlayers = data?.allPlayers ?? [];

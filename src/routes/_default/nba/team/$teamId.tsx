@@ -4,7 +4,6 @@ import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
 import { useState, useEffect, useMemo } from "react";
 import { getTeamStaticData } from "@/lib/teams";
-import { getCurrentSeason } from "@/lib/shared/season";
 import {
 	convexTeamToOverview,
 	convexTeamToStats,
@@ -25,7 +24,6 @@ interface TeamSearchParams {
 	tab?: string;
 }
 
-const season = getCurrentSeason();
 const LIVE_REFRESH_INTERVAL_MS = 30_000;
 
 export const Route = createFileRoute("/_default/nba/team/$teamId")({
@@ -40,6 +38,11 @@ export const Route = createFileRoute("/_default/nba/team/$teamId")({
 		const espnTeamId = staticData?.api.id;
 
 		if (espnTeamId) {
+			const season = await context.queryClient.ensureQueryData(
+				convexQuery(api.seasons.getCurrentName, { league: "nba" }),
+			);
+			if (!season) return;
+
 			// Fetch team data from Convex (this gives us the Convex _id for subsequent queries)
 			const team = await context.queryClient.ensureQueryData(
 				convexQuery(api.nba.queries.getTeam, { espnTeamId, season }),
@@ -112,11 +115,15 @@ function NbaTeamPage() {
 	// Resolve slug → ESPN team ID
 	const staticData = getTeamStaticData("nba", teamSlug);
 	const espnTeamId = staticData?.api.id ?? "";
+	const { data: season } = useQuery(
+		convexQuery(api.seasons.getCurrentName, { league: "nba" }),
+	);
 
 	// Fetch team data from Convex
-	const { data: rawTeam } = useQuery(
-		convexQuery(api.nba.queries.getTeam, { espnTeamId, season }),
-	);
+	const { data: rawTeam } = useQuery({
+		...convexQuery(api.nba.queries.getTeam, { espnTeamId, season: season ?? "" }),
+		enabled: !!season && !!espnTeamId,
+	});
 
 	// Use team._id for related queries
 	const teamId = rawTeam?._id as Id<"nbaTeam"> | undefined;

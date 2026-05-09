@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { getCurrentSeason } from "@/lib/shared/season";
+import { useCurrentSeasonName } from "@/lib/use-current-season";
 import type { League } from "@/lib/shared/league";
 import { AdvancedTeamRankings } from "./advanced-team-rankings";
 
@@ -9,9 +9,7 @@ interface SmartTeamRankingsProps {
 	league: League;
 }
 
-const season = getCurrentSeason();
-
-function getTeamStatsQuery(league: League): any {
+function getTeamStatsQuery(league: League, season: string): any {
 	switch (league) {
 		case "nba":
 			return convexQuery(api.nba.queries.getAllTeamStats, { season });
@@ -27,8 +25,12 @@ function getTeamStatsQuery(league: League): any {
  * Shows error state if data is unavailable.
  */
 export function SmartTeamRankings({ league }: SmartTeamRankingsProps) {
+	const season = useCurrentSeasonName(league);
 	const { data: advancedStats = [], isLoading, isError } = useQuery(
-		getTeamStatsQuery(league),
+		{
+			...getTeamStatsQuery(league, season ?? ""),
+			enabled: !!season,
+		},
 	) as { data: unknown[] | undefined; isLoading: boolean; isError: boolean };
 
 	if (isLoading) {

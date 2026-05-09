@@ -40,8 +40,9 @@ export function isPlayoffScoreboardDate(
 	league: League,
 	season: string,
 	gameDate: string,
+	playoffStartDate?: string,
 ): boolean {
-	return normalizeDate(gameDate) >= getPlayoffStartDate(league, season);
+	return normalizeDate(gameDate) >= (playoffStartDate ?? getPlayoffStartDate(league, season));
 }
 
 function sameId(a: unknown, b: unknown): boolean {
@@ -52,12 +53,14 @@ export function getSeriesRecordForGame(
 	league: League,
 	currentGame: SeriesGame,
 	candidateGames: SeriesGame[],
+	playoffStartDate?: string,
 ): SeriesRecord | undefined {
 	if (
 		!isPlayoffScoreboardDate(
 			league,
 			currentGame.season,
 			currentGame.gameDate,
+			playoffStartDate,
 		)
 	) {
 		return undefined;
@@ -69,7 +72,7 @@ export function getSeriesRecordForGame(
 	for (const game of candidateGames) {
 		if (game.season !== currentGame.season) continue;
 		if (game.eventStatus !== "completed") continue;
-		if (!isPlayoffScoreboardDate(league, game.season, game.gameDate)) continue;
+		if (!isPlayoffScoreboardDate(league, game.season, game.gameDate, playoffStartDate)) continue;
 		if (
 			game.scheduledStart > currentGame.scheduledStart ||
 			(sameId(game._id, currentGame._id) &&

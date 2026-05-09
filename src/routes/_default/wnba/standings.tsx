@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { getCurrentSeason } from "@/lib/shared/season";
 import { convexStandingsToResponse } from "@/lib/shared/convex-adapters";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StandingsTable } from "@/components/standings/standings-table";
@@ -21,8 +20,7 @@ interface StandingsSearchParams {
 	conference?: string;
 }
 
-const season = getCurrentSeason();
-const standingsQuery = () =>
+const standingsQuery = (season: string) =>
 	convexQuery(api.wnba.queries.getStandings, { season });
 
 export const Route = createFileRoute("/_default/wnba/standings")({
@@ -33,7 +31,12 @@ export const Route = createFileRoute("/_default/wnba/standings")({
 		};
 	},
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(standingsQuery());
+		const season = await context.queryClient.ensureQueryData(
+			convexQuery(api.seasons.getCurrentName, { league: "wnba" }),
+		);
+		if (season) {
+			await context.queryClient.ensureQueryData(standingsQuery(season));
+		}
 	},
 	pendingComponent: () => (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
@@ -70,7 +73,13 @@ function getInitialView(searchParam?: string): ViewType {
 function WnbaStandingsPage() {
 	const { conference: searchConference } = Route.useSearch();
 	const navigate = useNavigate();
-	const { data: rawStandings } = useQuery(standingsQuery());
+	const { data: season } = useQuery(
+		convexQuery(api.seasons.getCurrentName, { league: "wnba" }),
+	);
+	const { data: rawStandings } = useQuery({
+		...standingsQuery(season ?? ""),
+		enabled: !!season,
+	});
 
 	const standings = useMemo(
 		() => rawStandings ? convexStandingsToResponse(rawStandings, "wnba") : null,

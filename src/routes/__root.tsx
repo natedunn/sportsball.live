@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { QueryClient } from "@tanstack/react-query";
 import {
@@ -12,10 +11,11 @@ import {
 	useRouter,
 } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { ConvexProvider, type ConvexReactClient } from "convex/react";
+import { ConvexZenAuthProvider } from "convex-zen/react";
 
 import { DefaultCatchBoundary } from "@/components/_default-catch-boundary";
 import { authClient } from "@/lib/auth/auth-client";
-import { getToken } from "@/lib/auth/auth-server-utils";
 import { initThemeObserver } from "@/lib/store";
 
 import appCss from "../styles/app.css?url";
@@ -24,10 +24,25 @@ import { Footer } from "@/components/layout/footer";
 const SITE_TITLE = import.meta.env.DEV ? "🚧 Sportsball" : "Sportsball";
 
 const getAuth = createServerFn({ method: "GET" }).handler(async () => {
-	return await getToken();
+	const { api } = await import("@/convex/_generated/api");
+	const { fetchAuthMutation, getSession, getToken } = await import(
+		"@/lib/auth/auth-server-utils"
+	);
+	const [token, session] = await Promise.all([getToken(), getSession()]);
+
+	if (token) {
+		try {
+			await fetchAuthMutation(api.auth.syncCurrentUserToLocal, {});
+		} catch (error) {
+			console.warn("Failed to sync auth profile", error);
+		}
+	}
+
+	return { token, session };
 });
 
 export const Route = createRootRouteWithContext<{
+	convex: ConvexReactClient;
 	queryClient: QueryClient;
 	convexQueryClient: ConvexQueryClient;
 }>()({
@@ -70,7 +85,7 @@ export const Route = createRootRouteWithContext<{
 		],
 	}),
 	beforeLoad: async (ctx) => {
-		const token = await getAuth();
+		const { token, session } = await getAuth();
 
 		// During SSR only (the only time serverHttpClient exists),
 		// set the auth token to make HTTP queries with.
@@ -79,7 +94,8 @@ export const Route = createRootRouteWithContext<{
 		}
 
 		return {
-			isAuthenticated: !!token,
+			isAuthenticated: session !== null,
+			session,
 			token,
 		};
 	},
@@ -105,15 +121,16 @@ function RootComponent() {
 	}
 
 	return (
-		<ConvexBetterAuthProvider
-			client={context.convexQueryClient.convexClient}
-			authClient={authClient}
-			initialToken={context.token}
+		<ConvexZenAuthProvider
+			client={authClient}
+			initialSession={context.session}
 		>
-			<RootDocument>
-				<Outlet />
-			</RootDocument>
-		</ConvexBetterAuthProvider>
+			<ConvexProvider client={context.convex}>
+				<RootDocument>
+					<Outlet />
+				</RootDocument>
+			</ConvexProvider>
+		</ConvexZenAuthProvider>
 	);
 }
 

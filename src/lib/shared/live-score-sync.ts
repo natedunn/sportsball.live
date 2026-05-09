@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { League } from "./league";
-import { syncGamesForView } from "./sync.server";
+import { syncGamesForView } from "./sync";
 
 export const LIVE_SCORE_REFRESH_INTERVAL_MS = 15_000;
 

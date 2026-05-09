@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "~api";
@@ -10,7 +9,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionTitle } from "@/components/ui/section-title";
 import { FavoritesSection } from "@/components/favorites/favorites-section";
-import { authClient } from "@/lib/auth/auth-client";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_default/settings")({
@@ -148,7 +146,7 @@ function ProfileForm() {
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+	const updateProfile = useConvexMutation(api.auth.updateCurrentUserProfile);
 
 	// Reset fields when user changes
 	useEffect(() => {
@@ -156,40 +154,30 @@ function ProfileForm() {
 		if ((user as any)?.username) setUsername((user as any).username);
 	}, [user]);
 
-	// Check username availability with debounce
-	useEffect(() => {
-		const currentUsername = (user as any)?.username || "";
-		if (!username.trim() || username === currentUsername) {
-			setUsernameStatus("idle");
-			return;
-		}
-
-		// Basic validation
-		if (username.length < 3) {
-			setUsernameStatus("idle");
-			return;
-		}
-
-		setUsernameStatus("checking");
-		const timer = setTimeout(async () => {
-			try {
-				const { data } = await authClient.isUsernameAvailable({ username });
-				setUsernameStatus(data?.available ? "available" : "taken");
-			} catch {
-				setUsernameStatus("idle");
-			}
-		}, 500);
-
-		return () => clearTimeout(timer);
-	}, [username, user]);
+	const currentUsername = (user as any)?.username || "";
+	const trimmedUsername = username.trim().toLowerCase();
+	const usernameChanged = trimmedUsername !== currentUsername;
+	const shouldCheckUsername = usernameChanged && trimmedUsername.length >= 3;
+	const usernameAvailability = useQuery({
+		...convexQuery(api.auth.isUsernameAvailable, {
+			username: trimmedUsername || currentUsername || "username",
+		}),
+		enabled: shouldCheckUsername,
+	});
+	const usernameStatus: "idle" | "checking" | "available" | "taken" =
+		!shouldCheckUsername
+			? "idle"
+			: usernameAvailability.isLoading
+				? "checking"
+				: usernameAvailability.data?.available
+					? "available"
+					: "taken";
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setError(null);
 
 		const nameChanged = name.trim() !== (user?.name || "");
-		const trimmedUsername = username.trim();
-		const usernameChanged = trimmedUsername !== ((user as any)?.username || "");
 
 		if (!nameChanged && !usernameChanged) return;
 		if (usernameChanged && trimmedUsername.length < 3) {
@@ -206,11 +194,10 @@ function ProfileForm() {
 		try {
 			const updates: { name?: string; username?: string } = {};
 			if (nameChanged) updates.name = name.trim();
-			if (usernameChanged && trimmedUsername) updates.username = trimmedUsername.toLowerCase();
+			if (usernameChanged && trimmedUsername) updates.username = trimmedUsername;
 
-			await authClient.updateUser(updates);
+			await updateProfile(updates);
 			setSaved(true);
-			setUsernameStatus("idle");
 			setTimeout(() => setSaved(false), 2000);
 		} catch (err: any) {
 			console.error("Failed to update profile:", err);
@@ -221,8 +208,6 @@ function ProfileForm() {
 	};
 
 	const nameChanged = name.trim() !== (user?.name || "");
-	const trimmedUsername = username.trim();
-	const usernameChanged = trimmedUsername !== ((user as any)?.username || "");
 	const hasChanges = nameChanged || usernameChanged;
 	const canSave =
 		hasChanges &&

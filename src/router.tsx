@@ -6,6 +6,7 @@ import { ConvexReactClient } from "convex/react";
 
 import { DefaultCatchBoundary } from "./components/_default-catch-boundary";
 import { NotFound } from "./components/_not-found";
+import { authClient } from "./lib/auth/auth-client";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
@@ -18,6 +19,9 @@ export function getRouter() {
 		throw new Error("missing VITE_CONVEX_URL envar");
 	}
 	const convex = new ConvexReactClient(CONVEX_URL);
+	if (typeof document !== "undefined") {
+		authClient.connectConvexAuth(convex);
+	}
 
 	const convexQueryClient = new ConvexQueryClient(convex);
 
@@ -42,7 +46,7 @@ export function getRouter() {
 		defaultPreloadGcTime: 5 * 60_000, // 5 minutes
 		scrollRestoration: true,
 		notFoundMode: "fuzzy",
-		context: { queryClient, convexQueryClient },
+		context: { convex, queryClient, convexQueryClient },
 	});
 
 	setupRouterSsrQueryIntegration({

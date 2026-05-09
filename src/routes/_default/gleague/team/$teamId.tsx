@@ -12,7 +12,7 @@ import {
 	deriveTeamLeaders,
 	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
-import { syncGamesForView } from "@/lib/shared/sync.server";
+import { syncGamesForView } from "@/lib/shared/sync";
 import { teamInjuriesQueryOptions } from "@/lib/gleague/team.queries";
 import {
 	TeamDetailsLayout,

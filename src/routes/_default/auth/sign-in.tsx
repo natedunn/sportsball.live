@@ -15,10 +15,10 @@ export const Route = createFileRoute("/_default/auth/sign-in")({
 
 function SignInPage() {
 	const handleGoogleSignIn = async () => {
-		await authClient.signIn.social({
-			provider: "google",
-			// callbackURL: "/profile",
-		})
+		await authClient.signIn.oauth("google", {
+			redirectTo: "/",
+			errorRedirectTo: "/auth/sign-in",
+		});
 	}
 
 	// if (isPending) {

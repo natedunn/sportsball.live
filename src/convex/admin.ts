@@ -1,9 +1,9 @@
 import { query, internalQuery, type QueryCtx } from "./_generated/server";
-import { authComponent } from "./auth";
+import { auth } from "./zen/_generated/auth";
 
 // Helper to check if current user is a super admin
 async function isSuperAdmin(ctx: QueryCtx): Promise<boolean> {
-	const user = await authComponent.safeGetAuthUser(ctx);
+	const user = await auth.user.safeGet(ctx);
 	if (!user?.email) return false;
 
 	const superAdminEmail = process.env.SUPER_ADMIN;

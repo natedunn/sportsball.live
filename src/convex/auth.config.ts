@@ -1,6 +1,8 @@
-import { getAuthConfigProvider } from "@convex-dev/better-auth/auth-config";
 import type { AuthConfig } from "convex/server";
+import { createConvexZenIdentityJwt } from "convex-zen/tanstack-start/identity-jwt";
 
-export default {
-  providers: [getAuthConfigProvider()],
-} satisfies AuthConfig;
+const authConfig: AuthConfig = {
+	providers: [createConvexZenIdentityJwt().authProvider],
+};
+
+export default authConfig;

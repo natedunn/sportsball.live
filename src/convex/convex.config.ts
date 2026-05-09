@@ -1,7 +1,7 @@
 import { defineApp } from "convex/server";
-import betterAuth from "@convex-dev/better-auth/convex.config";
+import convexAuth from "./zen/component/convex.config";
 
 const app = defineApp();
-app.use(betterAuth);
+app.use(convexAuth);
 
 export default app;

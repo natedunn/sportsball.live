@@ -1,13 +1,13 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { auth } from "./zen/_generated/auth";
 import { leagueValidator } from "./validators";
 
 // Get all favorites for authenticated user
 export const getUserFavorites = query({
 	args: {},
 	handler: async (ctx) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user) {
 			return [];
 		}
@@ -28,7 +28,7 @@ export const getUserFavoritesByLeague = query({
 		league: leagueValidator,
 	},
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user) {
 			return [];
 		}
@@ -75,7 +75,7 @@ export const toggleFavorite = mutation({
 		teamSlug: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user) {
 			throw new Error("Unauthorized");
 		}

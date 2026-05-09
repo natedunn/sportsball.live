@@ -1,13 +1,10 @@
-import { convexClient } from "@convex-dev/better-auth/client/plugins";
-import { adminClient, usernameClient } from "better-auth/client/plugins";
-import { createAuthClient } from "better-auth/react";
+import { createTanStackAuthClient } from "convex-zen/tanstack-start";
+import { api } from "../../convex/_generated/api";
+import { authMeta } from "../../convex/zen/_generated/meta";
 
-export const authClient = createAuthClient({
-	baseURL: process.env.SITE_URL!,
-	plugins: [
-		//
-		usernameClient(),
-		adminClient(),
-		convexClient(),
-	],
+export const authClient = createTanStackAuthClient({
+	convexFunctions: api.zen,
+	meta: authMeta,
 });
+
+export type AppAuthClient = typeof authClient;

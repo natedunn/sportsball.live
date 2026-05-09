@@ -747,8 +747,7 @@ export default defineSchema({
     expiresAt: v.number(),
   }).index("by_originalUrl", ["originalUrl"]),
 
-  // Public profile data (synced from Better Auth via triggers)
-  // Better Auth manages authentication; this table is for public profile queries
+  // Public profile data synced from Convex Zen for public profile queries.
   profile: defineTable({
     email: v.string(),
     name: v.optional(v.string()),
@@ -756,14 +755,14 @@ export default defineSchema({
     emailVerified: v.boolean(),
     username: v.optional(v.string()),
     displayUsername: v.optional(v.string()),
-    authUserId: v.optional(v.string()), // Better Auth component's internal user ID (for favorites lookup)
+    authUserId: v.optional(v.string()), // Convex Zen user ID (for favorites lookup)
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_email", ["email"])
     .index("by_username", ["username"]),
 
-  // Sessions for Better Auth (managed by component, kept for schema compatibility)
+  // Legacy sessions table kept for schema compatibility.
   sessions: defineTable({
     userId: v.id("profile"),
     token: v.string(),
@@ -778,7 +777,7 @@ export default defineSchema({
 
   // User favorite teams
   favoriteTeams: defineTable({
-    userId: v.string(), // User ID from Better Auth (stored as string for compatibility)
+    userId: v.string(), // Convex Zen user ID stored as a string
     league: leagueValidator, // "nba" | "wnba" | "gleague"
     teamId: v.string(), // API provider team ID (e.g., "1")
     teamSlug: v.string(), // For routing (e.g., "atl")
@@ -788,7 +787,7 @@ export default defineSchema({
     .index("by_user_league", ["userId", "league"])
     .index("by_user_team", ["userId", "league", "teamId"]),
 
-  // OAuth accounts (managed by Better Auth component, kept for schema compatibility)
+  // Legacy OAuth accounts table kept for schema compatibility.
   accounts: defineTable({
     userId: v.id("profile"),
     providerId: v.string(),

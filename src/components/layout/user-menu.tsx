@@ -22,13 +22,8 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
 	const handleSignOut = async () => {
-		await authClient.signOut({
-			fetchOptions: {
-				onSuccess: async () => {
-					location.reload();
-				},
-			},
-		});
+		await authClient.signOut();
+		location.reload();
 	};
 
 	return (

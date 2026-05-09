@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { query, mutation, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { leagueValidator } from "./validators";
-import { authComponent } from "./auth";
+import { auth } from "./zen/_generated/auth";
 import { getCurrentSeason } from "./shared/seasonHelpers";
 import type { Id } from "./_generated/dataModel";
 
@@ -145,7 +145,7 @@ export const getRecentScoreAnomalies = query({
 		limit: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -175,17 +175,23 @@ export const getRecentScoreAnomalies = query({
 		}> = [];
 
 		if (args.league) {
-			records = await ctx.db
+			const rows = await ctx.db
 				.query("scoreAnomaly")
 				.withIndex("by_league_lastSeenAt", (q) => q.eq("league", args.league as League))
 				.order("desc")
-				.take(limit);
+				.collect();
+			records = rows
+				.filter((row) => row.resolvedAt === undefined)
+				.slice(0, limit);
 		} else {
-			records = await ctx.db
+			const rows = await ctx.db
 				.query("scoreAnomaly")
 				.withIndex("by_lastSeenAt")
 				.order("desc")
-				.take(limit);
+				.collect();
+			records = rows
+				.filter((row) => row.resolvedAt === undefined)
+				.slice(0, limit);
 		}
 
 		return records;
@@ -195,7 +201,7 @@ export const getRecentScoreAnomalies = query({
 export const getDerivedScoreAnomalies = query({
 	args: { limit: v.optional(v.number()) },
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -246,7 +252,7 @@ export const startBootstrap = mutation({
 	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
 		// Auth check
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -298,7 +304,7 @@ export const cancelBootstrap = mutation({
 	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
 		// Auth check
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -338,7 +344,7 @@ export const resetBootstrap = mutation({
 	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
 		// Auth check
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -367,7 +373,7 @@ export const resetBootstrap = mutation({
 export const resyncScoreAnomaly = mutation({
 	args: { anomalyId: v.id("scoreAnomaly") },
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -390,7 +396,7 @@ export const resyncScoreAnomaly = mutation({
 export const resyncLeagueGame = mutation({
 	args: { league: leagueValidator, espnGameId: v.string() },
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -405,7 +411,7 @@ export const resyncLeagueGame = mutation({
 export const backfillScoreAnomalies = mutation({
 	args: {},
 	handler: async (ctx) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await auth.user.safeGet(ctx);
 		if (!user?.email) throw new Error("Not authenticated");
 		const superAdminEmail = process.env.SUPER_ADMIN;
 		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
@@ -611,6 +617,7 @@ export const logScoreAnomaly = internalMutation({
 		awayScore: v.optional(v.number()),
 		rawHomeScore: v.optional(v.string()),
 		rawAwayScore: v.optional(v.string()),
+		resolved: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
 		const now = Date.now();
@@ -620,6 +627,15 @@ export const logScoreAnomaly = internalMutation({
 				q.eq("league", args.league).eq("espnGameId", args.espnGameId).eq("anomalyType", args.anomalyType),
 			)
 			.first();
+
+		if (args.resolved) {
+			if (!existing) return null;
+			await ctx.db.patch(existing._id, {
+				resolvedAt: now,
+				updatedAt: now,
+			});
+			return existing._id;
+		}
 
 		if (existing) {
 			await ctx.db.patch(existing._id, {
@@ -632,6 +648,7 @@ export const logScoreAnomaly = internalMutation({
 				rawAwayScore: args.rawAwayScore,
 				lastSeenAt: now,
 				occurrenceCount: (existing.occurrenceCount ?? 1) + 1,
+				resolvedAt: undefined,
 				updatedAt: now,
 			});
 			return existing._id;

@@ -1,4 +1,5 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { RequireAuth } from "@/lib/auth/require-auth";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "~api";
@@ -9,20 +10,11 @@ import { AdminPageShell } from "./-components/admin-page-shell";
 import { SeasonConfigWarnings } from "./-components/season-config-warnings";
 
 export const Route = createFileRoute("/_default/admin/")({
-	component: AdminPage,
-	beforeLoad: async ({ context }) => {
-		if (!context.isAuthenticated) {
-			throw redirect({ to: "/auth/sign-in" });
-		}
-
-		const isAdmin = await context.queryClient.ensureQueryData(
-			convexQuery(api.admin.checkIsAdmin),
-		);
-
-		if (!isAdmin) {
-			throw redirect({ to: "/" });
-		}
-	},
+	component: () => (
+		<RequireAuth admin>
+			<AdminPage />
+		</RequireAuth>
+	),
 });
 
 const LEAGUES = ["nba", "wnba", "gleague"] as const;

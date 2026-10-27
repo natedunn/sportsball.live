@@ -1,6 +1,7 @@
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { RequireAuth } from "@/lib/auth/require-auth";
 import { Calendar, ChevronDown, Pencil, Plus, Save, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,26 +18,17 @@ import {
 } from "./-components/season-config-warnings";
 
 export const Route = createFileRoute("/_default/admin/schedules")({
-	component: AdminSchedulesPage,
+	component: () => (
+		<RequireAuth admin>
+			<AdminSchedulesPage />
+		</RequireAuth>
+	),
 	validateSearch: (search: Record<string, unknown>): { league?: League } => {
 		return {
 			league: LEAGUES.includes(search.league as League)
 				? (search.league as League)
 				: undefined,
 		};
-	},
-	beforeLoad: async ({ context }) => {
-		if (!context.isAuthenticated) {
-			throw redirect({ to: "/auth/sign-in" });
-		}
-
-		const isAdmin = await context.queryClient.ensureQueryData(
-			convexQuery(api.admin.checkIsAdmin),
-		);
-
-		if (!isAdmin) {
-			throw redirect({ to: "/" });
-		}
 	},
 });
 

@@ -1,114 +1,58 @@
-import {
-	createClient,
-	type GenericCtx,
-	type AuthFunctions,
-} from "@convex-dev/better-auth";
-import { convex } from "@convex-dev/better-auth/plugins";
+import { getAuthUserId, setupConvexAuth } from "@convex-dev/auth/server";
+import { setupGoogle } from "@convex-dev/auth/methods/google/server";
+import { ConvexError, v } from "convex/values";
 import { components, internal } from "./_generated/api";
-import type { DataModel } from "./_generated/dataModel";
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
-import { betterAuth } from "better-auth";
-import { username } from "better-auth/plugins";
-import authConfig from "./auth.config";
-import { generateRandomUsername } from "./randomUsername";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 
-const siteUrl = process.env.SITE_URL!;
+// Convex Auth v2 (beta). The core owns sessions, accounts, and JWT minting.
+// Our `profile` table is the users table: every provider's `createUser`
+// returns a profile id, and the JWT subject is that id.
+const auth = setupConvexAuth({
+	component: components.auth,
+	usersTable: "profile",
+});
 
-const authFunctions: AuthFunctions = internal.auth as any;
+export const { signOut, refreshSession, isAuthenticated } = auth;
 
-export const authComponent = createClient<DataModel>(
-	components.betterAuth as any,
+const siteUrl = process.env.SITE_URL;
+
+export const { startSignInWithGoogle, completeSignInWithGoogle } = setupGoogle(
+	auth,
 	{
-		authFunctions,
-		triggers: {
-			user: {
-				onCreate: async (ctx, user) => {
-					// Generate a random username if one wasn't provided
-					const generatedUsername = user.username || generateRandomUsername();
-					const finalUsername = generatedUsername.toLowerCase();
-
-					// Sync to our local profile table for public profile queries
-					await ctx.db.insert("profile", {
-						email: user.email,
-						name: user.name || undefined,
-						image: user.image || undefined,
-						emailVerified: user.emailVerified || false,
-						username: finalUsername,
-						displayUsername: user.username || generatedUsername,
-						authUserId: String(user._id), // Store auth component's user ID for favorites lookup
-						createdAt: Date.now(),
-						updatedAt: Date.now(),
-					});
-				},
-				onUpdate: async (ctx, user) => {
-					// Sync updates to our local profile table
-					const existingUser = await ctx.db
-						.query("profile")
-						.withIndex("by_email", (q) => q.eq("email", user.email))
-						.first();
-
-					if (existingUser) {
-						await ctx.db.patch(existingUser._id, {
-							name: user.name || undefined,
-							image: user.image || undefined,
-							username: user.username?.toLowerCase() || existingUser.username,
-							displayUsername: user.username || existingUser.displayUsername,
-							updatedAt: Date.now(),
-						});
-					} else {
-						// Profile missing (e.g. onCreate failed) — create it now
-						const generatedUsername = user.username || generateRandomUsername();
-						const finalUsername = generatedUsername.toLowerCase();
-						await ctx.db.insert("profile", {
-							email: user.email,
-							name: user.name || undefined,
-							image: user.image || undefined,
-							emailVerified: user.emailVerified || false,
-							username: finalUsername,
-							displayUsername: user.username || generatedUsername,
-							authUserId: String(user._id),
-							createdAt: Date.now(),
-							updatedAt: Date.now(),
-						});
-					}
-				},
-			},
-		},
+		component: components.authGoogle,
+		// Origins Google may send the user back to after sign-in.
+		allowedRedirectOrigins: [
+			"http://localhost:3000",
+			"http://localhost:3001",
+			...(siteUrl ? [siteUrl] : []),
+		],
 	},
-);
+).attachUserCallbacks({
+	createUser: internal.users.createUser,
+	onSignIn: internal.users.onSignIn,
+});
 
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
-	return betterAuth({
-		baseURL: siteUrl,
-		trustedOrigins: ["http://localhost:3000", "http://localhost:3001", siteUrl],
-		database: authComponent.adapter(ctx),
-		socialProviders: {
-			google: {
-				clientId: process.env.GOOGLE_CLIENT_ID!,
-				clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-			},
-		},
-		plugins: [username(), convex({ authConfig })],
-	});
-};
+/** The signed-in user's profile row, or null when signed out. */
+export async function getCurrentProfile(ctx: QueryCtx) {
+	const userId = await getAuthUserId<"profile">(ctx);
+	if (userId === null) return null;
+	return await ctx.db.get(userId);
+}
 
-// Get the current authenticated user (merged with profile data)
+// Get the current authenticated user
 export const getCurrentUser = query({
 	args: {},
 	handler: async (ctx) => {
-		const authUser = await authComponent.safeGetAuthUser(ctx);
-		if (!authUser) return null;
-
-		const profile = await ctx.db
-			.query("profile")
-			.withIndex("by_email", (q) => q.eq("email", authUser.email))
-			.first();
+		const profile = await getCurrentProfile(ctx);
+		if (!profile) return null;
 
 		return {
-			...authUser,
-			username: profile?.username,
-			displayUsername: profile?.displayUsername,
+			_id: profile._id,
+			email: profile.email,
+			name: profile.name,
+			image: profile.image,
+			username: profile.username,
+			displayUsername: profile.displayUsername,
 		};
 	},
 });
@@ -138,53 +82,64 @@ export const getUserByUsername = query({
 	},
 });
 
-// Sync current user to local profile table (for existing profile created before triggers)
-export const syncCurrentUserToLocal = mutation({
-	args: {},
-	handler: async (ctx) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
-		if (!user) {
-			throw new Error("Not authenticated");
-		}
+const USERNAME_PATTERN = /^[a-z0-9_]{3,30}$/;
 
-		// Check if user already exists in local table
-		const existingUser = await ctx.db
+export const isUsernameAvailable = query({
+	args: { username: v.string() },
+	handler: async (ctx, args) => {
+		const username = args.username.trim().toLowerCase();
+		if (!USERNAME_PATTERN.test(username)) return false;
+
+		const existing = await ctx.db
 			.query("profile")
-			.withIndex("by_email", (q) => q.eq("email", user.email))
+			.withIndex("by_username", (q) => q.eq("username", username))
 			.first();
+		if (!existing) return true;
 
-		if (existingUser) {
-			// Update existing record
-			await ctx.db.patch(existingUser._id, {
-				name: user.name || undefined,
-				image: user.image || undefined,
-				username:
-					(user as any).username?.toLowerCase() || existingUser.username,
-				displayUsername: (user as any).username || existingUser.displayUsername,
-				authUserId: String(user._id), // Ensure auth component's user ID is stored
-				updatedAt: Date.now(),
-			});
-			return { action: "updated" as const };
-		}
-
-		// Create new record
-		const newUsername =
-			(user as any).username?.toLowerCase() || generateRandomUsername();
-		await ctx.db.insert("profile", {
-			email: user.email,
-			name: user.name || undefined,
-			image: user.image || undefined,
-			emailVerified: user.emailVerified || false,
-			username: newUsername,
-			displayUsername: (user as any).username || newUsername,
-			authUserId: String(user._id), // Store auth component's user ID for favorites lookup
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-		});
-
-		return { action: "created" as const };
+		const current = await getCurrentProfile(ctx);
+		return current !== null && existing._id === current._id;
 	},
 });
 
-// Export triggers for Convex to call
-export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
+// Update the signed-in user's display name and/or username
+export const updateProfile = mutation({
+	args: {
+		name: v.optional(v.string()),
+		username: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const profile = await getCurrentProfile(ctx);
+		if (!profile) throw new ConvexError("Not authenticated");
+
+		const updates: {
+			name?: string;
+			username?: string;
+			displayUsername?: string;
+			updatedAt: number;
+		} = { updatedAt: Date.now() };
+
+		if (args.name !== undefined) {
+			updates.name = args.name.trim() || undefined;
+		}
+
+		if (args.username !== undefined) {
+			const username = args.username.trim().toLowerCase();
+			if (!USERNAME_PATTERN.test(username)) {
+				throw new ConvexError(
+					"Username must be 3-30 characters: letters, numbers, and underscores",
+				);
+			}
+			const existing = await ctx.db
+				.query("profile")
+				.withIndex("by_username", (q) => q.eq("username", username))
+				.first();
+			if (existing && existing._id !== profile._id) {
+				throw new ConvexError("Username is already taken");
+			}
+			updates.username = username;
+			updates.displayUsername = username;
+		}
+
+		await ctx.db.patch(profile._id, updates);
+	},
+});

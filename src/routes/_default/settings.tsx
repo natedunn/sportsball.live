@@ -1,7 +1,7 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useMutation } from "@tanstack/react-query";
+import { useConvex } from "convex/react";
 import { convexQuery } from "@convex-dev/react-query";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "~api";
@@ -10,16 +10,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SectionTitle } from "@/components/ui/section-title";
 import { FavoritesSection } from "@/components/favorites/favorites-section";
-import { authClient } from "@/lib/auth/auth-client";
+import { RequireAuth } from "@/lib/auth/require-auth";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_default/settings")({
-	component: SettingsPage,
-	beforeLoad: ({ context }) => {
-		if (!context.isAuthenticated) {
-			throw redirect({ to: "/auth/sign-in" });
-		}
-	},
+	component: () => (
+		<RequireAuth>
+			<SettingsPage />
+		</RequireAuth>
+	),
 });
 
 type Theme = "light" | "dark" | "system";
@@ -143,8 +142,10 @@ function ThemeSelector() {
 
 function ProfileForm() {
 	const { data: user } = useSuspenseQuery(convexQuery(api.auth.getCurrentUser, {}));
+	const convex = useConvex();
+	const updateProfile = useConvexMutation(api.auth.updateProfile);
 	const [name, setName] = useState(user?.name || "");
-	const [username, setUsername] = useState((user as any)?.username || "");
+	const [username, setUsername] = useState(user?.username || "");
 	const [saving, setSaving] = useState(false);
 	const [saved, setSaved] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -153,12 +154,12 @@ function ProfileForm() {
 	// Reset fields when user changes
 	useEffect(() => {
 		if (user?.name) setName(user.name);
-		if ((user as any)?.username) setUsername((user as any).username);
+		if (user?.username) setUsername(user.username);
 	}, [user]);
 
 	// Check username availability with debounce
 	useEffect(() => {
-		const currentUsername = (user as any)?.username || "";
+		const currentUsername = user?.username || "";
 		if (!username.trim() || username === currentUsername) {
 			setUsernameStatus("idle");
 			return;
@@ -173,15 +174,15 @@ function ProfileForm() {
 		setUsernameStatus("checking");
 		const timer = setTimeout(async () => {
 			try {
-				const { data } = await authClient.isUsernameAvailable({ username });
-				setUsernameStatus(data?.available ? "available" : "taken");
+				const available = await convex.query(api.auth.isUsernameAvailable, { username });
+				setUsernameStatus(available ? "available" : "taken");
 			} catch {
 				setUsernameStatus("idle");
 			}
 		}, 500);
 
 		return () => clearTimeout(timer);
-	}, [username, user]);
+	}, [username, user, convex]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -189,7 +190,7 @@ function ProfileForm() {
 
 		const nameChanged = name.trim() !== (user?.name || "");
 		const trimmedUsername = username.trim();
-		const usernameChanged = trimmedUsername !== ((user as any)?.username || "");
+		const usernameChanged = trimmedUsername !== (user?.username || "");
 
 		if (!nameChanged && !usernameChanged) return;
 		if (usernameChanged && trimmedUsername.length < 3) {
@@ -208,13 +209,13 @@ function ProfileForm() {
 			if (nameChanged) updates.name = name.trim();
 			if (usernameChanged && trimmedUsername) updates.username = trimmedUsername.toLowerCase();
 
-			await authClient.updateUser(updates);
+			await updateProfile(updates);
 			setSaved(true);
 			setUsernameStatus("idle");
 			setTimeout(() => setSaved(false), 2000);
 		} catch (err: any) {
 			console.error("Failed to update profile:", err);
-			setError(err?.message || "Failed to update profile");
+			setError(typeof err?.data === "string" ? err.data : "Failed to update profile");
 		} finally {
 			setSaving(false);
 		}
@@ -222,7 +223,7 @@ function ProfileForm() {
 
 	const nameChanged = name.trim() !== (user?.name || "");
 	const trimmedUsername = username.trim();
-	const usernameChanged = trimmedUsername !== ((user as any)?.username || "");
+	const usernameChanged = trimmedUsername !== (user?.username || "");
 	const hasChanges = nameChanged || usernameChanged;
 	const canSave =
 		hasChanges &&
@@ -322,17 +323,6 @@ function ProfileForm() {
 }
 
 function SettingsPage() {
-	const syncUserToLocal = useConvexMutation(api.auth.syncCurrentUserToLocal);
-	const hasSynced = useRef(false);
-
-	// Sync user data to local table on first load (for users created before triggers)
-	useEffect(() => {
-		if (!hasSynced.current) {
-			hasSynced.current = true;
-			syncUserToLocal({});
-		}
-	}, []);
-
 	return (
 		<div className="container py-8">
 			<div className="mx-auto max-w-2xl">

@@ -3,7 +3,8 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
-		"dev": "npx convex dev --once && npm-run-all --parallel dev:convex dev:web",
+		"dev": "sh scripts/dev.sh",
+		"push:cloud-dev": "CONVEX_DEPLOYMENT=dev:brilliant-wren-578 convex dev --once",
 		"dev:convex": "convex dev",
 		"dev:web": "vite dev --port 3000 --host",
 		"build:deploy": "npx convex deploy --cmd 'vite build'",
@@ -60,11 +61,17 @@
 		"eslint": "^9.39.2",
 		"jsdom": "^27.4.0",
 		"npm-run-all": "^4.1.5",
+		"portless": "^0.13.1",
 		"semantic-release": "^25.0.2",
 		"sharp": "^0.34.5",
 		"tailwindcss": "^4.1.18",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
 		"vitest": "^4.0.18"
+	},
+	"pnpm": {
+		"patchedDependencies": {
+			"@convex-dev/auth": "patches/@convex-dev__auth.patch"
+		}
 	}
 }

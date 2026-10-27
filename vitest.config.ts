@@ -8,6 +8,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./tests/setup.ts"],
+    // The gateway Worker is its own package with node:test tests.
+    exclude: ["**/node_modules/**", "workers/**"],
   },
   resolve: {
     alias: {

@@ -10,6 +10,7 @@
 
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
+import type * as authGateway from "../authGateway.js";
 import type * as bootstrap from "../bootstrap.js";
 import type * as bootstrapAdmin from "../bootstrapAdmin.js";
 import type * as crons from "../crons.js";
@@ -44,6 +45,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
+  authGateway: typeof authGateway;
   bootstrap: typeof bootstrap;
   bootstrapAdmin: typeof bootstrapAdmin;
   crons: typeof crons;

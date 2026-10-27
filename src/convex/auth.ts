@@ -3,6 +3,7 @@ import { setupGoogle } from "@convex-dev/auth/methods/google/server";
 import { ConvexError, v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import { mutation, query, type QueryCtx } from "./_generated/server";
+import { viaGateway } from "./authGateway";
 
 // Convex Auth v2 (beta). The core owns sessions, accounts, and JWT minting.
 // Our `profile` table is the users table: every provider's `createUser`
@@ -14,23 +15,23 @@ const auth = setupConvexAuth({
 
 export const { signOut, refreshSession, isAuthenticated } = auth;
 
-const siteUrl = process.env.SITE_URL;
+// Exact origins sign-in may return to (comma-separated SITE_URL). Each
+// environment sets its own: prod, cloud dev, and every local worktree.
+const allowedRedirectOrigins = (process.env.SITE_URL ?? "http://localhost:3000")
+	.split(",")
+	.map((origin) => origin.trim())
+	.filter(Boolean);
 
-export const { startSignInWithGoogle, completeSignInWithGoogle } = setupGoogle(
-	auth,
-	{
-		component: components.authGoogle,
-		// Origins Google may send the user back to after sign-in.
-		allowedRedirectOrigins: [
-			"http://localhost:3000",
-			"http://localhost:3001",
-			...(siteUrl ? [siteUrl] : []),
-		],
-	},
-).attachUserCallbacks({
+const google = setupGoogle(auth, {
+	component: components.authGoogle,
+	allowedRedirectOrigins,
+}).attachUserCallbacks({
 	createUser: internal.users.createUser,
 	onSignIn: internal.users.onSignIn,
 });
+// Routes Google's callback through the OAuth gateway when AUTH_GATEWAY_SECRET is set.
+export const startSignInWithGoogle = viaGateway("google", google.startSignInWithGoogle);
+export const { completeSignInWithGoogle } = google;
 
 /** The signed-in user's profile row, or null when signed out. */
 export async function getCurrentProfile(ctx: QueryCtx) {

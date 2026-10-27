@@ -5,14 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Development (starts Convex and Vite in parallel)
+# Development: this checkout's own local Convex backend + Vite through Portless
+# (https://sportsball.localhost:1355, or https://<worktree>.sportsball.localhost:1355).
+# Several worktrees can run at once. See docs/local-dev.md.
 pnpm dev
 
-# Run only the web server (port 3000)
-pnpm dev:web
-
-# Run only Convex dev server
-pnpm dev:convex
+# Push Convex functions to the shared cloud dev deployment (brilliant-wren-578)
+pnpm push:cloud-dev
 
 # Build for production
 pnpm build
@@ -37,7 +36,7 @@ pnpm test:watch     # Watch mode
 - **Framework**: TanStack Start (React meta-framework with file-based routing)
 - **Routing**: TanStack Router with SSR query integration
 - **State/Data**: TanStack Query + Convex (real-time database)
-- **Auth**: Better Auth with Convex adapter, Google OAuth
+- **Auth**: Convex Auth v2 (beta, patched) with Google OAuth through a per-tier gateway Worker (`workers/gateway`). See docs/auth-environments.md
 - **Styling**: Tailwind CSS v4
 - **Deployment**: Cloudflare Workers (via Vite plugin)
 
@@ -78,4 +77,4 @@ Required variables (see `.env.example`):
   - `*_SITE_API` - Main site API (scoreboard, games, teams, news)
   - `*_CORE_API` - Core API (detailed injuries)
   - `*_COMMON_API` - Common API (roster with player stats)
-- `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` - Auth config
+- Auth settings live on the Convex deployments, not in `.env` (docs/auth-environments.md)

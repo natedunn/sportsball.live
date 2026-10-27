@@ -9,12 +9,16 @@ import {
 	mapApiStateToEventStatus,
 	sleep,
 	getDateRange,
+	parseEspnSeason,
+	seasonFromEspnYear,
 } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
 import type {
+	ApiEventSeason,
 	ApiScoreboardResponse,
 	ApiGameSummaryResponse,
 	ApiStandingsResponse,
+	ApiStandingsTeamEntry,
 	ApiRosterResponse,
 } from "../shared/apiParser";
 
@@ -287,15 +291,172 @@ async function logScoreAnomaly(
 	}
 }
 
+// Lazily resolve the current season, only when ESPN omits an event's season
+function createSeasonFallback(ctx: any): () => Promise<string> {
+	let cached: Promise<string> | undefined;
+	return () => (cached ??= getCurrentSeasonName(ctx));
+}
+
+async function resolveEventSeason(
+	espnSeason: ApiEventSeason | undefined,
+	fallback: () => Promise<string>,
+): Promise<{ season: string; seasonType?: number }> {
+	const parsed = parseEspnSeason("wnba", espnSeason);
+	return {
+		season: parsed.season ?? (await fallback()),
+		seasonType: parsed.seasonType,
+	};
+}
+
+type ApiTeamInfo = {
+	id: string;
+	name?: string;
+	displayName?: string;
+	abbreviation?: string;
+	slug?: string;
+	location?: string;
+};
+
+function teamInfoArgs(team: ApiTeamInfo) {
+	return {
+		espnTeamId: team.id,
+		name: team.displayName ?? team.name ?? "Unknown",
+		abbreviation: team.abbreviation ?? "???",
+		location: team.location ?? "",
+		slug: team.slug ?? team.id,
+	};
+}
+
+// Ensure a team row exists for the season without touching its standings record
+async function ensureTeam(ctx: any, team: ApiTeamInfo, season: string) {
+	const existing = await ctx.runQuery(internal.wnba.queries.getTeamInternal, {
+		espnTeamId: team.id,
+		season,
+	});
+	return existing?._id ?? await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
+		...teamInfoArgs(team),
+		season,
+	});
+}
+
+type StandingsRecord = {
+	conference: string;
+	conferenceRank: number;
+	wins: number;
+	losses: number;
+	winPct: number;
+	streak: string;
+	homeRecord: string;
+	awayRecord: string;
+	gamesBack: string;
+	last10: string;
+	divisionRecord: string;
+	conferenceRecord: string;
+	pointsFor: number;
+	pointsAgainst: number;
+};
+
+type StandingsSnapshot = {
+	season?: string;
+	teams: Array<{ team: ApiStandingsTeamEntry["team"]; record: StandingsRecord }>;
+};
+
+// Prefer the per-group season: in the offseason ESPN's top-level season
+// already points at the next year while the rows are still last season's.
+function getStandingsSeason(data: ApiStandingsResponse): string | undefined {
+	const groupYear = data.children?.find((c) => typeof c.standings?.season === "number")?.standings?.season;
+	const year = groupYear ?? data.season?.year;
+	return typeof year === "number" && Number.isFinite(year) ? seasonFromEspnYear("wnba", year) : undefined;
+}
+
+function parseStandings(data: ApiStandingsResponse): StandingsSnapshot {
+	const teams: StandingsSnapshot["teams"] = [];
+
+	for (const conf of data.children ?? []) {
+		const confName = conf.name ?? "";
+		for (const entry of conf.standings?.entries ?? []) {
+			const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
+			const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
+
+			teams.push({
+				team: entry.team,
+				record: {
+					conference: confName,
+					conferenceRank: getStat("playoffSeed"),
+					wins: getStat("wins"),
+					losses: getStat("losses"),
+					winPct: getStat("winPercent"),
+					streak: getDisplay("streak"),
+					homeRecord: getDisplay("Home"),
+					awayRecord: getDisplay("Road"),
+					gamesBack: String(getStat("gamesBehind")),
+					last10: getDisplay("Last Ten Games"),
+					divisionRecord: getDisplay("vs. Div."),
+					conferenceRecord: getDisplay("vs. Conf."),
+					pointsFor: getStat("avgPointsFor"),
+					pointsAgainst: getStat("avgPointsAgainst"),
+				},
+			});
+		}
+	}
+
+	return { season: getStandingsSeason(data), teams };
+}
+
+// Fetch and parse league standings; null when the request fails
+async function fetchStandings(): Promise<StandingsSnapshot | null> {
+	const standingsUrl = getSiteApi().replace("/site/v2/", "/v2/") + "/standings";
+	try {
+		const standingsRes = await fetch(standingsUrl, {
+			headers: { "User-Agent": "Mozilla/5.0" },
+		});
+		if (!standingsRes.ok) {
+			console.error(`[WNBA] Standings fetch failed: ${standingsRes.status}`);
+			return null;
+		}
+		return parseStandings((await standingsRes.json()) as ApiStandingsResponse);
+	} catch (error) {
+		console.error("[WNBA] Standings fetch failed:", error);
+		return null;
+	}
+}
+
+async function scheduleStandingsRefresh(ctx: any) {
+	await ctx.scheduler.runAfter(60_000, internal.wnba.actions.refreshStandings, {});
+}
+
+// Refresh every team's record from ESPN standings (cron + after games complete)
+export const refreshStandings = internalAction({
+	args: {},
+	handler: async (ctx) => {
+		const standings = await fetchStandings();
+		if (!standings) return;
+		if (!standings.season) {
+			console.error("[WNBA] Standings payload has no season; skipping refresh");
+			return;
+		}
+
+		for (const { team, record } of standings.teams) {
+			await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
+				...teamInfoArgs(team),
+				season: standings.season,
+				...record,
+			});
+		}
+
+		console.log(`[WNBA] Refreshed standings for ${standings.teams.length} teams, season ${standings.season}`);
+	},
+});
+
 // Daily cron: discover today's games, update standings
 export const discoverTodaysGames = internalAction({
 	args: {},
 	handler: async (ctx) => {
-		const season = await getCurrentSeasonName(ctx);
+		const fallbackSeason = createSeasonFallback(ctx);
 		const date = getTodayDate();
 		const baseUrl = getSiteApi();
 
-		console.log(`[WNBA] Discovering games for ${date}, season ${season}...`);
+		console.log(`[WNBA] Discovering games for ${date}...`);
 
 		// Fetch scoreboard
 		const scoreboardRes = await fetch(`${baseUrl}/scoreboard?dates=${date}`, {
@@ -313,63 +474,10 @@ export const discoverTodaysGames = internalAction({
 		console.log(`[WNBA] Found ${events.length} games for ${date}`);
 
 		// Also fetch standings to update team records
-		const standingsUrl = baseUrl.replace("/site/v2/", "/v2/") + "/standings";
-		let standingsEntries: ApiStandingsResponse["children"] = [];
-		try {
-			const standingsRes = await fetch(standingsUrl, {
-				headers: { "User-Agent": "Mozilla/5.0" },
-			});
-			if (standingsRes.ok) {
-				const standingsData = (await standingsRes.json()) as ApiStandingsResponse;
-				standingsEntries = standingsData.children ?? [];
-			}
-		} catch (error) {
-			console.error("[WNBA] Standings fetch failed:", error);
-		}
-
-		// Build a map of team ID -> standings data
-		const standingsMap = new Map<string, {
-			conference: string;
-			rank: number;
-			wins: number;
-			losses: number;
-			winPct: number;
-			streak: string;
-			homeRecord: string;
-			awayRecord: string;
-			gamesBack: string;
-			last10: string;
-			divisionRecord: string;
-			conferenceRecord: string;
-			pointsFor: number;
-			pointsAgainst: number;
-		}>();
-
-		for (const conf of standingsEntries ?? []) {
-			const confName = conf.name ?? "";
-			for (const entry of conf.standings?.entries ?? []) {
-				const teamId = entry.team.id;
-				const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
-				const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
-
-				standingsMap.set(teamId, {
-					conference: confName,
-					rank: getStat("playoffSeed"),
-					wins: getStat("wins"),
-					losses: getStat("losses"),
-					winPct: getStat("winPercent"),
-					streak: getDisplay("streak"),
-					homeRecord: getDisplay("Home"),
-					awayRecord: getDisplay("Road"),
-					gamesBack: String(getStat("gamesBehind")),
-					last10: getDisplay("Last Ten Games"),
-					divisionRecord: getDisplay("vs. Div."),
-					conferenceRecord: getDisplay("vs. Conf."),
-					pointsFor: getStat("avgPointsFor"),
-					pointsAgainst: getStat("avgPointsAgainst"),
-				});
-			}
-		}
+		const standings = await fetchStandings();
+		const standingsMap = new Map(
+			(standings?.teams ?? []).map(({ team, record }) => [team.id, record]),
+		);
 
 		// Process each game
 		for (const event of events) {
@@ -380,54 +488,21 @@ export const discoverTodaysGames = internalAction({
 			const awayComp = competition.competitors.find((c) => c.homeAway === "away");
 			if (!homeComp || !awayComp) continue;
 
-			// Ensure team records exist
-			const homeStandings = standingsMap.get(homeComp.team.id);
-			const awayStandings = standingsMap.get(awayComp.team.id);
+			const { season, seasonType } = await resolveEventSeason(event.season, fallbackSeason);
+
+			// Standings rows only describe their own season; without them, leave records alone
+			const seasonStandings = standings?.season === season ? standingsMap : undefined;
 
 			const homeTeamId = await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
-				espnTeamId: homeComp.team.id,
+				...teamInfoArgs(homeComp.team),
 				season,
-				name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-				abbreviation: homeComp.team.abbreviation ?? "???",
-				location: homeComp.team.location ?? "",
-				slug: homeComp.team.slug ?? homeComp.team.id,
-				conference: homeStandings?.conference,
-				conferenceRank: homeStandings?.rank,
-				wins: homeStandings?.wins ?? 0,
-				losses: homeStandings?.losses ?? 0,
-				winPct: homeStandings?.winPct,
-				streak: homeStandings?.streak,
-				homeRecord: homeStandings?.homeRecord,
-				awayRecord: homeStandings?.awayRecord,
-				gamesBack: homeStandings?.gamesBack,
-				last10: homeStandings?.last10,
-				divisionRecord: homeStandings?.divisionRecord,
-				conferenceRecord: homeStandings?.conferenceRecord,
-				pointsFor: homeStandings?.pointsFor,
-				pointsAgainst: homeStandings?.pointsAgainst,
+				...seasonStandings?.get(homeComp.team.id),
 			});
 
 			const awayTeamId = await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
-				espnTeamId: awayComp.team.id,
+				...teamInfoArgs(awayComp.team),
 				season,
-				name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-				abbreviation: awayComp.team.abbreviation ?? "???",
-				location: awayComp.team.location ?? "",
-				slug: awayComp.team.slug ?? awayComp.team.id,
-				conference: awayStandings?.conference,
-				conferenceRank: awayStandings?.rank,
-				wins: awayStandings?.wins ?? 0,
-				losses: awayStandings?.losses ?? 0,
-				winPct: awayStandings?.winPct,
-				streak: awayStandings?.streak,
-				homeRecord: awayStandings?.homeRecord,
-				awayRecord: awayStandings?.awayRecord,
-				gamesBack: awayStandings?.gamesBack,
-				last10: awayStandings?.last10,
-				divisionRecord: awayStandings?.divisionRecord,
-				conferenceRecord: awayStandings?.conferenceRecord,
-				pointsFor: awayStandings?.pointsFor,
-				pointsAgainst: awayStandings?.pointsAgainst,
+				...seasonStandings?.get(awayComp.team.id),
 			});
 
 			const scheduledStart = competition.startDate
@@ -440,6 +515,7 @@ export const discoverTodaysGames = internalAction({
 			const gameEventId = await ctx.runMutation(internal.wnba.mutations.upsertGameEvent, {
 				espnGameId: event.id,
 				season,
+				seasonType,
 				homeTeamId,
 				awayTeamId,
 				gameDate: date,
@@ -449,6 +525,8 @@ export const discoverTodaysGames = internalAction({
 				venue: competition.venue?.fullName,
 				homeScore: parseApiScore(homeComp.score),
 				awayScore: parseApiScore(awayComp.score),
+				// Fresh check budget for the status check scheduled below
+				checkCount: eventStatus === "scheduled" ? 0 : undefined,
 			});
 
 			// Schedule status check: scheduledStart + 2h15m
@@ -531,6 +609,7 @@ export const checkGameStatusV2 = internalAction({
 		const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
 		const homeScore = parseApiScore(homeComp?.score);
 		const awayScore = parseApiScore(awayComp?.score);
+		const { seasonType } = parseEspnSeason("wnba", summaryData.header?.season);
 
 		// Get current game to check count
 		const currentGame = await ctx.runQuery(internal.wnba.queries.getGameEventInternal, {
@@ -543,6 +622,7 @@ export const checkGameStatusV2 = internalAction({
 			console.log(`[WNBA] Game ${args.espnGameId} hasn't started, rescheduling in 30min`);
 			await ctx.runMutation(internal.wnba.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus: "scheduled",
 				statusDetail: detail,
 				checkCount: currentCheckCount + 1,
@@ -573,6 +653,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.wnba.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus,
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -588,6 +669,7 @@ export const checkGameStatusV2 = internalAction({
 
 			await ctx.runMutation(internal.wnba.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus,
 				statusDetail: detail,
 				homeScore,
@@ -622,6 +704,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.wnba.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -647,6 +730,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.wnba.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -659,9 +743,11 @@ export const checkGameStatusV2 = internalAction({
 			}
 
 			console.log(`[WNBA] Game ${args.espnGameId} completed: ${awayScore}-${homeScore}`);
+			const wasCompleted = currentGame?.eventStatus === "completed";
 
 			await ctx.runMutation(internal.wnba.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus: "completed",
 				statusDetail: detail,
 				homeScore,
@@ -671,6 +757,11 @@ export const checkGameStatusV2 = internalAction({
 
 			// Final box score sync
 			await syncBoxScoreData(ctx, args.gameEventId, args.espnGameId, summaryData);
+
+			// Pull fresh W-L once ESPN has had a moment to post the result
+			if (!wasCompleted) {
+				await scheduleStandingsRefresh(ctx);
+			}
 
 			// Recalculate averages for both teams
 			const game = await ctx.runQuery(internal.wnba.queries.getGameEventInternal, {
@@ -838,7 +929,6 @@ export const syncLiveGameData = internalAction({
 	},
 	handler: async (ctx, args) => {
 		const baseUrl = getSiteApi();
-		const season = await getCurrentSeasonName(ctx);
 
 		// Check if recently fetched (15s throttle)
 		const existingGame = await ctx.runQuery(internal.wnba.queries.getGameEventInternal, {
@@ -874,7 +964,9 @@ export const syncLiveGameData = internalAction({
 		const awayScore = parseApiScore(awayComp.score);
 		const scoresAreComplete = homeScore !== undefined && awayScore !== undefined;
 		const suspiciousFinal = eventStatus === "completed" && isSuspiciousBlowoutWithZero(homeScore, awayScore);
-		if (!scoresAreComplete) {
+		// ESPN has no score before tipoff; that's expected, not an anomaly
+		const isPreGame = state === "pre";
+		if (!scoresAreComplete && !isPreGame) {
 			const message = `[WNBA][SCORE_ANOMALY] Live sync missing score(s) for ${args.espnGameId}: home=${homeComp.score ?? "undefined"}, away=${awayComp.score ?? "undefined"}, state=${state ?? "unknown"}`;
 			console.error(message);
 			await logScoreAnomaly(ctx, {
@@ -901,50 +993,34 @@ export const syncLiveGameData = internalAction({
 			});
 		}
 
-		// Look up teams first to avoid overwriting standings data
-		const existingHomeTeam = await ctx.runQuery(internal.wnba.queries.getTeamInternal, {
-			espnTeamId: homeComp.team.id, season,
-		});
-		const homeTeamId = existingHomeTeam?._id ?? await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
-			espnTeamId: homeComp.team.id,
-			season,
-			name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-			abbreviation: homeComp.team.abbreviation ?? "???",
-			location: homeComp.team.location ?? "",
-			slug: homeComp.team.slug ?? homeComp.team.id,
-			wins: 0,
-			losses: 0,
-		});
+		// Tag with ESPN's season. Existing games keep their stored season, so look
+		// up teams under it (box score rows reference those team ids).
+		const { season: espnSeason, seasonType } = parseEspnSeason("wnba", summaryData.header?.season);
+		const season = espnSeason ?? existingGame?.season ?? (await getCurrentSeasonName(ctx));
+		const teamSeason = existingGame?.season ?? season;
 
-		const existingAwayTeam = await ctx.runQuery(internal.wnba.queries.getTeamInternal, {
-			espnTeamId: awayComp.team.id, season,
-		});
-		const awayTeamId = existingAwayTeam?._id ?? await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
-			espnTeamId: awayComp.team.id,
-			season,
-			name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-			abbreviation: awayComp.team.abbreviation ?? "???",
-			location: awayComp.team.location ?? "",
-			slug: awayComp.team.slug ?? awayComp.team.id,
-			wins: 0,
-			losses: 0,
-		});
+		// Look up teams first to avoid overwriting standings data
+		const homeTeamId = await ensureTeam(ctx, homeComp.team, teamSeason);
+		const awayTeamId = await ensureTeam(ctx, awayComp.team, teamSeason);
 
 		const scheduledStart = competition?.date
 			? new Date(competition.date).getTime()
 			: Date.now();
 
+		const nextEventStatus = suspiciousFinal
+			? (existingGame?.eventStatus === "completed" ? "in_progress" : (existingGame?.eventStatus ?? "in_progress"))
+			: eventStatus;
+
 		// Upsert game event
 		const gameEventId = await ctx.runMutation(internal.wnba.mutations.upsertGameEvent, {
 			espnGameId: args.espnGameId,
 			season,
+			seasonType,
 			homeTeamId,
 			awayTeamId,
 			gameDate: existingGame?.gameDate ?? formatGameDate(scheduledStart),
 			scheduledStart,
-			eventStatus: suspiciousFinal
-				? (existingGame?.eventStatus === "completed" ? "in_progress" : (existingGame?.eventStatus ?? "in_progress"))
-				: eventStatus,
+			eventStatus: nextEventStatus,
 			statusDetail: detail,
 			venue: competition?.venue?.fullName,
 			homeScore: scoresAreComplete ? homeScore : undefined,
@@ -952,8 +1028,15 @@ export const syncLiveGameData = internalAction({
 			lastFetchedAt: Date.now(),
 		});
 
-		// Sync box score data
-		await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+		// No box score exists before tipoff
+		if (!isPreGame) {
+			await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+		}
+
+		// Refresh W-L when a tracked game first goes final
+		if (existingGame && existingGame.eventStatus !== "completed" && nextEventStatus === "completed") {
+			await scheduleStandingsRefresh(ctx);
+		}
 	},
 });
 
@@ -1001,56 +1084,26 @@ export const bootstrapTeams = internalAction({
 	args: { bootstrapRunId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
 		const season = await getCurrentSeasonName(ctx);
-		const baseUrl = getSiteApi();
 
 		console.log(`[WNBA Bootstrap] Fetching standings for season ${season}...`);
 
-		const standingsUrl = baseUrl.replace("/site/v2/", "/v2/") + "/standings";
-		const standingsRes = await fetch(standingsUrl, {
-			headers: { "User-Agent": "Mozilla/5.0" },
-		});
-
-		if (!standingsRes.ok) {
-			throw new Error(`[WNBA Bootstrap] Standings fetch failed: ${standingsRes.status}`);
+		const standings = await fetchStandings();
+		if (!standings) {
+			throw new Error("[WNBA Bootstrap] Standings fetch failed");
 		}
 
-		const standingsData = (await standingsRes.json()) as ApiStandingsResponse;
-		const conferences = standingsData.children ?? [];
-
+		// Keyed by the current season (not the payload's) so the following
+		// bootstrap steps, which look teams up by current season, find them.
 		let teamCount = 0;
 
-		for (const conf of conferences) {
-			const confName = conf.name ?? "";
-			for (const entry of conf.standings?.entries ?? []) {
-				const team = entry.team;
-				const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
-				const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
+		for (const { team, record } of standings.teams) {
+			await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
+				...teamInfoArgs(team),
+				season,
+				...record,
+			});
 
-				await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
-					espnTeamId: team.id,
-					season,
-					name: team.displayName ?? "Unknown",
-					abbreviation: team.abbreviation ?? "???",
-					location: team.location ?? "",
-					slug: team.slug ?? team.id,
-					conference: confName,
-					conferenceRank: getStat("playoffSeed"),
-					wins: getStat("wins"),
-					losses: getStat("losses"),
-					winPct: getStat("winPercent"),
-					streak: getDisplay("streak"),
-					homeRecord: getDisplay("Home"),
-					awayRecord: getDisplay("Road"),
-					gamesBack: String(getStat("gamesBehind")),
-					last10: getDisplay("Last Ten Games"),
-					divisionRecord: getDisplay("vs. Div."),
-					conferenceRecord: getDisplay("vs. Conf."),
-					pointsFor: getStat("avgPointsFor"),
-					pointsAgainst: getStat("avgPointsAgainst"),
-				});
-
-				teamCount++;
-			}
+			teamCount++;
 		}
 
 		console.log(`[WNBA Bootstrap] Created/updated ${teamCount} teams`);
@@ -1276,7 +1329,7 @@ export const backfillDateChunk = internalAction({
 		}
 
 		const date = args.dates[args.offset];
-		const season = await getCurrentSeasonName(ctx);
+		const fallbackSeason = createSeasonFallback(ctx);
 		const baseUrl = getSiteApi();
 
 		console.log(`[WNBA Backfill] Processing date ${date} (${args.offset + 1}/${args.dates.length})...`);
@@ -1311,34 +1364,11 @@ export const backfillDateChunk = internalAction({
 				const awayComp = competition.competitors.find((c) => c.homeAway === "away");
 				if (!homeComp || !awayComp) continue;
 
-				// Look up teams first to avoid overwriting standings data
-				const existingHomeTeam = await ctx.runQuery(internal.wnba.queries.getTeamInternal, {
-					espnTeamId: homeComp.team.id, season,
-				});
-				const homeTeamId = existingHomeTeam?._id ?? await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
-					espnTeamId: homeComp.team.id,
-					season,
-					name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-					abbreviation: homeComp.team.abbreviation ?? "???",
-					location: homeComp.team.location ?? "",
-					slug: homeComp.team.slug ?? homeComp.team.id,
-					wins: 0,
-					losses: 0,
-				});
+				const { season, seasonType } = await resolveEventSeason(event.season, fallbackSeason);
 
-				const existingAwayTeam = await ctx.runQuery(internal.wnba.queries.getTeamInternal, {
-					espnTeamId: awayComp.team.id, season,
-				});
-				const awayTeamId = existingAwayTeam?._id ?? await ctx.runMutation(internal.wnba.mutations.upsertTeam, {
-					espnTeamId: awayComp.team.id,
-					season,
-					name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-					abbreviation: awayComp.team.abbreviation ?? "???",
-					location: awayComp.team.location ?? "",
-					slug: awayComp.team.slug ?? awayComp.team.id,
-					wins: 0,
-					losses: 0,
-				});
+				// Look up teams first to avoid overwriting standings data
+				const homeTeamId = await ensureTeam(ctx, homeComp.team, season);
+				const awayTeamId = await ensureTeam(ctx, awayComp.team, season);
 
 				const scheduledStart = competition.startDate
 					? new Date(competition.startDate).getTime()
@@ -1350,6 +1380,7 @@ export const backfillDateChunk = internalAction({
 				const gameEventId = await ctx.runMutation(internal.wnba.mutations.upsertGameEvent, {
 					espnGameId: event.id,
 					season,
+					seasonType,
 					homeTeamId,
 					awayTeamId,
 					gameDate: date,

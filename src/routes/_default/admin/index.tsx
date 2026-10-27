@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import type { Id } from "@convex/_generated/dataModel";
 import { AdminPageShell } from "./-components/admin-page-shell";
+import { SeasonConfigWarnings } from "./-components/season-config-warnings";
 
 export const Route = createFileRoute("/_default/admin/")({
 	component: AdminPage,
@@ -55,6 +56,8 @@ function AdminPage() {
 			title="Admin Dashboard"
 			description="Bootstrap controls and data management."
 		>
+			<SeasonConfigWarnings />
+
 			<div className="space-y-4">
 				{LEAGUES.map((league) => (
 					<LeagueCard key={league} league={league} />
@@ -211,6 +214,8 @@ function ScoreAnomaliesCard() {
 	const [error, setError] = useState<string | null>(null);
 	const [resyncingId, setResyncingId] = useState<string | null>(null);
 	const [isScanning, setIsScanning] = useState(false);
+	const [isClearing, setIsClearing] = useState(false);
+	const [notice, setNotice] = useState<string | null>(null);
 
 	const { data: anomalies } = useQuery(
 		convexQuery(api.bootstrapAdmin.getRecentScoreAnomalies, {
@@ -226,6 +231,9 @@ function ScoreAnomaliesCard() {
 	const resyncMutation = useConvexMutation(api.bootstrapAdmin.resyncScoreAnomaly);
 	const resyncLeagueGameMutation = useConvexMutation(api.bootstrapAdmin.resyncLeagueGame);
 	const backfillMutation = useConvexMutation(api.bootstrapAdmin.backfillScoreAnomalies);
+	const clearPreGameMutation = useConvexMutation(
+		api.bootstrapAdmin.startPreGameScoreAnomalyCleanup,
+	);
 
 	const handleResync = async (anomalyId: Id<"scoreAnomaly">) => {
 		setError(null);
@@ -264,18 +272,49 @@ function ScoreAnomaliesCard() {
 		}
 	};
 
+	const handleClearPreGame = async () => {
+		if (
+			!window.confirm(
+				"Delete pre-game score anomalies (missing scores logged before tipoff)?",
+			)
+		) {
+			return;
+		}
+		setError(null);
+		setNotice(null);
+		setIsClearing(true);
+		try {
+			await clearPreGameMutation({});
+			setNotice("Cleanup started. It runs in batches; check the Convex logs for totals.");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to start cleanup");
+		} finally {
+			setIsClearing(false);
+		}
+	};
+
 	return (
 		<div className="rounded-xl border border-border bg-card p-6">
-			<div className="flex items-center justify-between">
+			<div className="flex items-center justify-between gap-4">
 				<div>
 					<h2 className="text-xl font-semibold">Score Anomalies</h2>
 					<p className="mt-1 text-sm text-muted-foreground">
 						Recent score integrity issues detected by sync guards.
 					</p>
 				</div>
-				<Button variant="outline" size="sm" onClick={handleScan} disabled={isScanning}>
-					{isScanning ? "Scanning..." : "Scan Existing Scores"}
-				</Button>
+				<div className="flex shrink-0 gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleClearPreGame}
+						disabled={isClearing}
+					>
+						{isClearing ? "Starting..." : "Clear Pre-game Noise"}
+					</Button>
+					<Button variant="outline" size="sm" onClick={handleScan} disabled={isScanning}>
+						{isScanning ? "Scanning..." : "Scan Existing Scores"}
+					</Button>
+				</div>
 			</div>
 
 			{!anomalies || anomalies.length === 0 ? (
@@ -355,6 +394,9 @@ function ScoreAnomaliesCard() {
 				</div>
 			)}
 
+			{notice && (
+				<p className="mt-2 text-sm text-muted-foreground">{notice}</p>
+			)}
 			{error && (
 				<p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
 			)}

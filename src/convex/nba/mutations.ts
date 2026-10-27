@@ -34,8 +34,9 @@ export const upsertTeam = internalMutation({
 		division: v.optional(v.string()),
 		conferenceRank: v.optional(v.number()),
 		divisionRank: v.optional(v.number()),
-		wins: v.number(),
-		losses: v.number(),
+		// Optional so callers without standings never overwrite a real record
+		wins: v.optional(v.number()),
+		losses: v.optional(v.number()),
 		winPct: v.optional(v.number()),
 		streak: v.optional(v.string()),
 		homeRecord: v.optional(v.string()),
@@ -64,7 +65,11 @@ export const upsertTeam = internalMutation({
 			await ctx.db.patch(existing._id, data);
 			return existing._id;
 		} else {
-			return await ctx.db.insert("nbaTeam", data);
+			return await ctx.db.insert("nbaTeam", {
+				...data,
+				wins: data.wins ?? 0,
+				losses: data.losses ?? 0,
+			});
 		}
 	},
 });
@@ -182,6 +187,7 @@ export const upsertGameEvent = internalMutation({
 		awayScore: v.optional(v.number()),
 		lastFetchedAt: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
+		seasonType: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db
@@ -189,12 +195,23 @@ export const upsertGameEvent = internalMutation({
 			.withIndex("by_espnGameId", (q) => q.eq("espnGameId", args.espnGameId))
 			.unique();
 
-		const data = {
+		// Omit undefined so a sparse payload never unsets stored fields
+		const data = omitUndefined({
 			...args,
 			updatedAt: Date.now(),
-		};
+		});
 
 		if (existing) {
+			if (existing.season !== args.season) {
+				// Team/player box score rows reference the existing team ids, so a
+				// season retag must go through a migration rather than this upsert.
+				console.warn(
+					`[NBA] Game ${args.espnGameId} is stored as season ${existing.season} but ESPN reports ${args.season}; keeping stored season and team ids`,
+				);
+				const { season: _season, homeTeamId: _homeTeamId, awayTeamId: _awayTeamId, ...rest } = data;
+				await ctx.db.patch(existing._id, rest);
+				return existing._id;
+			}
 			await ctx.db.patch(existing._id, data);
 			return existing._id;
 		} else {
@@ -633,6 +650,7 @@ export const updateGameEventStatus = internalMutation({
 		awayScore: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
 		lastFetchedAt: v.optional(v.number()),
+		seasonType: v.optional(v.number()),
 	},
 	handler: async (ctx, args) => {
 		const { gameEventId, ...updates } = args;

@@ -27,6 +27,30 @@ crons.daily(
 	internal.gleague.actions.discoverTodaysGames,
 );
 
+// Refresh every team's record from ESPN standings after the night's games
+// (9 AM UTC = 5 AM EDT). Standings also refresh after each game goes final;
+// this is the backstop for games that finished without a status check.
+crons.daily(
+	"refresh-nba-standings",
+	{ hourUTC: 9, minuteUTC: 0 },
+	internal.nba.actions.refreshStandings,
+	{},
+);
+
+crons.daily(
+	"refresh-wnba-standings",
+	{ hourUTC: 9, minuteUTC: 5 },
+	internal.wnba.actions.refreshStandings,
+	{},
+);
+
+crons.daily(
+	"refresh-gleague-standings",
+	{ hourUTC: 9, minuteUTC: 10 },
+	internal.gleague.actions.refreshStandings,
+	{},
+);
+
 // Reconcile season player stats from ESPN Core to keep non-live stats accurate.
 crons.daily(
 	"reconcile-nba-player-stats",

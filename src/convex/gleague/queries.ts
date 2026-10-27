@@ -3,11 +3,14 @@ import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import {
 	getSeriesRecordForGame,
-	isPlayoffScoreboardDate,
+	isPlayoffGame,
+	type PlayoffWindow,
 } from "../shared/scoreboardSeries";
 import { getSeasonEndYear, getSeasonStartYear } from "../shared/seasonHelpers";
 
-async function getPlayoffStartDate(ctx: any, season: string) {
+// Configured playoff window from the seasons table. Missing bounds fall back to
+// league defaults inside the shared series helpers.
+async function getConfiguredPlayoffWindow(ctx: any, season: string): Promise<PlayoffWindow> {
 	const startYear = getSeasonStartYear(season);
 	const endYear = getSeasonEndYear(season);
 	const seasonRow = await ctx.db
@@ -20,7 +23,7 @@ async function getPlayoffStartDate(ctx: any, season: string) {
 				.eq("type", "playoffs"),
 		)
 		.first();
-	return seasonRow?.startDate;
+	return { startDate: seasonRow?.startDate, endDate: seasonRow?.endDate };
 }
 
 // Get all games for a specific date (scoreboard)
@@ -35,9 +38,8 @@ export const getScoreboard = query({
 		// Enrich each game with team info
 		const enriched = await Promise.all(
 			games.map(async (game) => {
-				const playoffStartDate = await getPlayoffStartDate(ctx, game.season);
-				const shouldLoadSeries =
-					isPlayoffScoreboardDate("gleague", game.season, game.gameDate, playoffStartDate);
+				const playoffWindow = await getConfiguredPlayoffWindow(ctx, game.season);
+				const shouldLoadSeries = isPlayoffGame("gleague", game, playoffWindow);
 				const [homeTeam, awayTeam, homeTeamHomeGames, homeTeamAwayGames] = await Promise.all([
 					ctx.db.get(game.homeTeamId),
 					ctx.db.get(game.awayTeamId),
@@ -66,7 +68,7 @@ export const getScoreboard = query({
 						? getSeriesRecordForGame("gleague", game, [
 								...homeTeamHomeGames,
 								...homeTeamAwayGames,
-							], playoffStartDate)
+							], playoffWindow)
 						: undefined,
 				};
 			}),
@@ -87,9 +89,8 @@ export const getGameDetails = query({
 
 		if (!game) return null;
 
-		const playoffStartDate = await getPlayoffStartDate(ctx, game.season);
-		const shouldLoadSeries =
-			isPlayoffScoreboardDate("gleague", game.season, game.gameDate, playoffStartDate);
+		const playoffWindow = await getConfiguredPlayoffWindow(ctx, game.season);
+		const shouldLoadSeries = isPlayoffGame("gleague", game, playoffWindow);
 
 		// Fetch team events
 		const teamEvents = await ctx.db
@@ -157,7 +158,7 @@ export const getGameDetails = query({
 				? getSeriesRecordForGame("gleague", game, [
 						...homeTeamHomeGames,
 						...homeTeamAwayGames,
-					], playoffStartDate)
+					], playoffWindow)
 				: undefined,
 		};
 	},

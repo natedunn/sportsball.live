@@ -1,12 +1,23 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { api, internal } from "../_generated/api";
-import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange } from "../shared/seasonHelpers";
+import type { Id } from "../_generated/dataModel";
+import {
+	getCurrentSeason,
+	getTodayDate,
+	formatGameDate,
+	mapApiStateToEventStatus,
+	sleep,
+	getDateRange,
+	parseEspnSeason,
+	seasonFromEspnYear,
+} from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
 import type {
 	ApiScoreboardResponse,
 	ApiGameSummaryResponse,
 	ApiStandingsResponse,
+	ApiStandingsTeamEntry,
 	ApiRosterResponse,
 } from "../shared/apiParser";
 
@@ -14,6 +25,8 @@ import type {
 const BACKFILL_DELAY_MS = 2000;
 const BACKFILL_GAME_DELAY_MS = 3000;
 const ROSTER_TEAMS_PER_CHUNK = 5;
+// Give ESPN a minute to roll a final into the standings before refreshing
+const STANDINGS_REFRESH_DELAY_MS = 60_000;
 
 function getSiteApi(): string {
 	const url = process.env.GLEAGUE_SITE_API;
@@ -243,6 +256,140 @@ async function getCurrentSeasonEventDate(
 	return date ? compactIsoDate(date) : fallback;
 }
 
+// Lazily resolve the configured current season, only when ESPN omits one
+function createSeasonFallback(ctx: any): () => Promise<string> {
+	let cached: Promise<string> | undefined;
+	return () => (cached ??= getCurrentSeasonName(ctx));
+}
+
+type ApiTeamRef = {
+	id: string;
+	name?: string;
+	displayName?: string;
+	abbreviation?: string;
+	location?: string;
+	slug?: string;
+};
+
+function teamIdentityArgs(team: ApiTeamRef, season: string) {
+	return {
+		espnTeamId: team.id,
+		season,
+		name: team.displayName ?? team.name ?? "Unknown",
+		abbreviation: team.abbreviation ?? "???",
+		location: team.location ?? "",
+		slug: team.slug ?? team.id,
+	};
+}
+
+// Look up a team for a season, creating it (without record fields) if missing
+async function ensureTeam(ctx: any, team: ApiTeamRef, season: string): Promise<Id<"gleagueTeam">> {
+	const existing = await ctx.runQuery(internal.gleague.queries.getTeamInternal, {
+		espnTeamId: team.id,
+		season,
+	});
+	if (existing) return existing._id;
+	return await ctx.runMutation(internal.gleague.mutations.upsertTeam, teamIdentityArgs(team, season));
+}
+
+type StandingsRecord = {
+	conference: string;
+	conferenceRank: number;
+	wins: number;
+	losses: number;
+	winPct: number;
+	streak: string;
+	homeRecord: string;
+	awayRecord: string;
+	gamesBack: string;
+	last10: string;
+	divisionRecord: string;
+	conferenceRecord: string;
+	pointsFor: number;
+	pointsAgainst: number;
+};
+
+type StandingsSnapshot = {
+	// Season the rows belong to, from the payload (not the seasons table).
+	// In the offseason ESPN still serves last season's standings.
+	season?: string;
+	entries: Array<{ team: ApiStandingsTeamEntry["team"]; record: StandingsRecord }>;
+	byTeamId: Map<string, StandingsRecord>;
+};
+
+function parseStandings(data: ApiStandingsResponse): StandingsSnapshot {
+	const conferences = data.children ?? [];
+	// Each conference's `standings.season` describes the rows; the top-level
+	// season is ESPN's current season and can be newer than the data.
+	const espnYear = conferences.find((c) => typeof c.standings?.season === "number")?.standings?.season
+		?? data.season?.year;
+	const season = typeof espnYear === "number" ? seasonFromEspnYear("gleague", espnYear) : undefined;
+
+	const entries: StandingsSnapshot["entries"] = [];
+	const byTeamId = new Map<string, StandingsRecord>();
+
+	for (const conf of conferences) {
+		const confName = conf.name ?? "";
+		for (const entry of conf.standings?.entries ?? []) {
+			const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
+			const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
+
+			const record: StandingsRecord = {
+				conference: confName,
+				conferenceRank: getStat("playoffSeed"),
+				wins: getStat("wins"),
+				losses: getStat("losses"),
+				winPct: getStat("winPercent"),
+				streak: getDisplay("streak"),
+				homeRecord: getDisplay("Home"),
+				awayRecord: getDisplay("Road"),
+				gamesBack: String(getStat("gamesBehind")),
+				last10: getDisplay("Last Ten Games"),
+				divisionRecord: getDisplay("vs. Div."),
+				conferenceRecord: getDisplay("vs. Conf."),
+				pointsFor: getStat("avgPointsFor"),
+				pointsAgainst: getStat("avgPointsAgainst"),
+			};
+			entries.push({ team: entry.team, record });
+			byTeamId.set(entry.team.id, record);
+		}
+	}
+
+	return { season, entries, byTeamId };
+}
+
+// Fetch and parse standings; returns null on failure so callers keep existing records
+async function fetchStandings(): Promise<StandingsSnapshot | null> {
+	const standingsUrl = getSiteApi().replace("/site/v2/", "/v2/") + "/standings";
+	try {
+		const standingsRes = await fetch(standingsUrl, {
+			headers: { "User-Agent": "Mozilla/5.0" },
+		});
+		if (!standingsRes.ok) {
+			console.error(`[GLEAGUE] Standings fetch failed: ${standingsRes.status}`);
+			return null;
+		}
+		return parseStandings((await standingsRes.json()) as ApiStandingsResponse);
+	} catch (error) {
+		console.error("[GLEAGUE] Standings fetch failed:", error);
+		return null;
+	}
+}
+
+// Standings record for a team, only if the standings belong to the given season
+function getStandingsRecord(
+	standings: StandingsSnapshot | null,
+	espnTeamId: string,
+	season: string,
+): StandingsRecord | undefined {
+	if (!standings || standings.season !== season) return undefined;
+	return standings.byTeamId.get(espnTeamId);
+}
+
+async function scheduleStandingsRefresh(ctx: any) {
+	await ctx.scheduler.runAfter(STANDINGS_REFRESH_DELAY_MS, internal.gleague.actions.refreshStandings, {});
+}
+
 function parseApiScore(rawScore: string | undefined): number | undefined {
 	if (rawScore === undefined) return undefined;
 	const parsed = Number.parseInt(rawScore, 10);
@@ -285,11 +432,11 @@ async function logScoreAnomaly(
 export const discoverTodaysGames = internalAction({
 	args: {},
 	handler: async (ctx) => {
-		const season = await getCurrentSeasonName(ctx);
+		const getFallbackSeason = createSeasonFallback(ctx);
 		const date = getTodayDate();
 		const baseUrl = getSiteApi();
 
-		console.log(`[GLEAGUE] Discovering games for ${date}, season ${season}...`);
+		console.log(`[GLEAGUE] Discovering games for ${date}...`);
 
 		// Fetch scoreboard
 		const scoreboardRes = await fetch(`${baseUrl}/scoreboard?dates=${date}`, {
@@ -307,63 +454,7 @@ export const discoverTodaysGames = internalAction({
 		console.log(`[GLEAGUE] Found ${events.length} games for ${date}`);
 
 		// Also fetch standings to update team records
-		const standingsUrl = baseUrl.replace("/site/v2/", "/v2/") + "/standings";
-		let standingsEntries: ApiStandingsResponse["children"] = [];
-		try {
-			const standingsRes = await fetch(standingsUrl, {
-				headers: { "User-Agent": "Mozilla/5.0" },
-			});
-			if (standingsRes.ok) {
-				const standingsData = (await standingsRes.json()) as ApiStandingsResponse;
-				standingsEntries = standingsData.children ?? [];
-			}
-		} catch (error) {
-			console.error("[GLEAGUE] Standings fetch failed:", error);
-		}
-
-		// Build a map of team ID -> standings data
-		const standingsMap = new Map<string, {
-			conference: string;
-			rank: number;
-			wins: number;
-			losses: number;
-			winPct: number;
-			streak: string;
-			homeRecord: string;
-			awayRecord: string;
-			gamesBack: string;
-			last10: string;
-			divisionRecord: string;
-			conferenceRecord: string;
-			pointsFor: number;
-			pointsAgainst: number;
-		}>();
-
-		for (const conf of standingsEntries ?? []) {
-			const confName = conf.name ?? "";
-			for (const entry of conf.standings?.entries ?? []) {
-				const teamId = entry.team.id;
-				const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
-				const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
-
-				standingsMap.set(teamId, {
-					conference: confName,
-					rank: getStat("playoffSeed"),
-					wins: getStat("wins"),
-					losses: getStat("losses"),
-					winPct: getStat("winPercent"),
-					streak: getDisplay("streak"),
-					homeRecord: getDisplay("Home"),
-					awayRecord: getDisplay("Road"),
-					gamesBack: String(getStat("gamesBehind")),
-					last10: getDisplay("Last Ten Games"),
-					divisionRecord: getDisplay("vs. Div."),
-					conferenceRecord: getDisplay("vs. Conf."),
-					pointsFor: getStat("avgPointsFor"),
-					pointsAgainst: getStat("avgPointsAgainst"),
-				});
-			}
-		}
+		const standings = await fetchStandings();
 
 		// Process each game
 		for (const event of events) {
@@ -374,54 +465,19 @@ export const discoverTodaysGames = internalAction({
 			const awayComp = competition.competitors.find((c) => c.homeAway === "away");
 			if (!homeComp || !awayComp) continue;
 
-			// Ensure team records exist
-			const homeStandings = standingsMap.get(homeComp.team.id);
-			const awayStandings = standingsMap.get(awayComp.team.id);
+			// Tag the game with ESPN's season; fall back to the configured season
+			const espnSeason = parseEspnSeason("gleague", event.season);
+			const season = espnSeason.season ?? (await getFallbackSeason());
 
+			// Ensure team records exist; records only apply when standings match this season
 			const homeTeamId = await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
-				espnTeamId: homeComp.team.id,
-				season,
-				name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-				abbreviation: homeComp.team.abbreviation ?? "???",
-				location: homeComp.team.location ?? "",
-				slug: homeComp.team.slug ?? homeComp.team.id,
-				conference: homeStandings?.conference,
-				conferenceRank: homeStandings?.rank,
-				wins: homeStandings?.wins ?? 0,
-				losses: homeStandings?.losses ?? 0,
-				winPct: homeStandings?.winPct,
-				streak: homeStandings?.streak,
-				homeRecord: homeStandings?.homeRecord,
-				awayRecord: homeStandings?.awayRecord,
-				gamesBack: homeStandings?.gamesBack,
-				last10: homeStandings?.last10,
-				divisionRecord: homeStandings?.divisionRecord,
-				conferenceRecord: homeStandings?.conferenceRecord,
-				pointsFor: homeStandings?.pointsFor,
-				pointsAgainst: homeStandings?.pointsAgainst,
+				...teamIdentityArgs(homeComp.team, season),
+				...getStandingsRecord(standings, homeComp.team.id, season),
 			});
 
 			const awayTeamId = await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
-				espnTeamId: awayComp.team.id,
-				season,
-				name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-				abbreviation: awayComp.team.abbreviation ?? "???",
-				location: awayComp.team.location ?? "",
-				slug: awayComp.team.slug ?? awayComp.team.id,
-				conference: awayStandings?.conference,
-				conferenceRank: awayStandings?.rank,
-				wins: awayStandings?.wins ?? 0,
-				losses: awayStandings?.losses ?? 0,
-				winPct: awayStandings?.winPct,
-				streak: awayStandings?.streak,
-				homeRecord: awayStandings?.homeRecord,
-				awayRecord: awayStandings?.awayRecord,
-				gamesBack: awayStandings?.gamesBack,
-				last10: awayStandings?.last10,
-				divisionRecord: awayStandings?.divisionRecord,
-				conferenceRecord: awayStandings?.conferenceRecord,
-				pointsFor: awayStandings?.pointsFor,
-				pointsAgainst: awayStandings?.pointsAgainst,
+				...teamIdentityArgs(awayComp.team, season),
+				...getStandingsRecord(standings, awayComp.team.id, season),
 			});
 
 			const scheduledStart = competition.startDate
@@ -434,6 +490,7 @@ export const discoverTodaysGames = internalAction({
 			const gameEventId = await ctx.runMutation(internal.gleague.mutations.upsertGameEvent, {
 				espnGameId: event.id,
 				season,
+				seasonType: espnSeason.seasonType,
 				homeTeamId,
 				awayTeamId,
 				gameDate: date,
@@ -443,6 +500,8 @@ export const discoverTodaysGames = internalAction({
 				venue: competition.venue?.fullName,
 				homeScore: parseApiScore(homeComp.score),
 				awayScore: parseApiScore(awayComp.score),
+				// Fresh check budget for the status check scheduled below
+				checkCount: eventStatus === "scheduled" ? 0 : undefined,
 			});
 
 			// Schedule status check: scheduledStart + 2h15m
@@ -458,6 +517,32 @@ export const discoverTodaysGames = internalAction({
 		}
 
 		console.log(`[GLEAGUE] Discovery complete: ${events.length} games processed`);
+	},
+});
+
+// Refresh W-L records for every team in the standings (cron + after games finish).
+// Rows are keyed by the payload's season so offseason standings never land on
+// the next season's teams.
+export const refreshStandings = internalAction({
+	args: {},
+	handler: async (ctx): Promise<{ season?: string; teamCount: number }> => {
+		const standings = await fetchStandings();
+		if (!standings) return { teamCount: 0 };
+
+		if (!standings.season) {
+			console.error("[GLEAGUE] Standings payload has no season; skipping refresh");
+			return { teamCount: 0 };
+		}
+
+		for (const { team, record } of standings.entries) {
+			await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
+				...teamIdentityArgs(team, standings.season),
+				...record,
+			});
+		}
+
+		console.log(`[GLEAGUE] Refreshed standings for ${standings.entries.length} teams, season ${standings.season}`);
+		return { season: standings.season, teamCount: standings.entries.length };
 	},
 });
 
@@ -519,6 +604,8 @@ export const checkGameStatusV2 = internalAction({
 		const state = competition?.status?.type?.state;
 		const detail = competition?.status?.type?.detail;
 		const eventStatus = mapApiStateToEventStatus(state, detail);
+		// Record ESPN's season type when available (season/team ids are never changed here)
+		const { seasonType } = parseEspnSeason("gleague", summaryData.header?.season);
 
 		// Get scores
 		const homeComp = competition?.competitors?.find((c) => c.homeAway === "home");
@@ -537,6 +624,7 @@ export const checkGameStatusV2 = internalAction({
 			console.log(`[GLEAGUE] Game ${args.espnGameId} hasn't started, rescheduling in 30min`);
 			await ctx.runMutation(internal.gleague.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus: "scheduled",
 				statusDetail: detail,
 				checkCount: currentCheckCount + 1,
@@ -567,6 +655,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.gleague.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus,
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -582,6 +671,7 @@ export const checkGameStatusV2 = internalAction({
 
 			await ctx.runMutation(internal.gleague.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus,
 				statusDetail: detail,
 				homeScore,
@@ -616,6 +706,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.gleague.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -641,6 +732,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.gleague.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -656,12 +748,18 @@ export const checkGameStatusV2 = internalAction({
 
 			await ctx.runMutation(internal.gleague.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus: "completed",
 				statusDetail: detail,
 				homeScore,
 				awayScore,
 				lastFetchedAt: Date.now(),
 			});
+
+			// First transition to completed: refresh W-L once ESPN has rolled the final in
+			if (currentGame?.eventStatus !== "completed") {
+				await scheduleStandingsRefresh(ctx);
+			}
 
 			// Final box score sync
 			await syncBoxScoreData(ctx, args.gameEventId, args.espnGameId, summaryData);
@@ -710,6 +808,9 @@ async function syncBoxScoreData(
 	if (!boxscoreTeams || boxscoreTeams.length < 2) return;
 
 	const competition = summaryData.header?.competitions?.[0];
+	// Pre-game summaries have no score yet; nothing to sync and nothing anomalous
+	if (competition?.status?.type?.state === "pre") return;
+
 	const headerHome = competition?.competitors?.find((c) => c.homeAway === "home");
 	const headerAway = competition?.competitors?.find((c) => c.homeAway === "away");
 
@@ -832,7 +933,6 @@ export const syncLiveGameData = internalAction({
 	},
 	handler: async (ctx, args) => {
 		const baseUrl = getSiteApi();
-		const season = await getCurrentSeasonName(ctx);
 
 		// Check if recently fetched (15s throttle)
 		const existingGame = await ctx.runQuery(internal.gleague.queries.getGameEventInternal, {
@@ -859,16 +959,23 @@ export const syncLiveGameData = internalAction({
 		const state = competition?.status?.type?.state;
 		const detail = competition?.status?.type?.detail;
 		const eventStatus = mapApiStateToEventStatus(state, detail);
+		const isPreGame = state === "pre";
 
 		const homeComp = competition?.competitors?.find((c) => c.homeAway === "home");
 		const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
 		if (!homeComp || !awayComp) return;
 
+		// Tag with ESPN's season; existing games keep their stored season and team ids
+		const espnSeason = parseEspnSeason("gleague", summaryData.header?.season);
+		const season = espnSeason.season ?? (await getCurrentSeasonName(ctx));
+		const teamSeason = existingGame?.season ?? season;
+
 		const homeScore = parseApiScore(homeComp.score);
 		const awayScore = parseApiScore(awayComp.score);
 		const scoresAreComplete = homeScore !== undefined && awayScore !== undefined;
 		const suspiciousFinal = eventStatus === "completed" && isSuspiciousBlowoutWithZero(homeScore, awayScore);
-		if (!scoresAreComplete) {
+		// ESPN has no score before tipoff; that's expected, not an anomaly
+		if (!scoresAreComplete && !isPreGame) {
 			const message = `[GLEAGUE][SCORE_ANOMALY] Live sync missing score(s) for ${args.espnGameId}: home=${homeComp.score ?? "undefined"}, away=${awayComp.score ?? "undefined"}, state=${state ?? "unknown"}`;
 			console.error(message);
 			await logScoreAnomaly(ctx, {
@@ -896,42 +1003,18 @@ export const syncLiveGameData = internalAction({
 		}
 
 		// Look up teams first to avoid overwriting standings data
-		const existingHomeTeam = await ctx.runQuery(internal.gleague.queries.getTeamInternal, {
-			espnTeamId: homeComp.team.id, season,
-		});
-		const homeTeamId = existingHomeTeam?._id ?? await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
-			espnTeamId: homeComp.team.id,
-			season,
-			name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-			abbreviation: homeComp.team.abbreviation ?? "???",
-			location: homeComp.team.location ?? "",
-			slug: homeComp.team.slug ?? homeComp.team.id,
-			wins: 0,
-			losses: 0,
-		});
-
-		const existingAwayTeam = await ctx.runQuery(internal.gleague.queries.getTeamInternal, {
-			espnTeamId: awayComp.team.id, season,
-		});
-		const awayTeamId = existingAwayTeam?._id ?? await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
-			espnTeamId: awayComp.team.id,
-			season,
-			name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-			abbreviation: awayComp.team.abbreviation ?? "???",
-			location: awayComp.team.location ?? "",
-			slug: awayComp.team.slug ?? awayComp.team.id,
-			wins: 0,
-			losses: 0,
-		});
+		const homeTeamId = await ensureTeam(ctx, homeComp.team, teamSeason);
+		const awayTeamId = await ensureTeam(ctx, awayComp.team, teamSeason);
 
 		const scheduledStart = competition?.date
 			? new Date(competition.date).getTime()
 			: Date.now();
 
-		// Upsert game event
+		// Upsert game event (pre-game still updates status, start time, venue)
 		const gameEventId = await ctx.runMutation(internal.gleague.mutations.upsertGameEvent, {
 			espnGameId: args.espnGameId,
 			season,
+			seasonType: espnSeason.seasonType,
 			homeTeamId,
 			awayTeamId,
 			gameDate: existingGame?.gameDate ?? formatGameDate(scheduledStart),
@@ -946,8 +1029,20 @@ export const syncLiveGameData = internalAction({
 			lastFetchedAt: Date.now(),
 		});
 
+		if (isPreGame) return;
+
 		// Sync box score data
 		await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+
+		// First transition to completed: refresh W-L once ESPN has rolled the final in
+		const isNewlyCompleted =
+			eventStatus === "completed" &&
+			scoresAreComplete &&
+			!suspiciousFinal &&
+			existingGame?.eventStatus !== "completed";
+		if (isNewlyCompleted) {
+			await scheduleStandingsRefresh(ctx);
+		}
 	},
 });
 
@@ -999,52 +1094,23 @@ export const bootstrapTeams = internalAction({
 
 		console.log(`[GLEAGUE Bootstrap] Fetching standings for season ${season}...`);
 
-		const standingsUrl = baseUrl.replace("/site/v2/", "/v2/") + "/standings";
-		const standingsRes = await fetch(standingsUrl, {
-			headers: { "User-Agent": "Mozilla/5.0" },
-		});
-
-		if (!standingsRes.ok) {
-			throw new Error(`[GLEAGUE Bootstrap] Standings fetch failed: ${standingsRes.status}`);
+		const standings = await fetchStandings();
+		if (!standings) {
+			throw new Error("[GLEAGUE Bootstrap] Standings fetch failed");
 		}
 
-		const standingsData = (await standingsRes.json()) as ApiStandingsResponse;
-		const conferences = standingsData.children ?? [];
-
+		// Teams are created for the configured season; record fields are only
+		// written when the standings payload is for that same season.
+		const recordsMatchSeason = standings.season === season;
 		let teamCount = 0;
 
-		for (const conf of conferences) {
-			const confName = conf.name ?? "";
-			for (const entry of conf.standings?.entries ?? []) {
-				const team = entry.team;
-				const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
-				const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
+		for (const { team, record } of standings.entries) {
+			await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
+				...teamIdentityArgs(team, season),
+				...(recordsMatchSeason ? record : { conference: record.conference }),
+			});
 
-				await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
-					espnTeamId: team.id,
-					season,
-					name: team.displayName ?? "Unknown",
-					abbreviation: team.abbreviation ?? "???",
-					location: team.location ?? "",
-					slug: team.slug ?? team.id,
-					conference: confName,
-					conferenceRank: getStat("playoffSeed"),
-					wins: getStat("wins"),
-					losses: getStat("losses"),
-					winPct: getStat("winPercent"),
-					streak: getDisplay("streak"),
-					homeRecord: getDisplay("Home"),
-					awayRecord: getDisplay("Road"),
-					gamesBack: String(getStat("gamesBehind")),
-					last10: getDisplay("Last Ten Games"),
-					divisionRecord: getDisplay("vs. Div."),
-					conferenceRecord: getDisplay("vs. Conf."),
-					pointsFor: getStat("avgPointsFor"),
-					pointsAgainst: getStat("avgPointsAgainst"),
-				});
-
-				teamCount++;
-			}
+			teamCount++;
 		}
 
 		console.log(`[GLEAGUE Bootstrap] Created/updated ${teamCount} teams`);
@@ -1270,7 +1336,7 @@ export const backfillDateChunk = internalAction({
 		}
 
 		const date = args.dates[args.offset];
-		const season = await getCurrentSeasonName(ctx);
+		const getFallbackSeason = createSeasonFallback(ctx);
 		const baseUrl = getSiteApi();
 
 		console.log(`[GLEAGUE Backfill] Processing date ${date} (${args.offset + 1}/${args.dates.length})...`);
@@ -1305,34 +1371,13 @@ export const backfillDateChunk = internalAction({
 				const awayComp = competition.competitors.find((c) => c.homeAway === "away");
 				if (!homeComp || !awayComp) continue;
 
-				// Look up teams first to avoid overwriting standings data
-				const existingHomeTeam = await ctx.runQuery(internal.gleague.queries.getTeamInternal, {
-					espnTeamId: homeComp.team.id, season,
-				});
-				const homeTeamId = existingHomeTeam?._id ?? await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
-					espnTeamId: homeComp.team.id,
-					season,
-					name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-					abbreviation: homeComp.team.abbreviation ?? "???",
-					location: homeComp.team.location ?? "",
-					slug: homeComp.team.slug ?? homeComp.team.id,
-					wins: 0,
-					losses: 0,
-				});
+				// Tag the game with ESPN's season; fall back to the configured season
+				const espnSeason = parseEspnSeason("gleague", event.season);
+				const season = espnSeason.season ?? (await getFallbackSeason());
 
-				const existingAwayTeam = await ctx.runQuery(internal.gleague.queries.getTeamInternal, {
-					espnTeamId: awayComp.team.id, season,
-				});
-				const awayTeamId = existingAwayTeam?._id ?? await ctx.runMutation(internal.gleague.mutations.upsertTeam, {
-					espnTeamId: awayComp.team.id,
-					season,
-					name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-					abbreviation: awayComp.team.abbreviation ?? "???",
-					location: awayComp.team.location ?? "",
-					slug: awayComp.team.slug ?? awayComp.team.id,
-					wins: 0,
-					losses: 0,
-				});
+				// Look up teams first to avoid overwriting standings data
+				const homeTeamId = await ensureTeam(ctx, homeComp.team, season);
+				const awayTeamId = await ensureTeam(ctx, awayComp.team, season);
 
 				const scheduledStart = competition.startDate
 					? new Date(competition.startDate).getTime()
@@ -1344,6 +1389,7 @@ export const backfillDateChunk = internalAction({
 				const gameEventId = await ctx.runMutation(internal.gleague.mutations.upsertGameEvent, {
 					espnGameId: event.id,
 					season,
+					seasonType: espnSeason.seasonType,
 					homeTeamId,
 					awayTeamId,
 					gameDate: date,
@@ -1395,7 +1441,12 @@ export const backfillUpcomingSchedule = internalAction({
 	handler: async (ctx) => {
 		const season = await getCurrentSeasonName(ctx);
 		const startDate = getTodayDate();
-		const endDate = await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season));
+		let endDate = await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season));
+		// Before the new season's first game is stored, the resolved season can
+		// still be last season (already over); use the calendar season instead.
+		if (endDate < startDate) {
+			endDate = getSeasonEndDate(getCurrentSeason());
+		}
 		const dates = getDateRange(startDate, endDate);
 
 		console.log(`[GLEAGUE Schedule] Backfilling upcoming schedule: ${startDate} to ${endDate} (${dates.length} dates)`);

@@ -21,7 +21,9 @@ function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
 	) as T;
 }
 
-// Upsert a team by espnTeamId + season
+// Upsert a team by espnTeamId + season.
+// Record fields are optional so callers without standings never overwrite an
+// existing record; wins/losses default to 0 only when inserting a new row.
 export const upsertTeam = internalMutation({
 	args: {
 		espnTeamId: v.string(),
@@ -34,8 +36,8 @@ export const upsertTeam = internalMutation({
 		division: v.optional(v.string()),
 		conferenceRank: v.optional(v.number()),
 		divisionRank: v.optional(v.number()),
-		wins: v.number(),
-		losses: v.number(),
+		wins: v.optional(v.number()),
+		losses: v.optional(v.number()),
 		winPct: v.optional(v.number()),
 		streak: v.optional(v.string()),
 		homeRecord: v.optional(v.string()),
@@ -64,7 +66,11 @@ export const upsertTeam = internalMutation({
 			await ctx.db.patch(existing._id, data);
 			return existing._id;
 		} else {
-			return await ctx.db.insert("gleagueTeam", data);
+			return await ctx.db.insert("gleagueTeam", {
+				...data,
+				wins: data.wins ?? 0,
+				losses: data.losses ?? 0,
+			});
 		}
 	},
 });
@@ -171,6 +177,7 @@ export const upsertGameEvent = internalMutation({
 	args: {
 		espnGameId: v.string(),
 		season: v.string(),
+		seasonType: v.optional(v.number()),
 		homeTeamId: v.id("gleagueTeam"),
 		awayTeamId: v.id("gleagueTeam"),
 		gameDate: v.string(),
@@ -189,12 +196,23 @@ export const upsertGameEvent = internalMutation({
 			.withIndex("by_espnGameId", (q) => q.eq("espnGameId", args.espnGameId))
 			.unique();
 
-		const data = {
+		// Omit undefined so a sparse payload never unsets stored fields
+		const data = omitUndefined({
 			...args,
 			updatedAt: Date.now(),
-		};
+		});
 
 		if (existing) {
+			if (existing.season !== args.season) {
+				// Box score rows reference this game's team ids, so never retag an
+				// existing game here; a separate migration handles old games.
+				console.warn(
+					`[GLEAGUE] Game ${args.espnGameId} is stored as season ${existing.season} but ESPN reports ${args.season}; keeping existing season and team ids`,
+				);
+				const { season: _season, homeTeamId: _homeTeamId, awayTeamId: _awayTeamId, ...safeData } = data;
+				await ctx.db.patch(existing._id, safeData);
+				return existing._id;
+			}
 			await ctx.db.patch(existing._id, data);
 			return existing._id;
 		} else {
@@ -584,6 +602,7 @@ export const updateGameEventStatus = internalMutation({
 		gameEventId: v.id("gleagueGameEvent"),
 		eventStatus: eventStatusValidator,
 		statusDetail: v.optional(v.string()),
+		seasonType: v.optional(v.number()),
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
 		checkCount: v.optional(v.number()),

@@ -34,8 +34,9 @@ export const upsertTeam = internalMutation({
 		division: v.optional(v.string()),
 		conferenceRank: v.optional(v.number()),
 		divisionRank: v.optional(v.number()),
-		wins: v.number(),
-		losses: v.number(),
+		// Optional so callers without standings never overwrite a known record
+		wins: v.optional(v.number()),
+		losses: v.optional(v.number()),
 		winPct: v.optional(v.number()),
 		streak: v.optional(v.string()),
 		homeRecord: v.optional(v.string()),
@@ -64,7 +65,11 @@ export const upsertTeam = internalMutation({
 			await ctx.db.patch(existing._id, data);
 			return existing._id;
 		} else {
-			return await ctx.db.insert("wnbaTeam", data);
+			return await ctx.db.insert("wnbaTeam", {
+				...data,
+				wins: data.wins ?? 0,
+				losses: data.losses ?? 0,
+			});
 		}
 	},
 });
@@ -171,6 +176,7 @@ export const upsertGameEvent = internalMutation({
 	args: {
 		espnGameId: v.string(),
 		season: v.string(),
+		seasonType: v.optional(v.number()),
 		homeTeamId: v.id("wnbaTeam"),
 		awayTeamId: v.id("wnbaTeam"),
 		gameDate: v.string(),
@@ -189,12 +195,23 @@ export const upsertGameEvent = internalMutation({
 			.withIndex("by_espnGameId", (q) => q.eq("espnGameId", args.espnGameId))
 			.unique();
 
-		const data = {
+		// Omit undefined so a sparse payload never unsets stored fields
+		const data = omitUndefined({
 			...args,
 			updatedAt: Date.now(),
-		};
+		});
 
 		if (existing) {
+			if (existing.season !== args.season) {
+				// Box score rows reference the existing team ids, so a season retag
+				// must go through a migration rather than an incidental upsert.
+				console.warn(
+					`[WNBA] Game ${args.espnGameId} is stored under season ${existing.season} but ESPN reports ${args.season}; keeping existing season and teams`,
+				);
+				const { season: _season, homeTeamId: _homeTeamId, awayTeamId: _awayTeamId, ...rest } = data;
+				await ctx.db.patch(existing._id, rest);
+				return existing._id;
+			}
 			await ctx.db.patch(existing._id, data);
 			return existing._id;
 		} else {
@@ -584,6 +601,7 @@ export const updateGameEventStatus = internalMutation({
 		gameEventId: v.id("wnbaGameEvent"),
 		eventStatus: eventStatusValidator,
 		statusDetail: v.optional(v.string()),
+		seasonType: v.optional(v.number()),
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
 		checkCount: v.optional(v.number()),

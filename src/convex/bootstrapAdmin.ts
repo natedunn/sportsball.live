@@ -1,9 +1,10 @@
 import { v } from "convex/values";
-import { query, mutation, internalMutation, internalAction } from "./_generated/server";
+import { query, mutation, internalMutation, internalAction, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { leagueValidator } from "./validators";
 import { authComponent } from "./auth";
 import { getCurrentSeason } from "./shared/seasonHelpers";
+import { resolveCurrentSeasonKey } from "./seasons";
 import type { Id } from "./_generated/dataModel";
 
 type League = "nba" | "wnba" | "gleague";
@@ -46,32 +47,9 @@ const TABLE_NAMES = {
 	gleague: { team: "gleagueTeam", player: "gleaguePlayer", game: "gleagueGameEvent" },
 } as const;
 
-function formatSeasonKey(startYear: number, endYear: number) {
-	if (startYear === endYear) return String(startYear);
-	return `${startYear}-${String(endYear).slice(-2)}`;
-}
-
-async function getCurrentSeasonName(ctx: any, league: League): Promise<string> {
-	const seasons = await ctx.db
-		.query("seasons")
-		.withIndex("by_league", (q: any) => q.eq("league", league))
-		.collect();
-	const seasonsWithStart = await Promise.all(
-		seasons.map(async (season: any) => ({
-			season,
-			start: season.startDate,
-			end: season.endDate,
-		})),
-	);
-	const today = new Date().toISOString().split("T")[0];
-	const sorted = seasonsWithStart.sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""));
-	const currentSeason =
-		sorted.find((row) => row.start && row.end && today >= row.start && today <= row.end)?.season ??
-		[...sorted].reverse().find((row) => row.start && today >= row.start)?.season ??
-		sorted[0]?.season;
-	return currentSeason
-		? formatSeasonKey(currentSeason.startYear, currentSeason.endYear)
-		: getCurrentSeason();
+/** Current season key for a league, preferring ESPN-tagged games over a stale seasons table. */
+async function getCurrentSeasonName(ctx: QueryCtx, league: League): Promise<string> {
+	return (await resolveCurrentSeasonKey(ctx, league)) ?? getCurrentSeason();
 }
 
 function isSuspiciousZeroBlowout(homeScore: number | undefined, awayScore: number | undefined): boolean {
@@ -472,6 +450,22 @@ export const backfillScoreAnomalies = mutation({
 	},
 });
 
+export const startPreGameScoreAnomalyCleanup = mutation({
+	args: { dryRun: v.optional(v.boolean()) },
+	handler: async (ctx, args) => {
+		const user = await authComponent.safeGetAuthUser(ctx);
+		if (!user?.email) throw new Error("Not authenticated");
+		const superAdminEmail = process.env.SUPER_ADMIN;
+		if (!superAdminEmail || user.email.toLowerCase() !== superAdminEmail.toLowerCase()) {
+			throw new Error("Not authorized");
+		}
+
+		await ctx.scheduler.runAfter(0, internal.bootstrapAdmin.clearPreGameScoreAnomalies, {
+			dryRun: args.dryRun,
+		});
+	},
+});
+
 // ============================================================================
 // INTERNAL MUTATIONS (for actions to update status)
 // ============================================================================
@@ -653,6 +647,111 @@ export const logScoreAnomaly = internalMutation({
 			occurrenceCount: 1,
 			updatedAt: now,
 		});
+	},
+});
+
+const PRE_GAME_CLEANUP_BATCH_SIZE = 200;
+const LIVE_SYNC_MISSING_SCORE = "missing_live_sync_score";
+const BOXSCORE_HEADER_MISSING_SCORE = "missing_boxscore_header_score";
+
+const cleanupTotalsValidator = v.object({
+	scanned: v.number(),
+	liveSyncRows: v.number(),
+	headerRows: v.number(),
+	batches: v.number(),
+});
+
+function isPreGameLiveSyncRow(row: { anomalyType: string; eventStatus?: string }) {
+	return row.anomalyType === LIVE_SYNC_MISSING_SCORE && row.eventStatus === "scheduled";
+}
+
+/**
+ * Pre-game noise rows for one game. Scheduled live-sync rows are always noise.
+ * Boxscore header rows only count when the game's anomalies are nothing but
+ * those two kinds (and at least one is a scheduled live-sync row).
+ */
+async function getPreGameNoiseForGame(ctx: MutationCtx, league: League, espnGameId: string) {
+	const rows = await ctx.db
+		.query("scoreAnomaly")
+		.withIndex("by_league_game_type", (q) => q.eq("league", league).eq("espnGameId", espnGameId))
+		.collect();
+	const liveSyncRows = rows.filter(isPreGameLiveSyncRow);
+	const headerRows = rows.filter((row) => row.anomalyType === BOXSCORE_HEADER_MISSING_SCORE);
+	const onlyNoise =
+		liveSyncRows.length > 0 && liveSyncRows.length + headerRows.length === rows.length;
+	return { liveSyncRows, headerRows: onlyNoise ? headerRows : [] };
+}
+
+/**
+ * Delete pre-game score anomaly noise logged before tipoff (ESPN had no score yet).
+ * Walks scoreAnomaly in batches and reschedules itself until done.
+ * Run: npx convex run bootstrapAdmin:clearPreGameScoreAnomalies '{"dryRun": true}'
+ */
+export const clearPreGameScoreAnomalies = internalMutation({
+	args: {
+		dryRun: v.optional(v.boolean()),
+		cursor: v.optional(v.union(v.string(), v.null())),
+		totals: v.optional(cleanupTotalsValidator),
+	},
+	handler: async (ctx, args) => {
+		const dryRun = args.dryRun ?? false;
+		const page = await ctx.db
+			.query("scoreAnomaly")
+			.withIndex("by_lastSeenAt")
+			.paginate({ cursor: args.cursor ?? null, numItems: PRE_GAME_CLEANUP_BATCH_SIZE });
+
+		let liveSyncRows = 0;
+		let headerRows = 0;
+		// Rows deleted as part of an earlier game group in this batch
+		const handled = new Set<string>();
+
+		for (const row of page.page) {
+			if (handled.has(row._id)) continue;
+			if (!isPreGameLiveSyncRow(row) && row.anomalyType !== BOXSCORE_HEADER_MISSING_SCORE) continue;
+
+			const noise = await getPreGameNoiseForGame(ctx, row.league, row.espnGameId);
+			if (dryRun) {
+				// Count only the row being scanned so each row is counted once across batches
+				if (noise.liveSyncRows.some((r) => r._id === row._id)) liveSyncRows++;
+				else if (noise.headerRows.some((r) => r._id === row._id)) headerRows++;
+				continue;
+			}
+
+			// Delete the whole game group at once; a header row's pairing with its
+			// live-sync row can't be checked after the live-sync row is gone.
+			for (const r of noise.liveSyncRows) {
+				await ctx.db.delete(r._id);
+				handled.add(r._id);
+				liveSyncRows++;
+			}
+			for (const r of noise.headerRows) {
+				await ctx.db.delete(r._id);
+				handled.add(r._id);
+				headerRows++;
+			}
+		}
+
+		const totals = {
+			scanned: (args.totals?.scanned ?? 0) + page.page.length,
+			liveSyncRows: (args.totals?.liveSyncRows ?? 0) + liveSyncRows,
+			headerRows: (args.totals?.headerRows ?? 0) + headerRows,
+			batches: (args.totals?.batches ?? 0) + 1,
+		};
+		const verb = dryRun ? "would delete" : "deleted";
+		const summary = `${verb} ${totals.liveSyncRows} ${LIVE_SYNC_MISSING_SCORE} + ${totals.headerRows} ${BOXSCORE_HEADER_MISSING_SCORE} rows (${totals.scanned} scanned, ${totals.batches} batches)`;
+
+		if (page.isDone) {
+			console.log(`[Anomaly cleanup] Done: ${summary}`);
+		} else {
+			console.log(`[Anomaly cleanup] In progress: ${summary}`);
+			await ctx.scheduler.runAfter(0, internal.bootstrapAdmin.clearPreGameScoreAnomalies, {
+				dryRun,
+				cursor: page.continueCursor,
+				totals,
+			});
+		}
+
+		return { dryRun, batch: { liveSyncRows, headerRows, scanned: page.page.length }, totals, isDone: page.isDone };
 	},
 });
 

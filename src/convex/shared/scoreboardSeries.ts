@@ -1,9 +1,10 @@
-import { getCompetitionYear } from "./seasonHelpers";
+import { ESPN_SEASON_TYPE, getCompetitionYear } from "./seasonHelpers";
 type League = "nba" | "wnba" | "gleague";
 
 type SeriesGame = {
 	_id: unknown;
 	season: string;
+	seasonType?: number;
 	homeTeamId: unknown;
 	awayTeamId: unknown;
 	gameDate: string;
@@ -16,6 +17,12 @@ type SeriesGame = {
 type SeriesRecord = {
 	home: string;
 	away: string;
+};
+
+/** Configured playoff date range (YYYY-MM-DD), usually from the seasons table. */
+export type PlayoffWindow = {
+	startDate?: string;
+	endDate?: string;
 };
 
 function normalizeDate(date: string): string {
@@ -36,13 +43,49 @@ export function getPlayoffStartDate(league: League, season: string): string {
 	}
 }
 
+export function getPlayoffEndDate(league: League, season: string): string {
+	const competitionYear = getCompetitionYear(league, season);
+
+	switch (league) {
+		case "nba":
+			return `${competitionYear}-06-30`;
+		case "gleague":
+			return `${competitionYear}-04-30`;
+		case "wnba":
+			return `${competitionYear}-10-31`;
+	}
+}
+
+/**
+ * Date-based playoff check, used only for legacy games that were stored before
+ * we recorded ESPN's season type. Bounded on both ends so games from the next
+ * season (still tagged with the old season string) are never treated as playoffs.
+ */
 export function isPlayoffScoreboardDate(
 	league: League,
 	season: string,
 	gameDate: string,
-	playoffStartDate?: string,
+	window?: PlayoffWindow,
 ): boolean {
-	return normalizeDate(gameDate) >= (playoffStartDate ?? getPlayoffStartDate(league, season));
+	const date = normalizeDate(gameDate);
+	const startDate = window?.startDate ?? getPlayoffStartDate(league, season);
+	const endDate = window?.endDate ?? getPlayoffEndDate(league, season);
+	return date >= startDate && date <= endDate;
+}
+
+/**
+ * Whether a game is a postseason game. ESPN's season type is authoritative when
+ * present; play-in games (type 5) are not part of a series.
+ */
+export function isPlayoffGame(
+	league: League,
+	game: Pick<SeriesGame, "season" | "seasonType" | "gameDate">,
+	window?: PlayoffWindow,
+): boolean {
+	if (game.seasonType !== undefined) {
+		return game.seasonType === ESPN_SEASON_TYPE.postseason;
+	}
+	return isPlayoffScoreboardDate(league, game.season, game.gameDate, window);
 }
 
 function sameId(a: unknown, b: unknown): boolean {
@@ -53,16 +96,9 @@ export function getSeriesRecordForGame(
 	league: League,
 	currentGame: SeriesGame,
 	candidateGames: SeriesGame[],
-	playoffStartDate?: string,
+	window?: PlayoffWindow,
 ): SeriesRecord | undefined {
-	if (
-		!isPlayoffScoreboardDate(
-			league,
-			currentGame.season,
-			currentGame.gameDate,
-			playoffStartDate,
-		)
-	) {
+	if (!isPlayoffGame(league, currentGame, window)) {
 		return undefined;
 	}
 
@@ -72,7 +108,7 @@ export function getSeriesRecordForGame(
 	for (const game of candidateGames) {
 		if (game.season !== currentGame.season) continue;
 		if (game.eventStatus !== "completed") continue;
-		if (!isPlayoffScoreboardDate(league, game.season, game.gameDate, playoffStartDate)) continue;
+		if (!isPlayoffGame(league, game, window)) continue;
 		if (
 			game.scheduledStart > currentGame.scheduledStart ||
 			(sameId(game._id, currentGame._id) &&

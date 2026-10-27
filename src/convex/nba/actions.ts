@@ -1,14 +1,16 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { api, internal } from "../_generated/api";
-import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange } from "../shared/seasonHelpers";
+import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
 import type { Id } from "../_generated/dataModel";
 import type {
 	ApiScoreboardResponse,
 	ApiGameSummaryResponse,
 	ApiStandingsResponse,
+	ApiStandingsTeamEntry,
 	ApiRosterResponse,
+	ApiEventSeason,
 } from "../shared/apiParser";
 
 // Bootstrap constants
@@ -288,15 +290,174 @@ async function logScoreAnomaly(
 	}
 }
 
+// Delay before refreshing standings after a game goes final, so ESPN has
+// time to publish the updated records.
+const STANDINGS_REFRESH_DELAY_MS = 60_000;
+
+type StandingsRecord = {
+	conference: string;
+	conferenceRank: number;
+	wins: number;
+	losses: number;
+	winPct: number;
+	streak: string;
+	homeRecord: string;
+	awayRecord: string;
+	gamesBack: string;
+	last10: string;
+	divisionRecord: string;
+	conferenceRecord: string;
+	pointsFor: number;
+	pointsAgainst: number;
+};
+
+type StandingsTeam = {
+	team: ApiStandingsTeamEntry["team"];
+	record: StandingsRecord;
+};
+
+type ParsedStandings = {
+	// Undefined when ESPN omits season metadata
+	season?: string;
+	teams: StandingsTeam[];
+};
+
+type TeamIdentity = {
+	id: string;
+	name?: string;
+	displayName?: string;
+	abbreviation?: string;
+	location?: string;
+	slug?: string;
+};
+
+function parseStandings(data: ApiStandingsResponse): ParsedStandings {
+	const conferences = data.children ?? [];
+	// Each conference's `standings.season` describes the rows; the top-level
+	// season is ESPN's current season and can be newer than the data (offseason).
+	const espnYear =
+		conferences.find((conf) => typeof conf.standings?.season === "number")?.standings?.season ??
+		data.season?.year;
+
+	const teams: StandingsTeam[] = [];
+	for (const conf of conferences) {
+		const confName = conf.name ?? "";
+		for (const entry of conf.standings?.entries ?? []) {
+			const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
+			const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
+
+			teams.push({
+				team: entry.team,
+				record: {
+					conference: confName,
+					conferenceRank: getStat("playoffSeed"),
+					wins: getStat("wins"),
+					losses: getStat("losses"),
+					winPct: getStat("winPercent"),
+					streak: getDisplay("streak"),
+					homeRecord: getDisplay("Home"),
+					awayRecord: getDisplay("Road"),
+					gamesBack: String(getStat("gamesBehind")),
+					last10: getDisplay("Last Ten Games"),
+					divisionRecord: getDisplay("vs. Div."),
+					conferenceRecord: getDisplay("vs. Conf."),
+					pointsFor: getStat("avgPointsFor"),
+					pointsAgainst: getStat("avgPointsAgainst"),
+				},
+			});
+		}
+	}
+
+	return {
+		season: typeof espnYear === "number" ? seasonFromEspnYear("nba", espnYear) : undefined,
+		teams,
+	};
+}
+
+// `seasonYear` (ESPN's end year, e.g. 2026 for 2025-26) fetches a past season's final standings
+async function fetchStandings(baseUrl: string, seasonYear?: number): Promise<ParsedStandings | null> {
+	const standingsUrl =
+		baseUrl.replace("/site/v2/", "/v2/") + "/standings" + (seasonYear ? `?season=${seasonYear}` : "");
+	const standingsRes = await fetch(standingsUrl, {
+		headers: { "User-Agent": "Mozilla/5.0" },
+	});
+	if (!standingsRes.ok) {
+		console.error(`[NBA] Standings fetch failed: ${standingsRes.status}`);
+		return null;
+	}
+	return parseStandings((await standingsRes.json()) as ApiStandingsResponse);
+}
+
+function teamIdentityArgs(team: TeamIdentity) {
+	return {
+		espnTeamId: team.id,
+		name: team.displayName ?? team.name ?? "Unknown",
+		abbreviation: team.abbreviation ?? "???",
+		location: team.location ?? "",
+		slug: team.slug ?? team.id,
+	};
+}
+
+// Upsert every team in a standings payload with its current record
+async function upsertStandingsTeams(ctx: any, standings: ParsedStandings, season: string): Promise<number> {
+	for (const { team, record } of standings.teams) {
+		await ctx.runMutation(internal.nba.mutations.upsertTeam, {
+			...teamIdentityArgs(team),
+			season,
+			...record,
+		});
+	}
+	return standings.teams.length;
+}
+
+// Return the team row for a season, creating it (without a record) if missing.
+// Existing rows are left alone so standings data isn't overwritten.
+async function ensureTeam(ctx: any, team: TeamIdentity, season: string): Promise<Id<"nbaTeam">> {
+	const existing = await ctx.runQuery(internal.nba.queries.getTeamInternal, {
+		espnTeamId: team.id, season,
+	});
+	if (existing) return existing._id;
+	return await ctx.runMutation(internal.nba.mutations.upsertTeam, {
+		...teamIdentityArgs(team),
+		season,
+	});
+}
+
+// Memoized fallback season, only queried when ESPN omits season metadata
+function createSeasonFallback(ctx: any): () => Promise<string> {
+	let season: Promise<string> | undefined;
+	return () => {
+		season ??= getCurrentSeasonName(ctx);
+		return season;
+	};
+}
+
+// Season and season type for an event, preferring ESPN's own metadata
+async function resolveEventSeason(
+	espnSeason: ApiEventSeason | undefined,
+	getFallbackSeason: () => Promise<string>,
+): Promise<{ season: string; seasonType?: number }> {
+	const parsed = parseEspnSeason("nba", espnSeason);
+	return {
+		season: parsed.season ?? (await getFallbackSeason()),
+		seasonType: parsed.seasonType,
+	};
+}
+
+async function scheduleStandingsRefresh(ctx: any, espnGameId: string) {
+	console.log(`[NBA] Game ${espnGameId} went final; refreshing standings in ${STANDINGS_REFRESH_DELAY_MS / 1000}s`);
+	await ctx.scheduler.runAfter(STANDINGS_REFRESH_DELAY_MS, internal.nba.actions.refreshStandings, {});
+}
+
 // Daily cron: discover today's games, update standings
 export const discoverTodaysGames = internalAction({
 	args: {},
 	handler: async (ctx) => {
-		const season = await getCurrentSeasonName(ctx);
+		const getFallbackSeason = createSeasonFallback(ctx);
 		const date = getTodayDate();
 		const baseUrl = getSiteApi();
 
-		console.log(`[NBA] Discovering games for ${date}, season ${season}...`);
+		console.log(`[NBA] Discovering games for ${date}...`);
 
 		// Fetch scoreboard
 		const scoreboardRes = await fetch(`${baseUrl}/scoreboard?dates=${date}`, {
@@ -313,63 +474,16 @@ export const discoverTodaysGames = internalAction({
 
 		console.log(`[NBA] Found ${events.length} games for ${date}`);
 
-		// Also fetch standings to update team records
-		const standingsUrl = baseUrl.replace("/site/v2/", "/v2/") + "/standings";
-		let standingsEntries: ApiStandingsResponse["children"] = [];
+		// Also refresh standings so every team's record is current
 		try {
-			const standingsRes = await fetch(standingsUrl, {
-				headers: { "User-Agent": "Mozilla/5.0" },
-			});
-			if (standingsRes.ok) {
-				const standingsData = (await standingsRes.json()) as ApiStandingsResponse;
-				standingsEntries = standingsData.children ?? [];
+			const standings = await fetchStandings(baseUrl);
+			if (standings) {
+				const standingsSeason = standings.season ?? (await getFallbackSeason());
+				const teamCount = await upsertStandingsTeams(ctx, standings, standingsSeason);
+				console.log(`[NBA] Updated standings for ${teamCount} teams, season ${standingsSeason}`);
 			}
 		} catch (error) {
 			console.error("[NBA] Standings fetch failed:", error);
-		}
-
-		// Build a map of team ID -> standings data
-		const standingsMap = new Map<string, {
-			conference: string;
-			rank: number;
-			wins: number;
-			losses: number;
-			winPct: number;
-			streak: string;
-			homeRecord: string;
-			awayRecord: string;
-			gamesBack: string;
-			last10: string;
-			divisionRecord: string;
-			conferenceRecord: string;
-			pointsFor: number;
-			pointsAgainst: number;
-		}>();
-
-		for (const conf of standingsEntries ?? []) {
-			const confName = conf.name ?? "";
-			for (const entry of conf.standings?.entries ?? []) {
-				const teamId = entry.team.id;
-				const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
-				const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
-
-				standingsMap.set(teamId, {
-					conference: confName,
-					rank: getStat("playoffSeed"),
-					wins: getStat("wins"),
-					losses: getStat("losses"),
-					winPct: getStat("winPercent"),
-					streak: getDisplay("streak"),
-					homeRecord: getDisplay("Home"),
-					awayRecord: getDisplay("Road"),
-					gamesBack: String(getStat("gamesBehind")),
-					last10: getDisplay("Last Ten Games"),
-					divisionRecord: getDisplay("vs. Div."),
-					conferenceRecord: getDisplay("vs. Conf."),
-					pointsFor: getStat("avgPointsFor"),
-					pointsAgainst: getStat("avgPointsAgainst"),
-				});
-			}
 		}
 
 		// Process each game
@@ -381,55 +495,11 @@ export const discoverTodaysGames = internalAction({
 			const awayComp = competition.competitors.find((c) => c.homeAway === "away");
 			if (!homeComp || !awayComp) continue;
 
-			// Ensure team records exist
-			const homeStandings = standingsMap.get(homeComp.team.id);
-			const awayStandings = standingsMap.get(awayComp.team.id);
+			const { season, seasonType } = await resolveEventSeason(event.season, getFallbackSeason);
 
-			const homeTeamId = await ctx.runMutation(internal.nba.mutations.upsertTeam, {
-				espnTeamId: homeComp.team.id,
-				season,
-				name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-				abbreviation: homeComp.team.abbreviation ?? "???",
-				location: homeComp.team.location ?? "",
-				slug: homeComp.team.slug ?? homeComp.team.id,
-				conference: homeStandings?.conference,
-				conferenceRank: homeStandings?.rank,
-				wins: homeStandings?.wins ?? 0,
-				losses: homeStandings?.losses ?? 0,
-				winPct: homeStandings?.winPct,
-				streak: homeStandings?.streak,
-				homeRecord: homeStandings?.homeRecord,
-				awayRecord: homeStandings?.awayRecord,
-				gamesBack: homeStandings?.gamesBack,
-				last10: homeStandings?.last10,
-				divisionRecord: homeStandings?.divisionRecord,
-				conferenceRecord: homeStandings?.conferenceRecord,
-				pointsFor: homeStandings?.pointsFor,
-				pointsAgainst: homeStandings?.pointsAgainst,
-			});
-
-			const awayTeamId = await ctx.runMutation(internal.nba.mutations.upsertTeam, {
-				espnTeamId: awayComp.team.id,
-				season,
-				name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-				abbreviation: awayComp.team.abbreviation ?? "???",
-				location: awayComp.team.location ?? "",
-				slug: awayComp.team.slug ?? awayComp.team.id,
-				conference: awayStandings?.conference,
-				conferenceRank: awayStandings?.rank,
-				wins: awayStandings?.wins ?? 0,
-				losses: awayStandings?.losses ?? 0,
-				winPct: awayStandings?.winPct,
-				streak: awayStandings?.streak,
-				homeRecord: awayStandings?.homeRecord,
-				awayRecord: awayStandings?.awayRecord,
-				gamesBack: awayStandings?.gamesBack,
-				last10: awayStandings?.last10,
-				divisionRecord: awayStandings?.divisionRecord,
-				conferenceRecord: awayStandings?.conferenceRecord,
-				pointsFor: awayStandings?.pointsFor,
-				pointsAgainst: awayStandings?.pointsAgainst,
-			});
+			// Ensure team records exist for the game's season
+			const homeTeamId = await ensureTeam(ctx, homeComp.team, season);
+			const awayTeamId = await ensureTeam(ctx, awayComp.team, season);
 
 			const scheduledStart = competition.startDate
 				? new Date(competition.startDate).getTime()
@@ -441,6 +511,7 @@ export const discoverTodaysGames = internalAction({
 			const gameEventId = await ctx.runMutation(internal.nba.mutations.upsertGameEvent, {
 				espnGameId: event.id,
 				season,
+				seasonType,
 				homeTeamId,
 				awayTeamId,
 				gameDate: date,
@@ -450,6 +521,8 @@ export const discoverTodaysGames = internalAction({
 				venue: competition.venue?.fullName,
 				homeScore: parseApiScore(homeComp.score),
 				awayScore: parseApiScore(awayComp.score),
+				// Fresh check budget for the status check scheduled below
+				checkCount: eventStatus === "scheduled" ? 0 : undefined,
 			});
 
 			// Schedule status check: scheduledStart + 2h15m
@@ -465,6 +538,29 @@ export const discoverTodaysGames = internalAction({
 		}
 
 		console.log(`[NBA] Discovery complete: ${events.length} games processed`);
+	},
+});
+
+// Refresh every team's record from ESPN standings.
+// Scheduled after games go final; also safe to run from a cron.
+export const refreshStandings = internalAction({
+	args: { seasonYear: v.optional(v.number()) },
+	handler: async (ctx, args) => {
+		const standings = await fetchStandings(getSiteApi(), args.seasonYear);
+		if (!standings) return;
+		if (args.seasonYear && !standings.season) {
+			console.warn(`[NBA] Standings for season year ${args.seasonYear} had no season label; skipping`);
+			return;
+		}
+
+		if (standings.teams.length === 0) {
+			console.warn("[NBA] Standings refresh returned no teams; skipping");
+			return;
+		}
+
+		const season = standings.season ?? (await getCurrentSeasonName(ctx));
+		const teamCount = await upsertStandingsTeams(ctx, standings, season);
+		console.log(`[NBA] Standings refreshed for ${teamCount} teams, season ${season}`);
 	},
 });
 
@@ -542,6 +638,7 @@ export const checkGameStatusV2 = internalAction({
 		const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
 		const homeScore = parseApiScore(homeComp?.score);
 		const awayScore = parseApiScore(awayComp?.score);
+		const { seasonType } = parseEspnSeason("nba", summaryData.header?.season);
 
 		// Get current game to check count
 		const currentGame = await ctx.runQuery(internal.nba.queries.getGameEventInternal, {
@@ -554,6 +651,7 @@ export const checkGameStatusV2 = internalAction({
 			console.log(`[NBA] Game ${args.espnGameId} hasn't started, rescheduling in 30min`);
 			await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus: "scheduled",
 				statusDetail: detail,
 				checkCount: currentCheckCount + 1,
@@ -584,6 +682,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus,
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -599,6 +698,7 @@ export const checkGameStatusV2 = internalAction({
 
 			await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus,
 				statusDetail: detail,
 				homeScore,
@@ -633,6 +733,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -658,6 +759,7 @@ export const checkGameStatusV2 = internalAction({
 				});
 				await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
 					gameEventId: args.gameEventId,
+					seasonType,
 					eventStatus: currentGame?.eventStatus === "completed" ? "in_progress" : (currentGame?.eventStatus ?? "in_progress"),
 					statusDetail: detail,
 					checkCount: currentCheckCount + 1,
@@ -670,9 +772,11 @@ export const checkGameStatusV2 = internalAction({
 			}
 
 			console.log(`[NBA] Game ${args.espnGameId} completed: ${awayScore}-${homeScore}`);
+			const wasCompleted = currentGame?.eventStatus === "completed";
 
 			await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
 				gameEventId: args.gameEventId,
+				seasonType,
 				eventStatus: "completed",
 				statusDetail: detail,
 				homeScore,
@@ -700,6 +804,10 @@ export const checkGameStatusV2 = internalAction({
 				await ctx.runMutation(internal.nba.mutations.updateLeagueRankings, {
 					season: game.season,
 				});
+			}
+
+			if (!wasCompleted) {
+				await scheduleStandingsRefresh(ctx, args.espnGameId);
 			}
 
 			console.log(`[NBA] Game ${args.espnGameId} fully processed`);
@@ -736,6 +844,9 @@ async function syncBoxScoreData(
 	const headerAway = competition?.competitors?.find((c) => c.homeAway === "away");
 
 	if (!headerHome || !headerAway) return;
+
+	// Pre-game summaries have no scores or box score yet
+	if (competition?.status?.type?.state === "pre") return;
 
 	// Get team IDs from game event
 	const game = await ctx.runQuery(internal.nba.queries.getGameEventInternal, {
@@ -864,7 +975,6 @@ export const syncLiveGameData = internalAction({
 	},
 	handler: async (ctx, args) => {
 		const baseUrl = getSiteApi();
-		const season = await getCurrentSeasonName(ctx);
 		let lockGameEventId: Id<"nbaGameEvent"> | undefined;
 
 		const existingGame = await ctx.runQuery(internal.nba.queries.getGameEventInternal, {
@@ -895,99 +1005,90 @@ export const syncLiveGameData = internalAction({
 
 			const summaryData = (await response.json()) as ApiGameSummaryResponse;
 
-		const competition = summaryData.header?.competitions?.[0];
-		const state = competition?.status?.type?.state;
-		const detail = competition?.status?.type?.detail;
-		const eventStatus = mapApiStateToEventStatus(state, detail);
+			const competition = summaryData.header?.competitions?.[0];
+			const state = competition?.status?.type?.state;
+			const detail = competition?.status?.type?.detail;
+			const eventStatus = mapApiStateToEventStatus(state, detail);
+			// ESPN has no score or box score before tipoff; that's expected, not an anomaly
+			const isPreGame = state === "pre";
 
-		const homeComp = competition?.competitors?.find((c) => c.homeAway === "home");
-		const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
-		if (!homeComp || !awayComp) return;
+			const homeComp = competition?.competitors?.find((c) => c.homeAway === "home");
+			const awayComp = competition?.competitors?.find((c) => c.homeAway === "away");
+			if (!homeComp || !awayComp) return;
 
-		const homeScore = parseApiScore(homeComp.score);
-		const awayScore = parseApiScore(awayComp.score);
-		const scoresAreComplete = homeScore !== undefined && awayScore !== undefined;
-		const suspiciousFinal = eventStatus === "completed" && isSuspiciousBlowoutWithZero(homeScore, awayScore);
-		if (!scoresAreComplete) {
-			const message = `[NBA][SCORE_ANOMALY] Live sync missing score(s) for ${args.espnGameId}: home=${homeComp.score ?? "undefined"}, away=${awayComp.score ?? "undefined"}, state=${state ?? "unknown"}`;
-			console.error(message);
-			await logScoreAnomaly(ctx, {
-				espnGameId: args.espnGameId,
-				anomalyType: "missing_live_sync_score",
-				source: "syncLiveGameData",
-				message,
-				eventStatus,
-				rawHomeScore: homeComp.score,
-				rawAwayScore: awayComp.score,
-			});
-		}
-		if (suspiciousFinal) {
-			const message = `[NBA][SCORE_ANOMALY] Live sync suspicious final for ${args.espnGameId}: ${awayScore}-${homeScore}. Keeping prior status until next sync.`;
-			console.error(message);
-			await logScoreAnomaly(ctx, {
-				espnGameId: args.espnGameId,
-				anomalyType: "suspicious_final_zero_blowout",
-				source: "syncLiveGameData",
-				message,
-				eventStatus,
-				homeScore,
-				awayScore,
-			});
-		}
+			const homeScore = parseApiScore(homeComp.score);
+			const awayScore = parseApiScore(awayComp.score);
+			const scoresAreComplete = homeScore !== undefined && awayScore !== undefined;
+			const suspiciousFinal = eventStatus === "completed" && isSuspiciousBlowoutWithZero(homeScore, awayScore);
+			if (!scoresAreComplete && !isPreGame) {
+				const message = `[NBA][SCORE_ANOMALY] Live sync missing score(s) for ${args.espnGameId}: home=${homeComp.score ?? "undefined"}, away=${awayComp.score ?? "undefined"}, state=${state ?? "unknown"}`;
+				console.error(message);
+				await logScoreAnomaly(ctx, {
+					espnGameId: args.espnGameId,
+					anomalyType: "missing_live_sync_score",
+					source: "syncLiveGameData",
+					message,
+					eventStatus,
+					rawHomeScore: homeComp.score,
+					rawAwayScore: awayComp.score,
+				});
+			}
+			if (suspiciousFinal) {
+				const message = `[NBA][SCORE_ANOMALY] Live sync suspicious final for ${args.espnGameId}: ${awayScore}-${homeScore}. Keeping prior status until next sync.`;
+				console.error(message);
+				await logScoreAnomaly(ctx, {
+					espnGameId: args.espnGameId,
+					anomalyType: "suspicious_final_zero_blowout",
+					source: "syncLiveGameData",
+					message,
+					eventStatus,
+					homeScore,
+					awayScore,
+				});
+			}
 
-		// Look up teams first to avoid overwriting standings data
-		const existingHomeTeam = await ctx.runQuery(internal.nba.queries.getTeamInternal, {
-			espnTeamId: homeComp.team.id, season,
-		});
-		const homeTeamId = existingHomeTeam?._id ?? await ctx.runMutation(internal.nba.mutations.upsertTeam, {
-			espnTeamId: homeComp.team.id,
-			season,
-			name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-			abbreviation: homeComp.team.abbreviation ?? "???",
-			location: homeComp.team.location ?? "",
-			slug: homeComp.team.slug ?? homeComp.team.id,
-			wins: 0,
-			losses: 0,
-		});
+			const espnSeason = await resolveEventSeason(summaryData.header?.season, createSeasonFallback(ctx));
+			// Existing games keep their stored season (and team ids); upsertGameEvent
+			// warns and leaves them alone if ESPN disagrees.
+			const season = existingGame?.season ?? espnSeason.season;
 
-		const existingAwayTeam = await ctx.runQuery(internal.nba.queries.getTeamInternal, {
-			espnTeamId: awayComp.team.id, season,
-		});
-		const awayTeamId = existingAwayTeam?._id ?? await ctx.runMutation(internal.nba.mutations.upsertTeam, {
-			espnTeamId: awayComp.team.id,
-			season,
-			name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-			abbreviation: awayComp.team.abbreviation ?? "???",
-			location: awayComp.team.location ?? "",
-			slug: awayComp.team.slug ?? awayComp.team.id,
-			wins: 0,
-			losses: 0,
-		});
+			// Look up teams first to avoid overwriting standings data
+			const homeTeamId = await ensureTeam(ctx, homeComp.team, season);
+			const awayTeamId = await ensureTeam(ctx, awayComp.team, season);
 
-		const scheduledStart = competition?.date
-			? new Date(competition.date).getTime()
-			: Date.now();
+			const scheduledStart = competition?.date
+				? new Date(competition.date).getTime()
+				: Date.now();
 
-		// Upsert game event
-		const gameEventId = await ctx.runMutation(internal.nba.mutations.upsertGameEvent, {
-			espnGameId: args.espnGameId,
-			season,
-			homeTeamId,
-			awayTeamId,
-			gameDate: existingGame?.gameDate ?? formatGameDate(scheduledStart),
-			scheduledStart,
-			eventStatus: suspiciousFinal
+			const nextEventStatus = suspiciousFinal
 				? (existingGame?.eventStatus === "completed" ? "in_progress" : (existingGame?.eventStatus ?? "in_progress"))
-				: eventStatus,
-			statusDetail: detail,
-			venue: competition?.venue?.fullName,
-			homeScore: scoresAreComplete ? homeScore : undefined,
-			awayScore: scoresAreComplete ? awayScore : undefined,
-			lastFetchedAt: Date.now(),
-		});
+				: eventStatus;
+
+			// Upsert game event
+			const gameEventId = await ctx.runMutation(internal.nba.mutations.upsertGameEvent, {
+				espnGameId: args.espnGameId,
+				season: espnSeason.season,
+				seasonType: espnSeason.seasonType,
+				homeTeamId,
+				awayTeamId,
+				gameDate: existingGame?.gameDate ?? formatGameDate(scheduledStart),
+				scheduledStart,
+				eventStatus: nextEventStatus,
+				statusDetail: detail,
+				venue: competition?.venue?.fullName,
+				homeScore: scoresAreComplete && !isPreGame ? homeScore : undefined,
+				awayScore: scoresAreComplete && !isPreGame ? awayScore : undefined,
+				lastFetchedAt: Date.now(),
+			});
+
+			if (nextEventStatus === "completed" && existingGame?.eventStatus !== "completed") {
+				await scheduleStandingsRefresh(ctx, args.espnGameId);
+			}
 
 			// Sync box score data
-			await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+			if (!isPreGame) {
+				await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+			}
 		} finally {
 			if (lockGameEventId) {
 				await ctx.runMutation(internal.nba.mutations.releaseGameSyncLock, {
@@ -1042,59 +1143,21 @@ export const backfillPlayerStatsFromCoreInternal = internalAction({
 export const bootstrapTeams = internalAction({
 	args: { bootstrapRunId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
+		// Same season resolution as bootstrapPlayers, which looks these teams up next
 		const season = await getCurrentSeasonName(ctx);
 		const baseUrl = getSiteApi();
 
 		console.log(`[NBA Bootstrap] Fetching standings for season ${season}...`);
 
-		// Fetch standings
-		const standingsUrl = baseUrl.replace("/site/v2/", "/v2/") + "/standings";
-		const standingsRes = await fetch(standingsUrl, {
-			headers: { "User-Agent": "Mozilla/5.0" },
-		});
-
-		if (!standingsRes.ok) {
-			throw new Error(`[NBA Bootstrap] Standings fetch failed: ${standingsRes.status}`);
+		const standings = await fetchStandings(baseUrl);
+		if (!standings) {
+			throw new Error(`[NBA Bootstrap] Standings fetch failed`);
+		}
+		if (standings.season && standings.season !== season) {
+			console.warn(`[NBA Bootstrap] Standings are for ${standings.season}, storing under ${season}`);
 		}
 
-		const standingsData = (await standingsRes.json()) as ApiStandingsResponse;
-		const conferences = standingsData.children ?? [];
-
-		let teamCount = 0;
-
-		for (const conf of conferences) {
-			const confName = conf.name ?? "";
-			for (const entry of conf.standings?.entries ?? []) {
-				const team = entry.team;
-				const getStat = (name: string) => entry.stats.find((s) => s.name === name)?.value ?? 0;
-				const getDisplay = (name: string) => entry.stats.find((s) => s.name === name)?.displayValue ?? "";
-
-				await ctx.runMutation(internal.nba.mutations.upsertTeam, {
-					espnTeamId: team.id,
-					season,
-					name: team.displayName ?? "Unknown",
-					abbreviation: team.abbreviation ?? "???",
-					location: team.location ?? "",
-					slug: team.slug ?? team.id,
-					conference: confName,
-					conferenceRank: getStat("playoffSeed"),
-					wins: getStat("wins"),
-					losses: getStat("losses"),
-					winPct: getStat("winPercent"),
-					streak: getDisplay("streak"),
-					homeRecord: getDisplay("Home"),
-					awayRecord: getDisplay("Road"),
-					gamesBack: String(getStat("gamesBehind")),
-					last10: getDisplay("Last Ten Games"),
-					divisionRecord: getDisplay("vs. Div."),
-					conferenceRecord: getDisplay("vs. Conf."),
-					pointsFor: getStat("avgPointsFor"),
-					pointsAgainst: getStat("avgPointsAgainst"),
-				});
-
-				teamCount++;
-			}
-		}
+		const teamCount = await upsertStandingsTeams(ctx, standings, season);
 
 		console.log(`[NBA Bootstrap] Created/updated ${teamCount} teams`);
 
@@ -1388,7 +1451,7 @@ export const backfillDateChunk = internalAction({
 		}
 
 		const date = args.dates[args.offset];
-		const season = await getCurrentSeasonName(ctx);
+		const getFallbackSeason = createSeasonFallback(ctx);
 		const baseUrl = getSiteApi();
 
 		console.log(`[NBA Backfill] Processing date ${date} (${args.offset + 1}/${args.dates.length})...`);
@@ -1431,34 +1494,11 @@ export const backfillDateChunk = internalAction({
 					continue;
 				}
 
-				// Look up teams first to avoid overwriting standings data
-				const existingHomeTeam = await ctx.runQuery(internal.nba.queries.getTeamInternal, {
-					espnTeamId: homeComp.team.id, season,
-				});
-				const homeTeamId = existingHomeTeam?._id ?? await ctx.runMutation(internal.nba.mutations.upsertTeam, {
-					espnTeamId: homeComp.team.id,
-					season,
-					name: homeComp.team.displayName ?? homeComp.team.name ?? "Unknown",
-					abbreviation: homeComp.team.abbreviation ?? "???",
-					location: homeComp.team.location ?? "",
-					slug: homeComp.team.slug ?? homeComp.team.id,
-					wins: 0,
-					losses: 0,
-				});
+				const { season, seasonType } = await resolveEventSeason(event.season, getFallbackSeason);
 
-				const existingAwayTeam = await ctx.runQuery(internal.nba.queries.getTeamInternal, {
-					espnTeamId: awayComp.team.id, season,
-				});
-				const awayTeamId = existingAwayTeam?._id ?? await ctx.runMutation(internal.nba.mutations.upsertTeam, {
-					espnTeamId: awayComp.team.id,
-					season,
-					name: awayComp.team.displayName ?? awayComp.team.name ?? "Unknown",
-					abbreviation: awayComp.team.abbreviation ?? "???",
-					location: awayComp.team.location ?? "",
-					slug: awayComp.team.slug ?? awayComp.team.id,
-					wins: 0,
-					losses: 0,
-				});
+				// Look up teams first to avoid overwriting standings data
+				const homeTeamId = await ensureTeam(ctx, homeComp.team, season);
+				const awayTeamId = await ensureTeam(ctx, awayComp.team, season);
 
 				const scheduledStart = competition.startDate
 					? new Date(competition.startDate).getTime()
@@ -1470,6 +1510,7 @@ export const backfillDateChunk = internalAction({
 				const gameEventId = await ctx.runMutation(internal.nba.mutations.upsertGameEvent, {
 					espnGameId: event.id,
 					season,
+					seasonType,
 					homeTeamId,
 					awayTeamId,
 					gameDate: date,

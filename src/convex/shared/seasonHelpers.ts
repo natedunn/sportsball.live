@@ -73,6 +73,45 @@ export function getCompetitionYear(league: League, season: string): number {
 	}
 }
 
+/** ESPN `season.type` values found on scoreboard events and summary headers. */
+export const ESPN_SEASON_TYPE = {
+	preseason: 1,
+	regular: 2,
+	postseason: 3,
+	// NBA play-in tournament; G-League Showdown Cup
+	special: 5,
+} as const;
+
+/**
+ * Convert ESPN's season year (the year the season ends, e.g. 2027 for 2026-27)
+ * into our season string: "2026-27" for NBA/G-League, "2026" for WNBA.
+ */
+export function seasonFromEspnYear(league: League, year: number): string {
+	if (league === "wnba") return String(year);
+	return `${year - 1}-${String(year).slice(-2)}`;
+}
+
+/**
+ * Read the season string and season type ESPN attaches to an event
+ * (`event.season` on the scoreboard, `header.season` on the summary).
+ * Returns undefined fields when ESPN omits them so callers can fall back.
+ */
+export function parseEspnSeason(
+	league: League,
+	espnSeason: { year?: number; type?: number } | undefined,
+): { season?: string; seasonType?: number } {
+	const year = espnSeason?.year;
+	return {
+		season: typeof year === "number" && Number.isFinite(year) ? seasonFromEspnYear(league, year) : undefined,
+		seasonType: typeof espnSeason?.type === "number" ? espnSeason.type : undefined,
+	};
+}
+
+/** Compare season strings by start year ("2026-27" > "2025-26", "2026" > "2025"). */
+export function compareSeasons(a: string, b: string): number {
+	return getSeasonStartYear(a) - getSeasonStartYear(b);
+}
+
 /**
  * Get today's date in YYYYMMDD format (US Eastern Time).
  */

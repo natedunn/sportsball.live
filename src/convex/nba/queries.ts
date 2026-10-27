@@ -2,13 +2,17 @@ import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import {
+	getPlayoffEndDate as getDefaultPlayoffEndDate,
 	getPlayoffStartDate as getDefaultPlayoffStartDate,
 	getSeriesRecordForGame,
-	isPlayoffScoreboardDate,
+	isPlayoffGame,
+	type PlayoffWindow,
 } from "../shared/scoreboardSeries";
 import { getSeasonEndYear, getSeasonStartYear } from "../shared/seasonHelpers";
 
-async function getConfiguredPlayoffStartDate(ctx: any, season: string) {
+// Configured playoff dates from the seasons table; missing fields fall back to
+// league defaults inside the shared series helpers.
+async function getConfiguredPlayoffWindow(ctx: any, season: string): Promise<PlayoffWindow> {
 	const startYear = getSeasonStartYear(season);
 	const endYear = getSeasonEndYear(season);
 	const seasonRow = await ctx.db
@@ -21,7 +25,10 @@ async function getConfiguredPlayoffStartDate(ctx: any, season: string) {
 				.eq("type", "playoffs"),
 		)
 		.first();
-	return seasonRow?.startDate ?? getDefaultPlayoffStartDate("nba", season);
+	return {
+		startDate: seasonRow?.startDate,
+		endDate: seasonRow?.endDate,
+	};
 }
 
 // Get all games for a specific date (scoreboard)
@@ -33,12 +40,22 @@ export const getScoreboard = query({
 			.withIndex("by_gameDate", (q) => q.eq("gameDate", args.gameDate))
 			.collect();
 
+		// Games on one date usually share a season; load each season's window once
+		const playoffWindows = new Map<string, Promise<PlayoffWindow>>();
+		const getPlayoffWindow = (season: string) => {
+			let window = playoffWindows.get(season);
+			if (!window) {
+				window = getConfiguredPlayoffWindow(ctx, season);
+				playoffWindows.set(season, window);
+			}
+			return window;
+		};
+
 		// Enrich each game with team info
 		const enriched = await Promise.all(
 			games.map(async (game) => {
-				const playoffStartDate = await getConfiguredPlayoffStartDate(ctx, game.season);
-				const shouldLoadSeries =
-					isPlayoffScoreboardDate("nba", game.season, game.gameDate, playoffStartDate);
+				const playoffWindow = await getPlayoffWindow(game.season);
+				const shouldLoadSeries = isPlayoffGame("nba", game, playoffWindow);
 				const [homeTeam, awayTeam, homeTeamHomeGames, homeTeamAwayGames] = await Promise.all([
 					ctx.db.get(game.homeTeamId),
 					ctx.db.get(game.awayTeamId),
@@ -67,7 +84,7 @@ export const getScoreboard = query({
 						? getSeriesRecordForGame("nba", game, [
 								...homeTeamHomeGames,
 								...homeTeamAwayGames,
-							], playoffStartDate)
+							], playoffWindow)
 						: undefined,
 				};
 			}),
@@ -88,9 +105,8 @@ export const getGameDetails = query({
 
 		if (!game) return null;
 
-		const playoffStartDate = await getConfiguredPlayoffStartDate(ctx, game.season);
-		const shouldLoadSeries =
-			isPlayoffScoreboardDate("nba", game.season, game.gameDate, playoffStartDate);
+		const playoffWindow = await getConfiguredPlayoffWindow(ctx, game.season);
+		const shouldLoadSeries = isPlayoffGame("nba", game, playoffWindow);
 
 		// Fetch team events
 		const teamEvents = await ctx.db
@@ -158,7 +174,7 @@ export const getGameDetails = query({
 				? getSeriesRecordForGame("nba", game, [
 						...homeTeamHomeGames,
 						...homeTeamAwayGames,
-					], playoffStartDate)
+					], playoffWindow)
 				: undefined,
 		};
 	},
@@ -799,19 +815,31 @@ export const getAllPlayersInternal = internalQuery({
 export const getPlayoffBracket = query({
 	args: { season: v.string() },
 	handler: async (ctx, args) => {
-		const playoffStartDate = await getConfiguredPlayoffStartDate(ctx, args.season);
+		const playoffWindow = await getConfiguredPlayoffWindow(ctx, args.season);
+		const playoffStartDate =
+			playoffWindow.startDate ?? getDefaultPlayoffStartDate("nba", args.season);
+		const playoffEndDate =
+			playoffWindow.endDate ?? getDefaultPlayoffEndDate("nba", args.season);
 		const playoffStartTimestamp = Date.parse(
 			`${playoffStartDate}T00:00:00.000Z`,
 		);
-		const gamesAfterPlayoffStart = await ctx.db
+		// End of the last playoff day in ET (UTC-4 in June), plus slack for late tips
+		const playoffEndTimestamp =
+			Date.parse(`${playoffEndDate}T00:00:00.000Z`) + 36 * 60 * 60 * 1000;
+		const gamesInPlayoffWindow = await ctx.db
 			.query("nbaGameEvent")
 			.withIndex("by_season_scheduledStart", (q) =>
-				q.eq("season", args.season).gte("scheduledStart", playoffStartTimestamp),
+				q
+					.eq("season", args.season)
+					.gte("scheduledStart", playoffStartTimestamp)
+					.lt("scheduledStart", playoffEndTimestamp),
 			)
 			.collect();
 
-		const playoffGames = gamesAfterPlayoffStart.filter((g) =>
-			isPlayoffScoreboardDate("nba", args.season, g.gameDate, playoffStartDate),
+		// The bracket pairs teams by seed and counts every game between them, so
+		// play-in games (season type 5) are excluded along with regular season games.
+		const playoffGames = gamesInPlayoffWindow.filter((g) =>
+			isPlayoffGame("nba", g, playoffWindow),
 		);
 
 		// Sort by date

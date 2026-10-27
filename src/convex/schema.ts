@@ -172,6 +172,8 @@ export default defineSchema({
 	nbaGameEvent: defineTable({
 		espnGameId: v.string(),
 		season: v.string(),
+		// ESPN season type: 1 preseason, 2 regular season, 3 postseason, 5 play-in/showdown cup
+		seasonType: v.optional(v.number()),
 		homeTeamId: v.id("nbaTeam"),
 		awayTeamId: v.id("nbaTeam"),
 		gameDate: v.string(),
@@ -388,6 +390,8 @@ export default defineSchema({
 	wnbaGameEvent: defineTable({
 		espnGameId: v.string(),
 		season: v.string(),
+		// ESPN season type: 1 preseason, 2 regular season, 3 postseason, 5 play-in/showdown cup
+		seasonType: v.optional(v.number()),
 		homeTeamId: v.id("wnbaTeam"),
 		awayTeamId: v.id("wnbaTeam"),
 		gameDate: v.string(),
@@ -599,6 +603,8 @@ export default defineSchema({
 	gleagueGameEvent: defineTable({
 		espnGameId: v.string(),
 		season: v.string(),
+		// ESPN season type: 1 preseason, 2 regular season, 3 postseason, 5 play-in/showdown cup
+		seasonType: v.optional(v.number()),
 		homeTeamId: v.id("gleagueTeam"),
 		awayTeamId: v.id("gleagueTeam"),
 		gameDate: v.string(),

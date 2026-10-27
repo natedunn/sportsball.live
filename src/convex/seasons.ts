@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query, type MutationCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { compareSeasons, getSeasonEndYear, getSeasonStartYear, getTodayDate } from "./shared/seasonHelpers";
 import { authComponent } from "./auth";
 import { leagueValidator } from "./validators";
 import type { Doc } from "./_generated/dataModel";
@@ -80,6 +81,37 @@ const seedSeasons: SeasonInput[] = [
 		type: "playoffs",
 		startDate: "2026-04-14",
 		endDate: "2026-06-19",
+		status: "estimated",
+	},
+	// 2026-27 dates are estimates until the league publishes its schedule
+	{
+		league: "nba",
+		startYear: 2026,
+		endYear: 2027,
+		name: "Preseason",
+		type: "pre-season",
+		startDate: "2026-10-02",
+		endDate: "2026-10-16",
+		status: "estimated",
+	},
+	{
+		league: "nba",
+		startYear: 2026,
+		endYear: 2027,
+		name: "Regular season",
+		type: "regular-season",
+		startDate: "2026-10-20",
+		endDate: "2027-04-11",
+		status: "estimated",
+	},
+	{
+		league: "nba",
+		startYear: 2026,
+		endYear: 2027,
+		name: "Playoffs",
+		type: "playoffs",
+		startDate: "2027-04-13",
+		endDate: "2027-06-25",
 		status: "estimated",
 	},
 	{
@@ -172,6 +204,37 @@ const seedSeasons: SeasonInput[] = [
 		endDate: "2026-04-13",
 		status: "confirmed",
 	},
+	// 2026-27 dates are estimates until the league publishes its schedule
+	{
+		league: "gleague",
+		startYear: 2026,
+		endYear: 2027,
+		name: "Tip-Off Tournament",
+		type: "tournament",
+		startDate: "2026-11-07",
+		endDate: "2026-12-22",
+		status: "estimated",
+	},
+	{
+		league: "gleague",
+		startYear: 2026,
+		endYear: 2027,
+		name: "Regular season",
+		type: "regular-season",
+		startDate: "2026-12-26",
+		endDate: "2027-03-27",
+		status: "estimated",
+	},
+	{
+		league: "gleague",
+		startYear: 2026,
+		endYear: 2027,
+		name: "Playoffs",
+		type: "playoffs",
+		startDate: "2027-03-30",
+		endDate: "2027-04-12",
+		status: "estimated",
+	},
 ];
 
 function validateIsoDate(value: string, label: string) {
@@ -224,33 +287,98 @@ function getCurrentSegment(rows: Doc<"seasons">[]) {
 	return sorted[0] ?? null;
 }
 
-function getCurrentSeasonKey(rows: Doc<"seasons">[]) {
+function getConfiguredSeasonKey(rows: Doc<"seasons">[]) {
 	const current = getCurrentSegment(rows);
 	return current ? formatSeasonKey(current.startYear, current.endYear) : null;
+}
+
+const GAME_TABLES = {
+	nba: "nbaGameEvent",
+	wnba: "wnbaGameEvent",
+	gleague: "gleagueGameEvent",
+} as const;
+
+/**
+ * Season of the most recent game on or before today. Game seasons come from
+ * ESPN's own event metadata, so this keeps tracking the real season even when
+ * nobody has added the new season to the seasons table yet.
+ */
+async function getLatestGameSeason(ctx: QueryCtx, league: League): Promise<string | null> {
+	const today = getTodayDate();
+	const latest = await ctx.db
+		.query(GAME_TABLES[league])
+		.withIndex("by_gameDate", (q) => q.lte("gameDate", today))
+		.order("desc")
+		.first();
+	return latest?.season ?? null;
+}
+
+/**
+ * The current season key ("2026-27", or "2026" for WNBA). Uses the configured
+ * seasons table, but if ESPN-tagged games show a newer season has started,
+ * that newer season wins.
+ */
+export async function resolveCurrentSeasonKey(
+	ctx: QueryCtx,
+	league: League,
+	rows?: Doc<"seasons">[],
+): Promise<string | null> {
+	const seasonRows =
+		rows ??
+		(await ctx.db
+			.query("seasons")
+			.withIndex("by_league", (q) => q.eq("league", league))
+			.collect());
+	const configured = getConfiguredSeasonKey(seasonRows);
+	const fromGames = await getLatestGameSeason(ctx, league);
+	if (!configured) return fromGames;
+	if (!fromGames) return configured;
+	return compareSeasons(fromGames, configured) > 0 ? fromGames : configured;
 }
 
 function matchesSeasonKey(season: Doc<"seasons">, seasonKey: string) {
 	return formatSeasonKey(season.startYear, season.endYear) === seasonKey;
 }
 
-function getCurrentRegularSeason(rows: Doc<"seasons">[]) {
-	const seasonKey = getCurrentSeasonKey(rows);
-	if (!seasonKey) return null;
-	return (
-		rows.find(
-			(season) =>
-				matchesSeasonKey(season, seasonKey) && season.type === "regular-season",
-		) ?? null
-	);
-}
-
-function getCurrentTypeSegment(rows: Doc<"seasons">[], type: SeasonType) {
-	const seasonKey = getCurrentSeasonKey(rows);
-	if (!seasonKey) return null;
+function getTypeSegment(rows: Doc<"seasons">[], seasonKey: string, type: SeasonType) {
 	return (
 		rows.find((season) => matchesSeasonKey(season, seasonKey) && season.type === type) ??
 		null
 	);
+}
+
+/**
+ * Whether the seasons table is missing the current season. True when ESPN data
+ * shows a newer season than any configured row, or when today is past the end
+ * of every configured row.
+ */
+function getConfigWarning(rows: Doc<"seasons">[], currentKey: string | null) {
+	const today = new Date().toISOString().split("T")[0];
+	const lastEnd = rows.reduce<string | null>(
+		(max, row) => (max === null || row.endDate > max ? row.endDate : max),
+		null,
+	);
+	const hasCurrentRows = currentKey ? rows.some((row) => matchesSeasonKey(row, currentKey)) : false;
+
+	if (currentKey && !hasCurrentRows) {
+		return {
+			reason: "missing-current-season" as const,
+			currentSeason: currentKey,
+			startYear: getSeasonStartYear(currentKey),
+			endYear: getSeasonEndYear(currentKey),
+			lastConfiguredEndDate: lastEnd,
+		};
+	}
+	if (!lastEnd || today > lastEnd) {
+		return {
+			reason: "past-last-configured-season" as const,
+			currentSeason: currentKey,
+			startYear: currentKey ? getSeasonStartYear(currentKey) : null,
+			endYear: currentKey ? getSeasonEndYear(currentKey) : null,
+			lastConfiguredEndDate: lastEnd,
+		};
+	}
+	return null;
 }
 
 export const list = query({
@@ -288,9 +416,25 @@ export const getCurrentName = query({
 			.query("seasons")
 			.withIndex("by_league", (q) => q.eq("league", args.league))
 			.collect();
-		const regularSeason = getCurrentRegularSeason(rows);
-		if (regularSeason) return formatSeasonKey(regularSeason.startYear, regularSeason.endYear);
-		return getCurrentSeasonKey(rows);
+		return await resolveCurrentSeasonKey(ctx, args.league, rows);
+	},
+});
+
+/** Per-league warnings for the admin page when the seasons table is out of date. */
+export const getConfigStatus = query({
+	args: {},
+	handler: async (ctx) => {
+		const leagues: League[] = ["nba", "wnba", "gleague"];
+		return await Promise.all(
+			leagues.map(async (league) => {
+				const rows = await ctx.db
+					.query("seasons")
+					.withIndex("by_league", (q) => q.eq("league", league))
+					.collect();
+				const currentSeason = await resolveCurrentSeasonKey(ctx, league, rows);
+				return { league, currentSeason, warning: getConfigWarning(rows, currentSeason) };
+			}),
+		);
 	},
 });
 
@@ -313,8 +457,11 @@ export const getCurrentEventDate = query({
 			.withIndex("by_league", (q) => q.eq("league", args.league))
 			.collect();
 
+		const seasonKey = await resolveCurrentSeasonKey(ctx, args.league, rows);
+		if (!seasonKey) return null;
+
 		if (args.eventType === "offseasonStart") {
-			const playoffs = getCurrentTypeSegment(rows, "playoffs");
+			const playoffs = getTypeSegment(rows, seasonKey, "playoffs");
 			return playoffs ? nextDate(playoffs.endDate) : null;
 		}
 
@@ -325,7 +472,9 @@ export const getCurrentEventDate = query({
 						args.eventType === "regularSeasonEnd"
 					? "regular-season"
 					: "playoffs";
-		const segment = getCurrentTypeSegment(rows, type);
+		// Null when the current season isn't configured; callers fall back to defaults
+		// instead of reusing last season's dates.
+		const segment = getTypeSegment(rows, seasonKey, type);
 		if (!segment) return null;
 		return args.eventType.endsWith("Start") ? segment.startDate : segment.endDate;
 	},

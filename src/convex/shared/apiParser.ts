@@ -71,12 +71,20 @@ export interface ApiHeaderCompetitor {
 	}>;
 }
 
+/** ESPN season metadata: `year` is the year the season ends (2027 for 2026-27). */
+export interface ApiEventSeason {
+	year?: number;
+	type?: number;
+	slug?: string;
+}
+
 export interface ApiGameSummaryResponse {
 	boxscore?: {
 		teams?: ApiBoxscoreTeam[];
 		players?: ApiBoxscorePlayers[];
 	};
 	header?: {
+		season?: ApiEventSeason;
 		competitions?: Array<{
 			status?: {
 				type?: {
@@ -97,6 +105,7 @@ export interface ApiGameSummaryResponse {
 export interface ApiScoreboardEvent {
 	id: string;
 	uid: string;
+	season?: ApiEventSeason;
 	status?: {
 		type: {
 			state: string;
@@ -147,9 +156,16 @@ export interface ApiStandingsTeamEntry {
 }
 
 export interface ApiStandingsResponse {
+	season?: {
+		year?: number;
+		displayName?: string;
+	};
 	children?: Array<{
 		name?: string;
 		standings?: {
+			season?: number;
+			seasonType?: number;
+			seasonDisplayName?: string;
 			entries?: ApiStandingsTeamEntry[];
 		};
 	}>;

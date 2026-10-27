@@ -10,9 +10,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Doc } from "@convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { AdminPageShell } from "./-components/admin-page-shell";
+import {
+	SeasonConfigWarningBanner,
+	useSeasonConfigWarnings,
+	type SeasonConfigWarning,
+} from "./-components/season-config-warnings";
 
 export const Route = createFileRoute("/_default/admin/schedules")({
 	component: AdminSchedulesPage,
+	validateSearch: (search: Record<string, unknown>): { league?: League } => {
+		return {
+			league: LEAGUES.includes(search.league as League)
+				? (search.league as League)
+				: undefined,
+		};
+	},
 	beforeLoad: async ({ context }) => {
 		if (!context.isAuthenticated) {
 			throw redirect({ to: "/auth/sign-in" });
@@ -58,7 +70,11 @@ const YEAR_OPTIONS = createYearOptions();
 
 function AdminSchedulesPage() {
 	const { data: seasons } = useQuery(convexQuery(api.seasons.list, {}));
-	const [selectedLeague, setSelectedLeague] = useState<League>("nba");
+	const search = Route.useSearch();
+	const [selectedLeague, setSelectedLeague] = useState<League>(
+		search.league ?? "nba",
+	);
+	const configWarnings = useSeasonConfigWarnings();
 	const groupedSeasons = useMemo(() => {
 		const groups: Record<League, Doc<"seasons">[]> = {
 			nba: [],
@@ -98,6 +114,12 @@ function AdminSchedulesPage() {
 					{LEAGUES.map((league) => (
 						<TabsTrigger key={league} value={league}>
 							{LEAGUE_LABELS[league]}
+							{configWarnings.some((status) => status.league === league) && (
+								<span
+									className="ml-1.5 size-1.5 rounded-full bg-amber-500"
+									aria-label="Needs attention"
+								/>
+							)}
 						</TabsTrigger>
 					))}
 				</TabsList>
@@ -107,6 +129,10 @@ function AdminSchedulesPage() {
 						<LeagueScheduleSection
 							league={league}
 							seasons={groupedSeasons[league]}
+							warning={
+								configWarnings.find((status) => status.league === league)
+									?.warning ?? null
+							}
 						/>
 					</TabsContent>
 				))}
@@ -122,11 +148,22 @@ function AdminSchedulesPage() {
 function LeagueScheduleSection({
 	league,
 	seasons,
+	warning,
 }: {
 	league: League;
 	seasons: Doc<"seasons">[];
+	warning: SeasonConfigWarning | null;
 }) {
-	const [isAdding, setIsAdding] = useState(false);
+	// Held in state so parent re-renders don't reset the form via its initialForm effect
+	const [newForm, setNewForm] = useState<SeasonForm | null>(null);
+	const isAdding = newForm !== null;
+	// Missing season years from ESPN data; otherwise the season after the latest configured one
+	const missingYears =
+		warning?.reason === "missing-current-season" &&
+		warning.startYear !== null &&
+		warning.endYear !== null
+			? { startYear: warning.startYear, endYear: warning.endYear }
+			: undefined;
 
 	const yearGroups = useMemo(() => {
 		const map = new Map<
@@ -164,7 +201,7 @@ function LeagueScheduleSection({
 					type="button"
 					variant="outline"
 					size="sm"
-					onClick={() => setIsAdding(true)}
+					onClick={() => setNewForm(createNewSeasonForm(league, seasons[0]))}
 					disabled={isAdding}
 				>
 					<Plus />
@@ -172,14 +209,40 @@ function LeagueScheduleSection({
 				</Button>
 			</div>
 
+			{warning && (
+				<SeasonConfigWarningBanner
+					league={league}
+					warning={warning}
+					action={
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							className="shrink-0"
+							onClick={() =>
+								setNewForm(createNewSeasonForm(league, seasons[0], missingYears))
+							}
+							disabled={isAdding}
+						>
+							<Plus />
+							Start{" "}
+							{missingYears
+								? formatYearRange(missingYears.startYear, missingYears.endYear)
+								: "next"}{" "}
+							season
+						</Button>
+					}
+				/>
+			)}
+
 			{/* New segment form */}
-			{isAdding && (
+			{newForm && (
 				<div className="rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 p-4">
 					<p className="mb-3 text-sm font-medium text-primary">New Segment</p>
 					<SeasonSegmentForm
-						initialForm={createNewSeasonForm(league, seasons[0])}
-						onSaved={() => setIsAdding(false)}
-						onCancel={() => setIsAdding(false)}
+						initialForm={newForm}
+						onSaved={() => setNewForm(null)}
+						onCancel={() => setNewForm(null)}
 					/>
 				</div>
 			)}
@@ -596,10 +659,13 @@ function toForm(season: Doc<"seasons">): SeasonForm {
 function createNewSeasonForm(
 	league: League,
 	latestSeason?: Doc<"seasons">,
+	years?: { startYear: number; endYear: number },
 ): SeasonForm {
 	const currentYear = new Date().getFullYear();
-	const startYear = latestSeason ? latestSeason.startYear + 1 : currentYear;
-	const endYear = latestSeason ? latestSeason.endYear + 1 : currentYear;
+	const startYear =
+		years?.startYear ?? (latestSeason ? latestSeason.startYear + 1 : currentYear);
+	const endYear =
+		years?.endYear ?? (latestSeason ? latestSeason.endYear + 1 : currentYear);
 
 	return {
 		league,

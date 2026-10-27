@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { computeTeamEventAdvancedStats, round } from "../shared/statsCalculations";
+import { ESPN_SEASON_TYPE } from "../shared/seasonHelpers";
 
 // Event status validator (must match schema)
 const eventStatusValidator = v.union(
@@ -343,10 +344,16 @@ export const upsertPlayerEvent = internalMutation({
 export const recalculateTeamAverages = internalMutation({
 	args: { teamId: v.id("nbaTeam") },
 	handler: async (ctx, args) => {
-		const events = await ctx.db
+		const allEvents = await ctx.db
 			.query("nbaTeamEvent")
 			.withIndex("by_teamId", (q) => q.eq("teamId", args.teamId))
 			.collect();
+
+		// Preseason games don't count toward season averages
+		const games = await Promise.all(allEvents.map((e) => ctx.db.get(e.gameEventId)));
+		const events = allEvents.filter(
+			(_, i) => games[i]?.seasonType !== ESPN_SEASON_TYPE.preseason,
+		);
 
 		if (events.length === 0) return;
 

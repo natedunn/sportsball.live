@@ -20,6 +20,7 @@ import type * as gleague_queries from "../gleague/queries.js";
 import type * as http from "../http.js";
 import type * as images from "../images.js";
 import type * as nba_actions from "../nba/actions.js";
+import type * as nba_migrations from "../nba/migrations.js";
 import type * as nba_mutations from "../nba/mutations.js";
 import type * as nba_queries from "../nba/queries.js";
 import type * as randomUsername from "../randomUsername.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   images: typeof images;
   "nba/actions": typeof nba_actions;
+  "nba/migrations": typeof nba_migrations;
   "nba/mutations": typeof nba_mutations;
   "nba/queries": typeof nba_queries;
   randomUsername: typeof randomUsername;

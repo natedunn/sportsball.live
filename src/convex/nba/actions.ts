@@ -374,8 +374,10 @@ function parseStandings(data: ApiStandingsResponse): ParsedStandings {
 	};
 }
 
-async function fetchStandings(baseUrl: string): Promise<ParsedStandings | null> {
-	const standingsUrl = baseUrl.replace("/site/v2/", "/v2/") + "/standings";
+// `seasonYear` (ESPN's end year, e.g. 2026 for 2025-26) fetches a past season's final standings
+async function fetchStandings(baseUrl: string, seasonYear?: number): Promise<ParsedStandings | null> {
+	const standingsUrl =
+		baseUrl.replace("/site/v2/", "/v2/") + "/standings" + (seasonYear ? `?season=${seasonYear}` : "");
 	const standingsRes = await fetch(standingsUrl, {
 		headers: { "User-Agent": "Mozilla/5.0" },
 	});
@@ -542,10 +544,14 @@ export const discoverTodaysGames = internalAction({
 // Refresh every team's record from ESPN standings.
 // Scheduled after games go final; also safe to run from a cron.
 export const refreshStandings = internalAction({
-	args: {},
-	handler: async (ctx) => {
-		const standings = await fetchStandings(getSiteApi());
+	args: { seasonYear: v.optional(v.number()) },
+	handler: async (ctx, args) => {
+		const standings = await fetchStandings(getSiteApi(), args.seasonYear);
 		if (!standings) return;
+		if (args.seasonYear && !standings.season) {
+			console.warn(`[NBA] Standings for season year ${args.seasonYear} had no season label; skipping`);
+			return;
+		}
 
 		if (standings.teams.length === 0) {
 			console.warn("[NBA] Standings refresh returned no teams; skipping");

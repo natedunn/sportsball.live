@@ -9,7 +9,7 @@ deployment started the sign-in.
 
 | Tier | Serves | Gateway | Google client |
 |---|---|---|---|
-| Dev | local worktrees, cloud dev (`brilliant-wren-578`) | `https://gateway-dev.sportsball.live` | the dev client (`GOOGLE_CLIENT_ID` on cloud dev) |
+| Dev | local worktrees, cloud dev (`brilliant-wren-578`), branch previews | `https://gateway-dev.sportsball.live` | the dev client (`GOOGLE_CLIENT_ID` on cloud dev) |
 | Prod | sportsball.live, prod Convex (`harmless-coyote-806`) | `https://gateway.sportsball.live` | the prod client |
 
 Each Google client has exactly one redirect URI, and it never changes:
@@ -73,7 +73,10 @@ deployment's own callback instead (then register
 `<CONVEX_SITE_URL>/oauth/google/callback` with Google).
 
 Local worktrees copy everything except `SITE_URL` from cloud dev
-(docs/local-dev.md).
+(docs/local-dev.md). Branch previews start from the project's preview
+defaults, which are cloud dev's settings plus a signing key pair just for
+previews (`scripts/preview-defaults.sh`). Each preview's `SITE_URL` is
+`https://<branch>.preview.sportsball.live` (docs/deploy.md).
 
 ### Signing keys
 

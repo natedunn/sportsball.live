@@ -16,8 +16,9 @@ pnpm push:cloud-dev
 # Build for production
 pnpm build
 
-# Build and deploy (includes Convex deployment)
-pnpm build:deploy
+# Deploy by hand (Workers Builds normally does this; see docs/deploy.md)
+pnpm release           # prod Convex + sportsball.live
+pnpm release:preview   # Convex preview + <branch>.preview.sportsball.live
 
 # Linting
 pnpm lint
@@ -38,7 +39,7 @@ pnpm test:watch     # Watch mode
 - **State/Data**: TanStack Query + Convex (real-time database)
 - **Auth**: Convex Auth v2 (beta, patched) with Google OAuth through a per-tier gateway Worker (`workers/gateway`). See docs/auth-environments.md
 - **Styling**: Tailwind CSS v4
-- **Deployment**: Cloudflare Workers (via Vite plugin)
+- **Deployment**: Cloudflare Workers (via Vite plugin), via Workers Builds: `main` → prod, other branches → Worker Previews with a Convex preview each. See docs/deploy.md
 
 ### Directory Structure
 - `src/routes/` - File-based routing (TanStack Router)
@@ -72,7 +73,7 @@ Each league (NBA, WNBA, G-League) follows the same pattern:
 
 ### Environment Variables
 Required variables (see `.env.example`):
-- `VITE_CONVEX_URL` - Convex deployment URL
+- `VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL` - baked in at build (`pnpm dev` and the deploy scripts set them)
 - ESPN API endpoints (per league: NBA, WNBA, GLEAGUE):
   - `*_SITE_API` - Main site API (scoreboard, games, teams, news)
   - `*_CORE_API` - Core API (detailed injuries)

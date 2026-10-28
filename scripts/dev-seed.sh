@@ -23,7 +23,7 @@ trap '/bin/rm -rf "$dir"' EXIT
 
 # `env get` rather than `env list`: the CLI lists names only when it detects an agent.
 if [ -z "$(npx convex env get AUTH_JWKS 2>/dev/null)" ]; then
-	npx convex env list --include-values --deployment "$source_deployment" | grep -v '^SITE_URL=' > "$dir/env"
+	npx convex env list --include-values --deployment "$source_deployment" | grep -vE '^(SITE_URL|VITE_CONVEX_URL|VITE_CONVEX_SITE_URL|BETTER_AUTH_SECRET|CONVEX_ZEN_SECRET|GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)=' > "$dir/env"
 	npx convex env set --from-file "$dir/env" > /dev/null
 	echo "dev-seed: copied dev settings from $source_deployment"
 fi

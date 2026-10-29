@@ -19,10 +19,11 @@ The branch name becomes one DNS label: lowercased, anything outside
 - **Convex URLs are baked in at build.** `convex deploy --cmd` sets
   `VITE_CONVEX_URL` and `VITE_CONVEX_SITE_URL` for the build. Workers Builds
   needs no `VITE_*` variables.
-- **The Worker reads three values at runtime:** `NBA_PLAYER_API`,
-  `NBA_HEADSHOT_CDN` and `GLEAGUE_STATS_API`. They're stored as secrets on
-  prod and in the Previews Base secrets for previews. Previews don't inherit
-  prod's settings.
+- **The Worker reads the ESPN endpoints at runtime:** `{NBA,WNBA,GLEAGUE}_
+  {SITE,CORE,COMMON}_API` (by name, in `src/lib/shared/league.ts`),
+  `NBA_PLAYER_API`, `NBA_HEADSHOT_CDN` and `GLEAGUE_STATS_API`. They're stored
+  as secrets on prod and in the Previews Base secrets for previews (previews
+  don't inherit prod's settings), with the same values as prod Convex.
 - **The gateway needs no registration.** A deployment signs its own address
   into the OAuth `state`, and the dev gateway accepts any `*.convex.site`.
   New previews sign in through `gateway-dev.sportsball.live` with no setup
@@ -36,11 +37,13 @@ The branch name becomes one DNS label: lowercased, anything outside
   `--preview-run bootstrap:fullBootstrap` loads teams, today's games and
   rosters from ESPN, and the crons keep it current. History before that day
   isn't there; use cloud dev or a local worktree for that.
-- **Cleanup is automatic.** Convex deletes previews after 5 days (Free) or 14
-  (Pro) without a deploy. Cloudflare deletes the least recently deployed
-  Worker Preview past 100 (Free) or 500 (Paid). To delete one now:
-  `npx wrangler preview delete --name <name>`, and delete the Convex preview
-  in its dashboard.
+- **Cleanup is automatic.** When a pull request closes or a branch is
+  deleted, `.github/workflows/preview-cleanup.yml` runs
+  `scripts/preview-delete.sh`, which deletes the branch's Worker Preview and
+  Convex preview. As a backstop, Convex deletes previews after 5 days (Free)
+  or 14 (Pro) without a deploy, and Cloudflare deletes the least recently
+  deployed Worker Preview past 100 (Free) or 500 (Paid). To delete one by
+  hand: `sh scripts/preview-delete.sh <branch>` with the secrets below set.
 
 ## Workers Builds settings
 
@@ -67,15 +70,26 @@ Workers & Pages → `sportsball` → Settings → Builds:
 
 1. Preview defaults, after the dev gateway is set up on cloud dev
    (docs/auth-environments.md): `sh scripts/preview-defaults.sh`.
-2. Previews Base secrets, with values copied from prod's Worker secrets:
+2. Previews Base secrets, copied from prod Convex (which holds the same
+   values):
 
    ```sh
-   pbpaste | npx wrangler preview base-config secret put NBA_PLAYER_API
-   pbpaste | npx wrangler preview base-config secret put NBA_HEADSHOT_CDN
-   pbpaste | npx wrangler preview base-config secret put GLEAGUE_STATS_API
+   for n in NBA_SITE_API WNBA_SITE_API GLEAGUE_SITE_API NBA_CORE_API \
+     WNBA_CORE_API GLEAGUE_CORE_API NBA_COMMON_API WNBA_COMMON_API \
+     GLEAGUE_COMMON_API NBA_PLAYER_API NBA_HEADSHOT_CDN GLEAGUE_STATS_API; do
+     npx convex env get --prod $n | tr -d '\n' |
+       npx wrangler preview base-config secret put $n
+   done
    ```
 
 3. Workers Builds as above.
+4. Preview cleanup: GitHub Actions secrets on `natedunn/sportsball.live`,
+   named as in Kino:
+   - `CLOUDFLARE_ACCOUNT_ID`: `fc87b44f5832b25053fec2efb19fc208` ("Nate")
+   - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with
+     **Account → Workers Scripts → Edit** on that account
+   - `CONVEX_MANAGEMENT_TOKEN`: a Convex team access token (team
+     `nate-dunn` → Settings → Access Tokens)
 
 ## Changing settings
 

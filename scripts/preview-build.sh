@@ -13,6 +13,12 @@ name="$(sh scripts/preview-name.sh)"
 site="https://$name.preview.sportsball.live"
 
 : "${CONVEX_DEPLOY_KEY:?CONVEX_DEPLOY_KEY (the preview deploy key) is not set}"
+# With any other key, `convex deploy` ignores --preview-name and deploys to
+# that key's deployment, which would put this branch on prod.
+case "$CONVEX_DEPLOY_KEY" in
+preview:*) ;;
+*) echo "preview-build: CONVEX_DEPLOY_KEY is not a preview deploy key; refusing to deploy" >&2; exit 1 ;;
+esac
 # --cmd also gets VITE_CONVEX_SITE_URL.
 npx convex deploy --preview-name "$name" --preview-run bootstrap:fullBootstrap \
 	--cmd "pnpm run build" --cmd-url-env-var-name VITE_CONVEX_URL

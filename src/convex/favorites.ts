@@ -1,18 +1,18 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { authComponent } from "./auth";
+import { getCurrentProfile } from "./auth";
 import { leagueValidator } from "./validators";
 
 // Get all favorites for authenticated user
 export const getUserFavorites = query({
 	args: {},
 	handler: async (ctx) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await getCurrentProfile(ctx);
 		if (!user) {
 			return [];
 		}
 
-		// Store user ID as string for compatibility with Better Auth component
+		// favoriteTeams.userId stores the profile id as a string
 		const userId = String(user._id);
 
 		return ctx.db
@@ -28,7 +28,7 @@ export const getUserFavoritesByLeague = query({
 		league: leagueValidator,
 	},
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await getCurrentProfile(ctx);
 		if (!user) {
 			return [];
 		}
@@ -56,13 +56,13 @@ export const getFavoritesByUsername = query({
 			.withIndex("by_username", (q) => q.eq("username", username))
 			.first();
 
-		if (!profile?.authUserId) {
+		if (!profile) {
 			return [];
 		}
 
 		return ctx.db
 			.query("favoriteTeams")
-			.withIndex("by_user", (q) => q.eq("userId", profile.authUserId!))
+			.withIndex("by_user", (q) => q.eq("userId", String(profile._id)))
 			.collect();
 	},
 });
@@ -75,7 +75,7 @@ export const toggleFavorite = mutation({
 		teamSlug: v.string(),
 	},
 	handler: async (ctx, args) => {
-		const user = await authComponent.safeGetAuthUser(ctx);
+		const user = await getCurrentProfile(ctx);
 		if (!user) {
 			throw new Error("Unauthorized");
 		}

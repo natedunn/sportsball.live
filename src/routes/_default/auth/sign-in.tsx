@@ -1,33 +1,41 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import {
+	useOauth,
+	useSignInWithGoogle,
+} from "@convex-dev/auth/methods/google/react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useConvexAuth } from "convex/react";
+import { api } from "~api";
 
 import { Button } from "@/components/ui/button";
-import { authClient } from "@/lib/auth/auth-client";
 
 export const Route = createFileRoute("/_default/auth/sign-in")({
 	component: SignInPage,
-	beforeLoad: ({ context }) => {
-		if (context.isAuthenticated) {
-			console.log("redirecting to /");
-			throw redirect({ to: "/" });
-		}
-	},
 });
 
 function SignInPage() {
-	const handleGoogleSignIn = async () => {
-		await authClient.signIn.social({
-			provider: "google",
-			// callbackURL: "/profile",
-		})
-	}
+	const { signIn } = useSignInWithGoogle(api.auth);
+	// Google sends the user back to this page, where Convex Auth finishes the
+	// sign-in. Failures after the redirect show up here.
+	const { flowError } = useOauth();
+	const { isLoading, isAuthenticated } = useConvexAuth();
+	const navigate = useNavigate();
+	const [startError, setStartError] = useState<string | null>(null);
 
-	// if (isPending) {
-	// 	return (
-	// 		<div className="container py-8">
-	// 			<p className="text-muted-foreground">Loading...</p>
-	// 		</div>
-	// 	);
-	// }
+	useEffect(() => {
+		if (isAuthenticated) navigate({ to: "/", replace: true });
+	}, [isAuthenticated, navigate]);
+
+	const handleGoogleSignIn = async () => {
+		setStartError(null);
+		const result = await signIn();
+		if (result.status === "error") {
+			console.error("Google sign-in failed to start:", result.userError);
+			setStartError("Couldn't start Google sign-in. Please try again.");
+		}
+	};
+
+	const error = startError ?? (flowError ? flowErrorMessage(flowError) : null);
 
 	return (
 		<div className="container py-8">
@@ -38,10 +46,16 @@ function SignInPage() {
 						Sign in to access your profile and settings
 					</p>
 				</div>
+				{error && (
+					<p role="alert" className="text-center text-sm text-destructive">
+						{error}
+					</p>
+				)}
 				<Button
 					onClick={handleGoogleSignIn}
 					variant="outline"
 					className="w-full"
+					disabled={isLoading || isAuthenticated}
 				>
 					<svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
 						<path
@@ -66,4 +80,27 @@ function SignInPage() {
 			</div>
 		</div>
 	)
+}
+
+function flowErrorMessage(
+	flowError: NonNullable<ReturnType<typeof useOauth>["flowError"]>,
+): string {
+	switch (flowError.error) {
+		case "ACCESS_DENIED":
+			return "Sign-in was cancelled.";
+		case "EXPIRED":
+			return "That sign-in took too long. Please try again.";
+		case "INVALID_FLOW":
+			return "This sign-in can't be completed here. Please try again.";
+		case "REJECTED":
+			return typeof flowError.data === "string"
+				? flowError.data
+				: "Sign-in was declined.";
+		case "OTHER_ERROR":
+			console.error("Google sign-in failed:", flowError.cause);
+			return "Something went wrong during sign-in. Please try again.";
+		default:
+			flowError satisfies never;
+			return "Something went wrong during sign-in. Please try again.";
+	}
 }

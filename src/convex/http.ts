@@ -1,12 +1,8 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { authComponent, createAuth } from "./auth";
 
 const http = httpRouter();
-
-// Register Better Auth routes
-authComponent.registerRoutes(http, createAuth, { cors: true });
 
 // Image proxy HTTP action with Convex storage caching
 http.route({

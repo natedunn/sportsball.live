@@ -8,7 +8,7 @@ import {
 	MenuSeparator,
 	MenuLabel,
 } from "@/components/ui/menu";
-import { authClient } from "@/lib/auth/auth-client";
+import { useAuthActions } from "@convex-dev/auth/react";
 
 interface UserMenuProps {
 	user: {
@@ -21,14 +21,11 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user }: UserMenuProps) {
+	const { signOut } = useAuthActions();
+
 	const handleSignOut = async () => {
-		await authClient.signOut({
-			fetchOptions: {
-				onSuccess: async () => {
-					location.reload();
-				},
-			},
-		});
+		await signOut();
+		location.reload();
 	};
 
 	return (

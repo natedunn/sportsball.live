@@ -16,6 +16,9 @@ dist/
 # TanStack Start cache
 .tanstack/
 
+# Local Convex backends (one per checkout, scripts/dev.sh)
+.convex/
+
 # Environment files
 .env
 .env.local

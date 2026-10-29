@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { compareSeasons, getSeasonEndYear, getSeasonStartYear, getTodayDate } from "./shared/seasonHelpers";
-import { authComponent } from "./auth";
+import { getCurrentProfile } from "./auth";
 import { leagueValidator } from "./validators";
 import type { Doc } from "./_generated/dataModel";
 
@@ -255,7 +255,7 @@ function validateSeason(season: SeasonInput) {
 }
 
 async function assertAdmin(ctx: MutationCtx) {
-	const user = await authComponent.safeGetAuthUser(ctx);
+	const user = await getCurrentProfile(ctx);
 	if (!user?.email) throw new Error("Not authenticated");
 
 	const superAdminEmail = process.env.SUPER_ADMIN;

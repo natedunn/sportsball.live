@@ -1,0 +1,32 @@
+// OAuth callback gateway. One Worker per tier; see docs/auth-environments.md.
+// Secrets (per env): wrangler secret put ROUTING_SECRET -c wrangler.jsonc --env <dev|prod>
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "sportsball-gateway",
+	// The account that owns sportsball.live ("Nate").
+	"account_id": "fc87b44f5832b25053fec2efb19fc208",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-01",
+	"workers_dev": false,
+	"preview_urls": false,
+	"observability": { "enabled": true },
+	// Local `wrangler dev` only.
+	"vars": { "ALLOWED_TARGETS": "http://127.0.0.1:*,http://localhost:*" },
+	"env": {
+		"dev": {
+			"name": "sportsball-gateway-dev",
+			"routes": [{ "pattern": "gateway-dev.sportsball.live", "zone_name": "sportsball.live", "custom_domain": true }],
+			// Local worktrees (the browser follows the redirect, so loopback works)
+			// and the shared cloud dev deployment.
+			"vars": { "ALLOWED_TARGETS": "https://*.convex.site,http://127.0.0.1:*,http://localhost:*" },
+			"ratelimits": [{ "name": "CALLBACK_LIMITER", "namespace_id": "2001", "simple": { "limit": 30, "period": 60 } }]
+		},
+		"prod": {
+			"name": "sportsball-gateway",
+			"routes": [{ "pattern": "gateway.sportsball.live", "zone_name": "sportsball.live", "custom_domain": true }],
+			// Only the prod deployment (harmless-coyote-806).
+			"vars": { "ALLOWED_TARGETS": "https://harmless-coyote-806.convex.site" },
+			"ratelimits": [{ "name": "CALLBACK_LIMITER", "namespace_id": "2002", "simple": { "limit": 30, "period": 60 } }]
+		}
+	}
+}

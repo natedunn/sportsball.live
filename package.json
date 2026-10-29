@@ -2,15 +2,17 @@
 	"name": "sportsball-live",
 	"version": "0.0.0",
 	"type": "module",
+	"packageManager": "pnpm@10.28.2",
 	"scripts": {
-		"dev": "npx convex dev --once && npm-run-all --parallel dev:convex dev:web",
+		"dev": "sh scripts/dev.sh",
+		"push:cloud-dev": "CONVEX_DEPLOYMENT=dev:brilliant-wren-578 convex dev --once",
 		"dev:convex": "convex dev",
 		"dev:web": "vite dev --port 3000 --host",
-		"build:deploy": "npx convex deploy --cmd 'vite build'",
 		"build": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
+		"release": "sh scripts/cloudflare-deploy.sh",
+		"release:preview": "sh scripts/preview-build.sh && wrangler preview --name \"$(sh scripts/preview-name.sh)\"",
 		"preview": "vite preview",
 		"convex:dev": "convex dev",
-		"convex:deploy": "convex deploy",
 		"lint": "eslint .",
 		"test": "vitest run",
 		"test:watch": "vitest",
@@ -19,8 +21,8 @@
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.1.0",
-		"@cloudflare/vite-plugin": "^1.21.2",
-		"@convex-dev/better-auth": "^0.10.10",
+		"@cloudflare/vite-plugin": "^1.65.0",
+		"@convex-dev/auth": "2.0.0-beta.0",
 		"@convex-dev/react-query": "^0.1.0",
 		"@react-three/drei": "^10.7.7",
 		"@react-three/fiber": "^9.5.0",
@@ -31,9 +33,8 @@
 		"@tanstack/react-start": "^1.156.0",
 		"@tanstack/react-store": "^0.8.0",
 		"@tanstack/store": "^0.8.0",
-		"better-auth": "^1.4.9",
 		"clsx": "^2.1.1",
-		"convex": "^1.31.6",
+		"convex": "^1.48.0",
 		"date-fns": "^4.1.0",
 		"date-fns-tz": "^3.2.0",
 		"lucide-react": "^0.460.0",
@@ -46,7 +47,6 @@
 		"tailwind-merge": "^3.4.0",
 		"three": "^0.182.0",
 		"vite-tsconfig-paths": "^6.0.5",
-		"wrangler": "^4.60.0",
 		"zod": "^4.3.6"
 	},
 	"devDependencies": {
@@ -61,11 +61,23 @@
 		"eslint": "^9.39.2",
 		"jsdom": "^27.4.0",
 		"npm-run-all": "^4.1.5",
+		"portless": "^0.13.1",
 		"semantic-release": "^25.0.2",
 		"sharp": "^0.34.5",
 		"tailwindcss": "^4.1.18",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
-		"vitest": "^4.0.18"
+		"vitest": "^4.0.18",
+		"wrangler": "^4.154.0"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild",
+			"sharp",
+			"workerd"
+		],
+		"patchedDependencies": {
+			"@convex-dev/auth": "patches/@convex-dev__auth.patch"
+		}
 	}
 }

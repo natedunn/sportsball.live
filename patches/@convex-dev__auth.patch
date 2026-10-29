@@ -1,0 +1,141 @@
+diff --git a/dist/components/github/convex.config.d.ts b/dist/components/github/convex.config.d.ts
+index 0916a4c3b676d2a737ce4784ebf96cb19b049ff2..cc14ec0cd0bcb85a1fb4556e1e3ed295776710e7 100644
+--- a/dist/components/github/convex.config.d.ts
++++ b/dist/components/github/convex.config.d.ts
+@@ -15,6 +15,7 @@
+ declare const component: import("convex/server").ComponentDefinition<any, {
+     readonly CLIENT_ID: import("convex/values").VString<string, "required">;
+     readonly CLIENT_SECRET: import("convex/values").VString<string, "required">;
++    readonly CALLBACK_URL: import("convex/values").VString<string | undefined, "optional">;
+ }>;
+ export default component;
+ //# sourceMappingURL=convex.config.d.ts.map
+\ No newline at end of file
+diff --git a/dist/components/github/convex.config.js b/dist/components/github/convex.config.js
+index 2965b8dd7c1768ca5aa5a987b2ab346e50dd6c81..b1d5b62a0814170b1915e786ba7be6f7032f2f88 100644
+--- a/dist/components/github/convex.config.js
++++ b/dist/components/github/convex.config.js
+@@ -18,6 +18,8 @@ const component = defineComponent("authGithub", {
+     env: {
+         CLIENT_ID: v.string(),
+         CLIENT_SECRET: v.string(),
++        // sportsball patch (from onda): see lib/oauth/dbHelpers.js
++        CALLBACK_URL: v.optional(v.string()),
+     },
+ });
+ export default component;
+diff --git a/dist/components/google/convex.config.d.ts b/dist/components/google/convex.config.d.ts
+index 599b138bb31b0f55ca8fccdf5f2080004ff681e5..af35ddb09ca0e8114bf03d6385a99c8211d272ac 100644
+--- a/dist/components/google/convex.config.d.ts
++++ b/dist/components/google/convex.config.d.ts
+@@ -15,6 +15,7 @@
+ declare const component: import("convex/server").ComponentDefinition<any, {
+     readonly CLIENT_ID: import("convex/values").VString<string, "required">;
+     readonly CLIENT_SECRET: import("convex/values").VString<string, "required">;
++    readonly CALLBACK_URL: import("convex/values").VString<string | undefined, "optional">;
+ }>;
+ export default component;
+ //# sourceMappingURL=convex.config.d.ts.map
+\ No newline at end of file
+diff --git a/dist/components/google/convex.config.js b/dist/components/google/convex.config.js
+index 237f8eb8037d19bf35efadff9c2b48a0567e305a..e3313a77f9d50fa86b5a127742ff8f81fbfc6736 100644
+--- a/dist/components/google/convex.config.js
++++ b/dist/components/google/convex.config.js
+@@ -18,6 +18,8 @@ const component = defineComponent("authGoogle", {
+     env: {
+         CLIENT_ID: v.string(),
+         CLIENT_SECRET: v.string(),
++        // sportsball patch (from onda): see lib/oauth/dbHelpers.js
++        CALLBACK_URL: v.optional(v.string()),
+     },
+ });
+ export default component;
+diff --git a/dist/components/oauth/convex.config.d.ts b/dist/components/oauth/convex.config.d.ts
+index 56cac4852d873cd917e050dbfee77b63664edf69..2730861bc6c2f6281fcf64daac08fc26c21ac78a 100644
+--- a/dist/components/oauth/convex.config.d.ts
++++ b/dist/components/oauth/convex.config.d.ts
+@@ -23,6 +23,7 @@
+ declare const component: import("convex/server").ComponentDefinition<any, {
+     readonly CLIENT_ID: import("convex/values").VString<string, "required">;
+     readonly CLIENT_SECRET: import("convex/values").VString<string, "required">;
++    readonly CALLBACK_URL: import("convex/values").VString<string | undefined, "optional">;
+ }>;
+ export default component;
+ //# sourceMappingURL=convex.config.d.ts.map
+\ No newline at end of file
+diff --git a/dist/components/oauth/convex.config.js b/dist/components/oauth/convex.config.js
+index fffaf7ae3aa75ad9ede1cdda5794baea21812a96..79f87d43af94150cb34e5f914bdf84929323bd11 100644
+--- a/dist/components/oauth/convex.config.js
++++ b/dist/components/oauth/convex.config.js
+@@ -26,6 +26,8 @@ const component = defineComponent("authOauth", {
+     env: {
+         CLIENT_ID: v.string(),
+         CLIENT_SECRET: v.string(),
++        // sportsball patch (from onda): see lib/oauth/dbHelpers.js
++        CALLBACK_URL: v.optional(v.string()),
+     },
+ });
+ export default component;
+diff --git a/dist/internal-types/components/github/convex.config.d.ts b/dist/internal-types/components/github/convex.config.d.ts
+index 0916a4c3b676d2a737ce4784ebf96cb19b049ff2..cc14ec0cd0bcb85a1fb4556e1e3ed295776710e7 100644
+--- a/dist/internal-types/components/github/convex.config.d.ts
++++ b/dist/internal-types/components/github/convex.config.d.ts
+@@ -15,6 +15,7 @@
+ declare const component: import("convex/server").ComponentDefinition<any, {
+     readonly CLIENT_ID: import("convex/values").VString<string, "required">;
+     readonly CLIENT_SECRET: import("convex/values").VString<string, "required">;
++    readonly CALLBACK_URL: import("convex/values").VString<string | undefined, "optional">;
+ }>;
+ export default component;
+ //# sourceMappingURL=convex.config.d.ts.map
+\ No newline at end of file
+diff --git a/dist/internal-types/components/google/convex.config.d.ts b/dist/internal-types/components/google/convex.config.d.ts
+index 599b138bb31b0f55ca8fccdf5f2080004ff681e5..af35ddb09ca0e8114bf03d6385a99c8211d272ac 100644
+--- a/dist/internal-types/components/google/convex.config.d.ts
++++ b/dist/internal-types/components/google/convex.config.d.ts
+@@ -15,6 +15,7 @@
+ declare const component: import("convex/server").ComponentDefinition<any, {
+     readonly CLIENT_ID: import("convex/values").VString<string, "required">;
+     readonly CLIENT_SECRET: import("convex/values").VString<string, "required">;
++    readonly CALLBACK_URL: import("convex/values").VString<string | undefined, "optional">;
+ }>;
+ export default component;
+ //# sourceMappingURL=convex.config.d.ts.map
+\ No newline at end of file
+diff --git a/dist/internal-types/components/oauth/convex.config.d.ts b/dist/internal-types/components/oauth/convex.config.d.ts
+index 56cac4852d873cd917e050dbfee77b63664edf69..2730861bc6c2f6281fcf64daac08fc26c21ac78a 100644
+--- a/dist/internal-types/components/oauth/convex.config.d.ts
++++ b/dist/internal-types/components/oauth/convex.config.d.ts
+@@ -23,6 +23,7 @@
+ declare const component: import("convex/server").ComponentDefinition<any, {
+     readonly CLIENT_ID: import("convex/values").VString<string, "required">;
+     readonly CLIENT_SECRET: import("convex/values").VString<string, "required">;
++    readonly CALLBACK_URL: import("convex/values").VString<string | undefined, "optional">;
+ }>;
+ export default component;
+ //# sourceMappingURL=convex.config.d.ts.map
+\ No newline at end of file
+diff --git a/dist/lib/oauth/dbHelpers.js b/dist/lib/oauth/dbHelpers.js
+index 83fef57c28c6cadbc05d67cb777b395bea75c5f4..4f8eecd519745bb5c46c480a029a41f2b5547d45 100644
+--- a/dist/lib/oauth/dbHelpers.js
++++ b/dist/lib/oauth/dbHelpers.js
+@@ -19,13 +19,17 @@ export async function insertAuthorizationRequest(ctx, fields) {
+     // get-convex/convex-backend@64c163a (July 2026); cloud always has it,
+     // self-hosted may not.
+     // TODO: remove this check when no longer needed.
++    // sportsball patch (from onda): CALLBACK_URL (optional component env) overrides the
++    // callback, so several deployments can share one registered redirect URI
++    // behind a gateway. Remove when upstream supports it (convex-auth#1).
++    const callbackOverride = process.env.CALLBACK_URL;
+     const siteUrl = process.env.CONVEX_SITE_URL;
+-    if (siteUrl === undefined) {
++    if (callbackOverride === undefined && siteUrl === undefined) {
+         throw new Error("CONVEX_SITE_URL is not visible inside the oauth component. " +
+             "This requires a Convex backend with system env vars in component " +
+             "functions (get-convex/convex-backend@64c163a, July 2026).");
+     }
+-    const callbackUrl = `${siteUrl}${CALLBACK_PATH}`;
++    const callbackUrl = callbackOverride || `${siteUrl}${CALLBACK_PATH}`;
+     await ctx.db.insert("authorizationRequests", {
+         ...fields,
+         callbackUrl,

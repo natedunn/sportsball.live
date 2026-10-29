@@ -4,7 +4,8 @@ import { api } from "~api";
 import type { League } from "./league";
 
 function getConvexUrl(): string {
-	const url = process.env.VITE_CONVEX_URL;
+	// Baked in at build, like the client's.
+	const url = import.meta.env.VITE_CONVEX_URL;
 	if (!url) throw new Error("VITE_CONVEX_URL not configured");
 	return url;
 }

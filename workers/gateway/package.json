@@ -1,0 +1,24 @@
+{
+	"name": "sportsball-gateway",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "wrangler dev -c wrangler.jsonc",
+		"test": "node --test src/*.test.ts",
+		"check": "tsc --noEmit",
+		"deploy:dev": "wrangler deploy -c wrangler.jsonc --env dev",
+		"deploy:prod": "wrangler deploy -c wrangler.jsonc --env prod"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20261026.1",
+		"@types/node": "^26.6.5",
+		"typescript": "~5.9.3",
+		"wrangler": "^4.153.0"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild",
+			"workerd"
+		]
+	}
+}

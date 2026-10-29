@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { QueryClient } from "@tanstack/react-query";
 import {
@@ -11,21 +11,15 @@ import {
 	useRouteContext,
 	useRouter,
 } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 
 import { DefaultCatchBoundary } from "@/components/_default-catch-boundary";
-import { authClient } from "@/lib/auth/auth-client";
-import { getToken } from "@/lib/auth/auth-server-utils";
+import { api } from "~api";
 import { initThemeObserver } from "@/lib/store";
 
 import appCss from "../styles/app.css?url";
 import { Footer } from "@/components/layout/footer";
 
 const SITE_TITLE = import.meta.env.DEV ? "🚧 Sportsball" : "Sportsball";
-
-const getAuth = createServerFn({ method: "GET" }).handler(async () => {
-	return await getToken();
-});
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
@@ -69,20 +63,6 @@ export const Route = createRootRouteWithContext<{
 			},
 		],
 	}),
-	beforeLoad: async (ctx) => {
-		const token = await getAuth();
-
-		// During SSR only (the only time serverHttpClient exists),
-		// set the auth token to make HTTP queries with.
-		if (token) {
-			ctx.context.convexQueryClient.serverHttpClient?.setAuth(token);
-		}
-
-		return {
-			isAuthenticated: !!token,
-			token,
-		};
-	},
 	errorComponent: DefaultCatchBoundary,
 	notFoundComponent: () => <div>Not found</div>,
 	component: RootComponent,
@@ -105,15 +85,14 @@ function RootComponent() {
 	}
 
 	return (
-		<ConvexBetterAuthProvider
+		<ConvexAuthProvider
 			client={context.convexQueryClient.convexClient}
-			authClient={authClient}
-			initialToken={context.token}
+			api={api.auth}
 		>
 			<RootDocument>
 				<Outlet />
 			</RootDocument>
-		</ConvexBetterAuthProvider>
+		</ConvexAuthProvider>
 	);
 }
 

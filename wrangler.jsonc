@@ -1,9 +1,23 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "sportsball",
+	"account_id": "fc87b44f5832b25053fec2efb19fc208",
 	"compatibility_date": "2025-09-02",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "@tanstack/react-start/server-entry",
+	"workers_dev": false,
+	"preview_urls": false,
+	"routes": [
+		{ "pattern": "sportsball.live", "zone_name": "sportsball.live", "custom_domain": true },
+		// Branch previews at <branch>.preview.sportsball.live; serves no production traffic.
+		{
+			"pattern": "preview.sportsball.live",
+			"zone_name": "sportsball.live",
+			"custom_domain": true,
+			"previews_enabled": true,
+			"enabled": false
+		}
+	],
 	"observability": {
 		"enabled": false,
 		"head_sampling_rate": 1,
@@ -19,4 +33,11 @@
 			"head_sampling_rate": 1,
 		},
 	},
+	// The Convex URLs are baked in at build (VITE_*). The Worker reads three ESPN
+	// endpoints at runtime (NBA_PLAYER_API, NBA_HEADSHOT_CDN, GLEAGUE_STATS_API):
+	// secrets on prod, and on previews from the Previews Base secrets
+	// (`wrangler preview base-config secret put`). See docs/deploy.md.
+	"previews": {
+		"observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": true } }
+	}
 }

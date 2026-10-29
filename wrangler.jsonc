@@ -33,9 +33,10 @@
 			"head_sampling_rate": 1,
 		},
 	},
-	// The Convex URLs are baked in at build (VITE_*). The Worker reads three ESPN
-	// endpoints at runtime (NBA_PLAYER_API, NBA_HEADSHOT_CDN, GLEAGUE_STATS_API):
-	// secrets on prod, and on previews from the Previews Base secrets
+	// The Convex URLs are baked in at build (VITE_*). The Worker reads the ESPN
+	// endpoints at runtime ({NBA,WNBA,GLEAGUE}_{SITE,CORE,COMMON}_API,
+	// NBA_PLAYER_API, NBA_HEADSHOT_CDN, GLEAGUE_STATS_API): secrets on prod, and
+	// on previews from the Previews Base secrets
 	// (`wrangler preview base-config secret put`). See docs/deploy.md.
 	"previews": {
 		"observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": true } }

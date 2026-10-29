@@ -3,17 +3,18 @@
 # deployment. Run by .github/workflows/preview-cleanup.yml when a pull request
 # closes or a branch is deleted; either may already be gone. See docs/deploy.md.
 #   usage: preview-delete.sh <branch>
-# Needs CLOUDFLARE_API_TOKEN (Workers Scripts: Edit on the "Nate" account) and
-# CONVEX_MANAGEMENT_TOKEN (a Convex team access token).
+# Needs CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN (Workers Scripts: Edit) and
+# CONVEX_MANAGEMENT_TOKEN (a Convex team access token): the same secrets as Kino.
 set -eu
 
 name="$(WORKERS_CI_BRANCH="$1" sh "$(dirname "$0")/preview-name.sh")"
 [ -n "$name" ] || { echo "preview-delete: no preview name for '$1'" >&2; exit 1; }
 [ "$name" != main ] || { echo "preview-delete: main has no preview" >&2; exit 1; }
+: "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID is not set}"
 : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN is not set}"
 : "${CONVEX_MANAGEMENT_TOKEN:?CONVEX_MANAGEMENT_TOKEN is not set}"
 
-previews=https://api.cloudflare.com/client/v4/accounts/fc87b44f5832b25053fec2efb19fc208/workers/workers/sportsball/previews
+previews=https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/workers/sportsball/previews
 convex=https://api.convex.dev/v1
 convex_project=1553903 # nate-dunn/sportsball-live
 

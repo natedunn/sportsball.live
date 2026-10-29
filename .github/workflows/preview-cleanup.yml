@@ -24,6 +24,7 @@ jobs:
       - name: Delete previews
         env:
           BRANCH: ${{ github.event.pull_request.head.ref || github.event.ref }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PREVIEW_CLEANUP_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CONVEX_MANAGEMENT_TOKEN: ${{ secrets.CONVEX_MANAGEMENT_TOKEN }}
         run: sh scripts/preview-delete.sh "$BRANCH"

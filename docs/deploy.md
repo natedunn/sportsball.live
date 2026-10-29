@@ -43,7 +43,7 @@ The branch name becomes one DNS label: lowercased, anything outside
   Convex preview. As a backstop, Convex deletes previews after 5 days (Free)
   or 14 (Pro) without a deploy, and Cloudflare deletes the least recently
   deployed Worker Preview past 100 (Free) or 500 (Paid). To delete one by
-  hand: `sh scripts/preview-delete.sh <branch>` with the two tokens below.
+  hand: `sh scripts/preview-delete.sh <branch>` with the secrets below set.
 
 ## Workers Builds settings
 
@@ -83,9 +83,11 @@ Workers & Pages → `sportsball` → Settings → Builds:
    ```
 
 3. Workers Builds as above.
-4. Preview cleanup: two GitHub Actions secrets on `natedunn/sportsball.live`:
-   - `CLOUDFLARE_PREVIEW_CLEANUP_TOKEN`: a Cloudflare API token with
-     **Account → Workers Scripts → Edit** on the "Nate" account, nothing else
+4. Preview cleanup: GitHub Actions secrets on `natedunn/sportsball.live`,
+   named as in Kino:
+   - `CLOUDFLARE_ACCOUNT_ID`: `fc87b44f5832b25053fec2efb19fc208` ("Nate")
+   - `CLOUDFLARE_API_TOKEN`: a Cloudflare API token with
+     **Account → Workers Scripts → Edit** on that account
    - `CONVEX_MANAGEMENT_TOKEN`: a Convex team access token (team
      `nate-dunn` → Settings → Access Tokens)
 

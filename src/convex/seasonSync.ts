@@ -115,9 +115,16 @@ async function syncLeague(ctx: ActionCtx, league: League): Promise<SyncResult> {
 export const syncAll = internalAction({
 	args: {},
 	handler: async (ctx) => {
+		const failed: string[] = [];
 		for (const league of LEAGUES) {
-			await syncLeague(ctx, league);
+			const result = await syncLeague(ctx, league);
+			if (!result.ok) failed.push(league);
 		}
+		await ctx.runMutation(internal.health.recordJobRun, {
+			job: "syncSeasons",
+			ok: failed.length === 0,
+			summary: failed.length > 0 ? `failed: ${failed.join(", ")}` : undefined,
+		});
 	},
 });
 

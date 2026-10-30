@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
 import { getSeriesRecordForGame, isPlayoffGame } from "../shared/scoreboardSeries";
 import { countsTowardSeasonAverages } from "../shared/seasonHelpers";
@@ -355,7 +356,7 @@ export const getPlayerDetails = query({
 			teams.filter(Boolean).map((team) => [team!.espnTeamId, team!.abbreviation]),
 		);
 
-		const mapToProfile = (entry: any, overrides?: Partial<any>) => {
+		const mapToProfile = (entry: Doc<"gleaguePlayer">, overrides?: Record<string, unknown>) => {
 			const team = teamMap.get(entry.teamId);
 			return {
 				id: entry.espnPlayerId,
@@ -742,6 +743,67 @@ export const getAllTeamsInternal = internalQuery({
 			.query("gleagueTeam")
 			.withIndex("by_season", (q) => q.eq("season", args.season))
 			.collect();
+	},
+});
+
+// Internal: a season's teams, games, team box scores and current rosters, for
+// the daily health check (health.runHealthCheck)
+export const getHealthSnapshot = internalQuery({
+	args: { season: v.string() },
+	handler: async (ctx, args) => {
+		const [teams, games, players] = await Promise.all([
+			ctx.db.query("gleagueTeam").withIndex("by_season", (q) => q.eq("season", args.season)).collect(),
+			ctx.db.query("gleagueGameEvent").withIndex("by_season", (q) => q.eq("season", args.season)).collect(),
+			ctx.db.query("gleaguePlayer").withIndex("by_season", (q) => q.eq("season", args.season)).collect(),
+		]);
+		const teamEvents = (
+			await Promise.all(
+				teams.map((team) =>
+					ctx.db
+						.query("gleagueTeamEvent")
+						.withIndex("by_teamId", (q) => q.eq("teamId", team._id))
+						.collect(),
+				),
+			)
+		).flat();
+
+		return {
+			teams: teams.map((team) => ({
+				id: team._id as string,
+				espnTeamId: team.espnTeamId,
+				abbreviation: team.abbreviation,
+				wins: team.wins,
+				losses: team.losses,
+			})),
+			games: games.map((game) => ({
+				id: game._id as string,
+				espnGameId: game.espnGameId,
+				eventStatus: game.eventStatus,
+				seasonType: game.seasonType,
+				gameDate: game.gameDate,
+			})),
+			teamEvents: teamEvents.map((event) => ({
+				gameId: event.gameEventId as string,
+				teamId: event.teamId as string,
+				score: event.score,
+				fieldGoalsMade: event.fieldGoalsMade,
+				fieldGoalsAttempted: event.fieldGoalsAttempted,
+				threePointMade: event.threePointMade,
+				threePointAttempted: event.threePointAttempted,
+				freeThrowsMade: event.freeThrowsMade,
+				freeThrowsAttempted: event.freeThrowsAttempted,
+				totalRebounds: event.totalRebounds,
+				offensiveRebounds: event.offensiveRebounds,
+				defensiveRebounds: event.defensiveRebounds,
+				assists: event.assists,
+				steals: event.steals,
+				blocks: event.blocks,
+				turnovers: event.turnovers,
+			})),
+			rosters: players
+				.filter((player) => player.onRoster !== false)
+				.map((player) => ({ espnPlayerId: player.espnPlayerId, teamId: player.teamId as string })),
+		};
 	},
 });
 

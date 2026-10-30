@@ -56,6 +56,8 @@ function AdminPage() {
 				))}
 			</div>
 
+			<DataHealthCard />
+
 			<ScoreAnomaliesCard />
 		</AdminPageShell>
 	);
@@ -199,6 +201,83 @@ function LeagueCard({ league }: { league: League }) {
 
 			{error && (
 				<p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+			)}
+		</div>
+	);
+}
+
+const HEALTH_STATUS_STYLES: Record<string, string> = {
+	ok: "text-green-600 dark:text-green-400",
+	repaired: "text-amber-600 dark:text-amber-400",
+	failing: "text-red-600 dark:text-red-400",
+	skipped: "text-muted-foreground",
+};
+
+// Latest daily data health check (src/convex/health.ts)
+function DataHealthCard() {
+	const [error, setError] = useState<string | null>(null);
+	const [requested, setRequested] = useState(false);
+	const { data: latest } = useQuery(convexQuery(api.health.getLatest, {}));
+	const requestMutation = useConvexMutation(api.health.requestHealthCheck);
+
+	const handleRun = async () => {
+		setError(null);
+		try {
+			await requestMutation({});
+			setRequested(true);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to start the health check");
+		}
+	};
+
+	return (
+		<div className="rounded-xl border border-border bg-card p-6">
+			<div className="flex items-center justify-between gap-4">
+				<div>
+					<h2 className="text-xl font-semibold">Data Health</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						{latest
+							? `Last checked ${new Date(latest.ranAt).toLocaleString()}: ${latest.failing} failing, ${latest.repaired} repaired.`
+							: "No health check has run yet. It runs daily at 19:30 UTC."}
+					</p>
+				</div>
+				<Button variant="outline" size="sm" onClick={handleRun} disabled={requested}>
+					{requested ? "Running..." : "Run Now"}
+				</Button>
+			</div>
+
+			{error && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+			{latest && (
+				<ul className="mt-4 space-y-2">
+					{latest.results.map((result) => (
+						<li
+							key={`${result.league ?? "all"}:${result.check}`}
+							className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm"
+						>
+							<div className="flex items-start justify-between gap-4">
+								<p>
+									<span className="font-medium">
+										{result.league ? `${LEAGUE_LABELS[result.league]} · ` : ""}
+										{result.check}
+									</span>
+									<span className="text-muted-foreground"> &mdash; {result.message}</span>
+								</p>
+								<span className={`shrink-0 font-medium ${HEALTH_STATUS_STYLES[result.status]}`}>
+									{result.status}
+								</span>
+							</div>
+							{result.details && result.details.length > 0 && (
+								<ul className="mt-1 list-disc pl-5 text-xs text-muted-foreground">
+									{result.details.slice(0, 10).map((detail) => (
+										<li key={detail}>{detail}</li>
+									))}
+									{result.details.length > 10 && <li>…and {result.details.length - 10} more</li>}
+								</ul>
+							)}
+						</li>
+					))}
+				</ul>
 			)}
 		</div>
 	);

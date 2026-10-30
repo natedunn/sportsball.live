@@ -109,4 +109,13 @@ crons.daily(
 	{},
 );
 
+// Check stored data against ESPN, repair what can be fixed, and save the results
+// (19:30 UTC, after every daily job). The "Data health" GitHub Action reads them.
+crons.daily(
+	"health-check",
+	{ hourUTC: 19, minuteUTC: 30 },
+	internal.health.runHealthCheck,
+	{},
+);
+
 export default crons;

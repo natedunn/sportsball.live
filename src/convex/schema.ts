@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { draftValidator, leagueValidator } from "./validators";
+import { draftValidator, healthResultValidator, leagueValidator } from "./validators";
 
 // Event status validator shared across all league game event tables
 const eventStatusValidator = v.union(
@@ -781,6 +781,27 @@ export default defineSchema({
 		.index("by_lastSeenAt", ["lastSeenAt"])
 		.index("by_league_lastSeenAt", ["league", "lastSeenAt"])
 		.index("by_league_game_type", ["league", "espnGameId", "anomalyType"]),
+
+	// Latest run of each scheduled job (see health.recordJobRun). The daily
+	// health check flags jobs with no successful run in the last two days.
+	jobRuns: defineTable({
+		job: v.string(),
+		league: v.optional(leagueValidator),
+		lastRanAt: v.number(),
+		lastOk: v.boolean(),
+		lastOkAt: v.optional(v.number()),
+		summary: v.optional(v.string()),
+	}).index("by_job_league", ["job", "league"]),
+
+	// Daily data health check results (see health.runHealthCheck)
+	healthChecks: defineTable({
+		ranAt: v.number(),
+		durationMs: v.number(),
+		ok: v.boolean(),
+		repaired: v.number(),
+		failing: v.number(),
+		results: v.array(healthResultValidator),
+	}).index("by_ranAt", ["ranAt"]),
 
 	// ============================================================
   // Cached images from external CDN

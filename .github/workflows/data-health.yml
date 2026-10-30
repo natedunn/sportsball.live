@@ -1,0 +1,38 @@
+name: Data health
+
+# Reports the daily Convex data health check (19:30 UTC) as a GitHub issue
+# assigned to the repo owner. See docs/data-health.md.
+on:
+  schedule:
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  # Re-enabling this workflow below resets GitHub's 60-day inactivity timer,
+  # which would otherwise switch off scheduled workflows in a quiet repo
+  actions: write
+
+jobs:
+  report:
+    name: Report
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Open, update or close the data health issue
+        run: node scripts/data-health-issue.mjs
+        env:
+          CONVEX_URL: https://harmless-coyote-806.convex.cloud
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Keep the schedule alive
+        run: gh workflow enable data-health.yml
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -445,6 +445,7 @@ export const discoverTodaysGames = internalAction({
 
 		if (!scoreboardRes.ok) {
 			console.error(`[NBA] Scoreboard fetch failed: ${scoreboardRes.status}`);
+			await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "nba", ok: false, summary: `scoreboard fetch failed (${scoreboardRes.status})` });
 			return;
 		}
 
@@ -519,6 +520,7 @@ export const discoverTodaysGames = internalAction({
 		}
 
 		console.log(`[NBA] Discovery complete: ${events.length} games processed`);
+		await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "nba", ok: true, summary: `${events.length} games` });
 	},
 });
 
@@ -528,7 +530,10 @@ export const refreshStandings = internalAction({
 	args: { seasonYear: v.optional(v.number()) },
 	handler: async (ctx, args) => {
 		const standings = await fetchStandings(getSiteApi(), args.seasonYear);
-		if (!standings) return;
+		if (!standings) {
+			await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "nba", ok: false, summary: "standings fetch failed" });
+			return;
+		}
 		if (args.seasonYear && !standings.season) {
 			console.warn(`[NBA] Standings for season year ${args.seasonYear} had no season label; skipping`);
 			return;
@@ -536,12 +541,14 @@ export const refreshStandings = internalAction({
 
 		if (standings.teams.length === 0) {
 			console.warn("[NBA] Standings refresh returned no teams; skipping");
+			await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "nba", ok: true, summary: "no standings published" });
 			return;
 		}
 
 		const season = standings.season ?? (await getCurrentSeasonName(ctx));
 		const teamCount = await upsertStandingsTeams(ctx, standings, season);
 		console.log(`[NBA] Standings refreshed for ${teamCount} teams, season ${season}`);
+		await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "nba", ok: true });
 	},
 });
 
@@ -1241,6 +1248,13 @@ export const refreshPlayers = internalAction({
 	handler: async (ctx) => {
 		const rosters = await runRosterSync(ctx);
 		const stats = await runCorePlayerStatsBackfill(ctx, {});
+		// A few per-player ESPN errors fix themselves the next day; many mean ESPN is down
+		await ctx.runMutation(internal.health.recordJobRun, {
+			job: "refreshPlayers",
+			league: "nba",
+			ok: stats.errors <= Math.max(5, stats.scanned * 0.05),
+			summary: `${stats.errors} of ${stats.scanned} player stat lookups failed`,
+		});
 		return { rosters, stats };
 	},
 });
@@ -1728,6 +1742,8 @@ export const syncSchedule = internalAction({
 				recordsOnly: true,
 			});
 		}
+
+		await ctx.runMutation(internal.health.recordJobRun, { job: "syncSchedule", league: "nba", ok: true });
 	},
 });
 

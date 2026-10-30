@@ -28,11 +28,15 @@ export default defineSchema({
 			v.literal("tournament"),
 			v.literal("pre-season"),
 			v.literal("regular-season"),
+			v.literal("play-in"),
 			v.literal("playoffs"),
 		),
 		startDate: v.string(),
 		endDate: v.string(),
 		status: v.union(v.literal("confirmed"), v.literal("estimated")),
+		// "espn" rows come from the daily ESPN sync; "manual" rows were edited
+		// by an admin and the sync leaves them alone. Unset rows predate the sync.
+		source: v.optional(v.union(v.literal("espn"), v.literal("manual"))),
 		updatedAt: v.number(),
 	})
 		.index("by_league", ["league"])
@@ -40,6 +44,14 @@ export default defineSchema({
 		.index("by_league_type", ["league", "type"])
 		.index("by_league_years_type", ["league", "startYear", "endYear", "type"])
 		.index("by_league_startDate", ["league", "startDate"]),
+
+	// Last ESPN season-phase sync per league (admin staleness alerts)
+	seasonSync: defineTable({
+		league: leagueValidator,
+		lastAttemptAt: v.number(),
+		lastSuccessAt: v.optional(v.number()),
+		lastError: v.optional(v.string()),
+	}).index("by_league", ["league"]),
 
 	// ============================================================
 	// NBA Tables (Convex-first architecture)

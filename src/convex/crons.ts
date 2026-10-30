@@ -51,6 +51,15 @@ crons.daily(
 	{},
 );
 
+// Refresh season phases (preseason, regular season, playoffs...) from ESPN
+// before the schedule syncs below read the season's dates.
+crons.daily(
+	"sync-season-phases",
+	{ hourUTC: 9, minuteUTC: 15 },
+	internal.seasonSync.syncAll,
+	{},
+);
+
 // Store the schedule from yesterday through the season's end (9:30 AM UTC,
 // after the standings refresh). Discovery only adds today's games, so without
 // this the scoreboard has nothing for upcoming dates. Re-syncing yesterday

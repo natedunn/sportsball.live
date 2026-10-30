@@ -1,8 +1,25 @@
 {
 	"name": "sportsball-live",
 	"version": "0.0.0",
+	"private": true,
 	"type": "module",
 	"packageManager": "pnpm@10.28.2",
+	"release": {
+		"branches": [
+			"main"
+		],
+		"plugins": [
+			"@semantic-release/commit-analyzer",
+			"@semantic-release/release-notes-generator",
+			[
+				"@semantic-release/github",
+				{
+					"successComment": false,
+					"releasedLabels": false
+				}
+			]
+		]
+	},
 	"scripts": {
 		"dev": "sh scripts/dev.sh",
 		"push:cloud-dev": "CONVEX_DEPLOYMENT=dev:brilliant-wren-578 convex dev --once",

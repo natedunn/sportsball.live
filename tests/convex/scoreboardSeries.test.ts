@@ -1,55 +1,15 @@
-import { describe, expect, it } from "vitest";
-import {
-	getSeriesRecordForGame,
-	isPlayoffGame,
-	isPlayoffScoreboardDate,
-} from "@convex/shared/scoreboardSeries";
-
-describe("isPlayoffScoreboardDate", () => {
-	it("maps WNBA cross-year season strings to the correct playoff year", () => {
-		expect(isPlayoffScoreboardDate("wnba", "2025-26", "2026-09-26")).toBe(false);
-		expect(isPlayoffScoreboardDate("wnba", "2025-26", "2026-09-27")).toBe(true);
-	});
-
-	it("rejects next-season games still tagged with the old season", () => {
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-10-26")).toBe(false);
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "20261026")).toBe(false);
-	});
-
-	it("accepts games inside the default NBA playoff window", () => {
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-04-13")).toBe(false);
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-04-14")).toBe(true);
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "20260520")).toBe(true);
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-06-30")).toBe(true);
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-07-01")).toBe(false);
-	});
-
-	it("uses a configured playoff window over the defaults", () => {
-		const window = { startDate: "2026-04-18", endDate: "2026-06-19" };
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-04-15", window)).toBe(false);
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-04-18", window)).toBe(true);
-		expect(isPlayoffScoreboardDate("nba", "2025-26", "2026-06-20", window)).toBe(false);
-	});
-});
+import { describe, it, expect } from "vitest";
+import { getSeriesRecordForGame, isPlayoffGame } from "@convex/shared/scoreboardSeries";
 
 describe("isPlayoffGame", () => {
-	const base = { season: "2025-26", gameDate: "2026-05-01" };
-
 	it("trusts ESPN's postseason season type", () => {
-		expect(isPlayoffGame("nba", { ...base, seasonType: 3 })).toBe(true);
-		// Season type wins even outside the date window
-		expect(isPlayoffGame("nba", { ...base, gameDate: "2026-03-01", seasonType: 3 })).toBe(true);
+		expect(isPlayoffGame({ seasonType: 3 })).toBe(true);
 	});
 
-	it("treats regular season and play-in games as non-playoff", () => {
-		expect(isPlayoffGame("nba", { ...base, seasonType: 2 })).toBe(false);
-		expect(isPlayoffGame("nba", { ...base, seasonType: 5 })).toBe(false);
-	});
-
-	it("falls back to the bounded date window for legacy games without a season type", () => {
-		expect(isPlayoffGame("nba", { ...base, seasonType: undefined })).toBe(true);
-		expect(isPlayoffGame("nba", { season: "2025-26", gameDate: "2026-03-01" })).toBe(false);
-		expect(isPlayoffGame("nba", { season: "2025-26", gameDate: "2026-10-26" })).toBe(false);
+	it("treats regular season, play-in and untyped games as non-playoff", () => {
+		expect(isPlayoffGame({ seasonType: 2 })).toBe(false);
+		expect(isPlayoffGame({ seasonType: 5 })).toBe(false);
+		expect(isPlayoffGame({})).toBe(false);
 	});
 });
 
@@ -58,6 +18,7 @@ describe("getSeriesRecordForGame", () => {
 		const currentGame = {
 			_id: "game-3",
 			season: "2025-26",
+			seasonType: 3,
 			homeTeamId: "knicks",
 			awayTeamId: "pacers",
 			gameDate: "2026-04-20",
@@ -69,6 +30,7 @@ describe("getSeriesRecordForGame", () => {
 			{
 				_id: "game-1",
 				season: "2025-26",
+				seasonType: 3,
 				homeTeamId: "knicks",
 				awayTeamId: "pacers",
 				gameDate: "2026-04-14",
@@ -80,6 +42,7 @@ describe("getSeriesRecordForGame", () => {
 			{
 				_id: "game-2",
 				season: "2025-26",
+				seasonType: 3,
 				homeTeamId: "pacers",
 				awayTeamId: "knicks",
 				gameDate: "2026-04-17",
@@ -90,7 +53,7 @@ describe("getSeriesRecordForGame", () => {
 			},
 		];
 
-		expect(getSeriesRecordForGame("nba", currentGame, candidateGames)).toEqual({
+		expect(getSeriesRecordForGame(currentGame, candidateGames)).toEqual({
 			home: "2-0",
 			away: "0-2",
 		});
@@ -100,6 +63,7 @@ describe("getSeriesRecordForGame", () => {
 		const inProgressGame = {
 			_id: "game-2",
 			season: "2025-26",
+			seasonType: 3,
 			homeTeamId: "lynx",
 			awayTeamId: "liberty",
 			gameDate: "2026-09-28",
@@ -112,6 +76,7 @@ describe("getSeriesRecordForGame", () => {
 		const completedSeriesGame = {
 			_id: "game-1",
 			season: "2025-26",
+			seasonType: 3,
 			homeTeamId: "liberty",
 			awayTeamId: "lynx",
 			gameDate: "2026-09-27",
@@ -122,7 +87,7 @@ describe("getSeriesRecordForGame", () => {
 		};
 
 		expect(
-			getSeriesRecordForGame("wnba", inProgressGame, [
+			getSeriesRecordForGame(inProgressGame, [
 				completedSeriesGame,
 				inProgressGame,
 			]),
@@ -132,7 +97,7 @@ describe("getSeriesRecordForGame", () => {
 		});
 
 		expect(
-			getSeriesRecordForGame("wnba", {
+			getSeriesRecordForGame({
 				...inProgressGame,
 				eventStatus: "completed",
 			}, [completedSeriesGame, { ...inProgressGame, eventStatus: "completed" }]),
@@ -158,6 +123,7 @@ describe("getSeriesRecordForGame", () => {
 		const priorMeetings = [1, 2, 3, 4, 5].map((n) => ({
 			_id: `prior-${n}`,
 			season: "2025-26",
+			seasonType: 3,
 			homeTeamId: "lakers",
 			awayTeamId: "suns",
 			gameDate: `2026-05-0${n}`,
@@ -167,10 +133,10 @@ describe("getSeriesRecordForGame", () => {
 			awayScore: 100,
 		}));
 
-		expect(getSeriesRecordForGame("nba", phxGame, priorMeetings)).toBeUndefined();
-		// Legacy row without a season type is rejected by the bounded date window
+		expect(getSeriesRecordForGame(phxGame, priorMeetings)).toBeUndefined();
+		// A row without a season type is never treated as a playoff game
 		expect(
-			getSeriesRecordForGame("nba", { ...phxGame, seasonType: undefined }, priorMeetings),
+			getSeriesRecordForGame({ ...phxGame, seasonType: undefined }, priorMeetings),
 		).toBeUndefined();
 	});
 
@@ -198,7 +164,7 @@ describe("getSeriesRecordForGame", () => {
 			awayScore: 90,
 		};
 
-		expect(getSeriesRecordForGame("nba", currentGame, [playIn])).toEqual({
+		expect(getSeriesRecordForGame(currentGame, [playIn])).toEqual({
 			home: "0-0",
 			away: "0-0",
 		});

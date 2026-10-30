@@ -121,6 +121,12 @@ export const syncAll = internalAction({
 	},
 });
 
+// One league, for actions that need its seasons before the daily sync has run
+export const syncLeagueNow = internalAction({
+	args: { league: leagueValidator },
+	handler: async (ctx, args): Promise<SyncResult> => await syncLeague(ctx, args.league),
+});
+
 // Admin "Refresh now"
 export const refreshNow = action({
 	args: { league: v.optional(leagueValidator) },

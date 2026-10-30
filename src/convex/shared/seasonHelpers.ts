@@ -28,21 +28,6 @@ export function getDatePartsInTimezone(
 	return { year: get("year"), month: get("month"), day: get("day") };
 }
 
-/**
- * Get the current NBA/WNBA/G-League season string (e.g., "2025-26").
- * NBA/G-League seasons span two calendar years (Oct-June).
- * WNBA seasons are single-year (May-Oct) but we use the same format for consistency.
- */
-export function getCurrentSeason(): string {
-	const { year, month } = getDatePartsInTimezone(new Date(), GAME_TIMEZONE);
-
-	// NBA/G-League: season starts in October
-	// If we're in Jan-June, the season started last year
-	const startYear = month < 8 ? year - 1 : year;
-	const endYear = startYear + 1;
-	return `${startYear}-${String(endYear).slice(-2)}`;
-}
-
 export function getSeasonStartYear(season: string): number {
 	const firstYear = Number.parseInt(season.split("-")[0] ?? "", 10);
 	if (Number.isFinite(firstYear)) return firstYear;
@@ -198,25 +183,25 @@ const SCHEDULE_MIN_DAYS_AHEAD = 7;
 
 /**
  * Dates (YYYYMMDD, US Eastern) the daily schedule sync covers: from yesterday,
- * so last night's finals pick up their settled records, through the season's
- * end. Once that season is over (the stored season lags until the next one
- * starts), it runs to the end of the calendar's current season instead. Always
- * at least a week ahead, since playoff games get scheduled late and can fall
- * past a configured or default season end.
+ * so last night's finals pick up their settled records, through the current
+ * season's last day. Once that season is over, it runs through the latest
+ * scheduled season instead (the next one, once ESPN publishes it). Always at
+ * least a week ahead, so a season ESPN hasn't published yet still shows up.
  */
 export function getScheduleSyncRange(
 	{
 		seasonEndDate,
-		calendarSeasonEndDate,
-	}: { seasonEndDate: string; calendarSeasonEndDate: string },
+		latestScheduledEndDate,
+	}: { seasonEndDate: string | null; latestScheduledEndDate: string | null },
 	now: number = Date.now(),
 ): { startDate: string; endDate: string } {
 	const startDate = formatGameDate(now - DAY_MS);
 	const today = formatGameDate(now);
-	const seasonEnd = seasonEndDate >= today ? seasonEndDate : calendarSeasonEndDate;
+	const seasonEnd =
+		seasonEndDate !== null && seasonEndDate >= today ? seasonEndDate : latestScheduledEndDate;
 	const minEndDate = formatGameDate(now + SCHEDULE_MIN_DAYS_AHEAD * DAY_MS);
 	return {
 		startDate,
-		endDate: seasonEnd > minEndDate ? seasonEnd : minEndDate,
+		endDate: seasonEnd !== null && seasonEnd > minEndDate ? seasonEnd : minEndDate,
 	};
 }

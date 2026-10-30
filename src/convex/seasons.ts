@@ -457,6 +457,11 @@ export const getCurrentEventDate = query({
 			v.literal("playoffStart"),
 			v.literal("playoffEnd"),
 			v.literal("offseasonStart"),
+			// First and last day of the current season, across all its segments
+			v.literal("seasonStart"),
+			v.literal("seasonEnd"),
+			// Last scheduled day of any stored season (the next one once ESPN publishes it)
+			v.literal("latestScheduledEnd"),
 		),
 	},
 	handler: async (ctx, args) => {
@@ -465,8 +470,23 @@ export const getCurrentEventDate = query({
 			.withIndex("by_league", (q) => q.eq("league", args.league))
 			.collect();
 
+		if (args.eventType === "latestScheduledEnd") {
+			return rows.reduce<string | null>(
+				(latest, row) => (latest === null || row.endDate > latest ? row.endDate : latest),
+				null,
+			);
+		}
+
 		const seasonKey = await resolveCurrentSeasonKey(ctx, args.league, rows);
 		if (!seasonKey) return null;
+
+		if (args.eventType === "seasonStart" || args.eventType === "seasonEnd") {
+			const segments = rows.filter((row) => matchesSeasonKey(row, seasonKey));
+			if (segments.length === 0) return null;
+			return args.eventType === "seasonStart"
+				? segments.reduce((min, row) => (row.startDate < min ? row.startDate : min), segments[0].startDate)
+				: segments.reduce((max, row) => (row.endDate > max ? row.endDate : max), segments[0].endDate);
+		}
 
 		if (args.eventType === "offseasonStart") {
 			const playoffs = getTypeSegment(rows, seasonKey, "playoffs");
@@ -480,8 +500,8 @@ export const getCurrentEventDate = query({
 						args.eventType === "regularSeasonEnd"
 					? "regular-season"
 					: "playoffs";
-		// Null when the current season isn't configured; callers fall back to defaults
-		// instead of reusing last season's dates.
+		// Null when the current season has no segment of this type, rather than
+		// reusing last season's dates.
 		const segment = getTypeSegment(rows, seasonKey, type);
 		if (!segment) return null;
 		return args.eventType.endsWith("Start") ? segment.startDate : segment.endDate;

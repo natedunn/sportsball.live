@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { api, internal } from "../_generated/api";
-import { getCurrentSeason, getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, getScheduleSyncRange, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
+import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
+import { getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, getScheduleSyncRange, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord } from "../shared/apiParser";
 import type { Id } from "../_generated/dataModel";
 import type {
@@ -211,40 +212,15 @@ async function runCorePlayerStatsBackfill(ctx: any, args: BackfillPlayerStatsArg
 	};
 }
 
-/** Get the start date for a season (late October). */
-function getSeasonStartDate(season: string): string {
-	const startYear = parseInt(season.split("-")[0], 10);
-	// NBA season typically starts in late October
-	return `${startYear}1022`;
-}
-
-/** Get the end date for the regular season (mid-April). */
-function getSeasonEndDate(season: string): string {
-	const endYear = parseInt(season.split("-")[0], 10) + 1;
-	return `${endYear}0420`;
-}
-
-function compactIsoDate(date: string): string {
-	return date.replaceAll("-", "");
-}
-
 async function getCurrentSeasonName(ctx: any): Promise<string> {
-	return (
-		(await ctx.runQuery(api.seasons.getCurrentName, { league: "nba" })) ??
-		getCurrentSeason()
-	);
+	return await requireCurrentSeason(ctx, "nba");
 }
 
 async function getCurrentSeasonEventDate(
 	ctx: any,
-	eventType: "preseasonStart" | "playoffEnd",
-	fallback: string,
-): Promise<string> {
-	const date = await ctx.runQuery(api.seasons.getCurrentEventDate, {
-		league: "nba",
-		eventType,
-	});
-	return date ? compactIsoDate(date) : fallback;
+	eventType: "seasonStart" | "seasonEnd" | "latestScheduledEnd",
+): Promise<string | null> {
+	return await getSeasonDate(ctx, "nba", eventType);
 }
 
 function parseApiScore(rawScore: string | undefined): number | undefined {
@@ -1398,12 +1374,11 @@ export const backfillGames = internalAction({
 	},
 	handler: async (ctx, args) => {
 		const season = await getCurrentSeasonName(ctx);
-		const startDate =
-			args.startDate ??
-			(await getCurrentSeasonEventDate(ctx, "preseasonStart", getSeasonStartDate(season)));
-		const endDate =
-			args.endDate ??
-			(await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season)));
+		const startDate = args.startDate ?? (await getCurrentSeasonEventDate(ctx, "seasonStart"));
+		const endDate = args.endDate ?? (await getCurrentSeasonEventDate(ctx, "seasonEnd"));
+		if (!startDate || !endDate) {
+			throw new Error(`[NBA Backfill] Season ${season} has no dates in the seasons table; pass startDate and endDate`);
+		}
 		const dates = getDateRange(startDate, endDate);
 
 		const teamLabel = args.targetEspnTeamId ? ` for team ${args.targetEspnTeamId}` : "";
@@ -1603,8 +1578,8 @@ export const syncSchedule = internalAction({
 	handler: async (ctx) => {
 		const season = await getCurrentSeasonName(ctx);
 		const { startDate, endDate } = getScheduleSyncRange({
-			seasonEndDate: await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season)),
-			calendarSeasonEndDate: getSeasonEndDate(getCurrentSeason()),
+			seasonEndDate: await getCurrentSeasonEventDate(ctx, "seasonEnd"),
+			latestScheduledEndDate: await getCurrentSeasonEventDate(ctx, "latestScheduledEnd"),
 		});
 		const dates = getDateRange(startDate, endDate);
 

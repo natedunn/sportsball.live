@@ -59,7 +59,7 @@ export function SeasonConfigWarningBanner({
 				<div className="text-sm">
 					<p className="font-medium">{describeSeasonConfigWarning(league, warning)}</p>
 					<p className="mt-0.5 text-amber-800/80 dark:text-amber-200/70">
-						Season dates fall back to defaults until it's added.
+						Its dates stay unknown until ESPN's calendar is refreshed or it's added by hand.
 					</p>
 				</div>
 			</div>

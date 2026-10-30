@@ -12,7 +12,7 @@ type League = "nba" | "wnba" | "gleague";
  * Extract year, month (1-indexed), and day from a Date in the given timezone.
  * Uses Intl.DateTimeFormat.formatToParts() — no external dependencies.
  */
-function getDatePartsInTimezone(
+export function getDatePartsInTimezone(
 	date: Date,
 	timezone: string,
 ): { year: number; month: number; day: number } {

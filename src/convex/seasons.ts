@@ -6,7 +6,7 @@ import { leagueValidator } from "./validators";
 import type { Doc } from "./_generated/dataModel";
 
 type League = "nba" | "wnba" | "gleague";
-type SeasonType = "tournament" | "pre-season" | "regular-season" | "playoffs";
+type SeasonType = "tournament" | "pre-season" | "regular-season" | "play-in" | "playoffs";
 type SeasonStatus = "confirmed" | "estimated";
 
 type SeasonInput = {
@@ -26,6 +26,7 @@ const seasonTypeValidator = v.union(
 	v.literal("tournament"),
 	v.literal("pre-season"),
 	v.literal("regular-season"),
+	v.literal("play-in"),
 	v.literal("playoffs"),
 );
 
@@ -49,6 +50,7 @@ const typeOrder: SeasonType[] = [
 	"tournament",
 	"pre-season",
 	"regular-season",
+	"play-in",
 	"playoffs",
 ];
 
@@ -272,8 +274,14 @@ function sortSeasons(a: Doc<"seasons">, b: Doc<"seasons">) {
 	return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
 }
 
+/** Today as YYYY-MM-DD in US Eastern, the timezone game dates use. */
+function getTodayIsoDate() {
+	const today = getTodayDate();
+	return `${today.slice(0, 4)}-${today.slice(4, 6)}-${today.slice(6, 8)}`;
+}
+
 function getCurrentSegment(rows: Doc<"seasons">[]) {
-	const today = new Date().toISOString().split("T")[0];
+	const today = getTodayIsoDate();
 	const sorted = [...rows].sort((a, b) => a.startDate.localeCompare(b.startDate));
 
 	const active = sorted.find((season) => today >= season.startDate && today <= season.endDate);
@@ -353,7 +361,7 @@ function getTypeSegment(rows: Doc<"seasons">[], seasonKey: string, type: SeasonT
  * of every configured row.
  */
 function getConfigWarning(rows: Doc<"seasons">[], currentKey: string | null) {
-	const today = new Date().toISOString().split("T")[0];
+	const today = getTodayIsoDate();
 	const lastEnd = rows.reduce<string | null>(
 		(max, row) => (max === null || row.endDate > max ? row.endDate : max),
 		null,
@@ -494,12 +502,24 @@ export const upsert = mutation({
 			)
 			.first();
 
+		// Admin edits are overrides; the ESPN sync leaves manual rows alone
 		if (existing) {
-			await ctx.db.patch(existing._id, { ...args, updatedAt: now });
+			await ctx.db.patch(existing._id, { ...args, source: "manual", updatedAt: now });
 			return existing._id;
 		}
 
-		return await ctx.db.insert("seasons", { ...args, updatedAt: now });
+		return await ctx.db.insert("seasons", { ...args, source: "manual", updatedAt: now });
+	},
+});
+
+// Drop an admin override so the next ESPN sync replaces the row's dates
+export const clearOverride = mutation({
+	args: { id: v.id("seasons") },
+	handler: async (ctx, args) => {
+		await assertAdmin(ctx);
+		const season = await ctx.db.get(args.id);
+		if (!season) throw new Error("Season segment not found");
+		await ctx.db.patch(args.id, { source: "espn", updatedAt: Date.now() });
 	},
 });
 

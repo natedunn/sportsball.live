@@ -1,8 +1,8 @@
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexAction, useConvexMutation } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireAuth } from "@/lib/auth/require-auth";
-import { Calendar, ChevronDown, Pencil, Plus, Save, X } from "lucide-react";
+import { Calendar, ChevronDown, Pencil, Plus, RotateCcw, Save, X } from "lucide-react";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "~api";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { AdminPageShell } from "./-components/admin-page-shell";
 import {
 	SeasonConfigWarningBanner,
+	SeasonSyncBar,
 	useSeasonConfigWarnings,
 	type SeasonConfigWarning,
 } from "./-components/season-config-warnings";
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/_default/admin/schedules")({
 
 const LEAGUES = ["nba", "wnba", "gleague"] as const;
 type League = (typeof LEAGUES)[number];
-type SeasonType = "tournament" | "pre-season" | "regular-season" | "playoffs";
+type SeasonType = "tournament" | "pre-season" | "regular-season" | "play-in" | "playoffs";
 type SeasonStatus = "confirmed" | "estimated";
 type SeasonForm = Omit<Doc<"seasons">, "_id" | "_creationTime" | "updatedAt">;
 
@@ -48,6 +49,7 @@ const TYPE_LABELS: Record<SeasonType, string> = {
 	tournament: "Tournament",
 	"pre-season": "Preseason",
 	"regular-season": "Regular season",
+	"play-in": "Play-In",
 	playoffs: "Playoffs",
 };
 
@@ -55,6 +57,7 @@ const TYPE_ORDER: SeasonType[] = [
 	"tournament",
 	"pre-season",
 	"regular-season",
+	"play-in",
 	"playoffs",
 ];
 
@@ -95,7 +98,7 @@ function AdminSchedulesPage() {
 		<AdminPageShell
 			activePage="schedules"
 			title="Season Schedules"
-			description="Set date ranges for league season segments and data navigation."
+			description="Season segments sync from ESPN daily. Editing a segment keeps your dates instead."
 		>
 			<Tabs
 				value={selectedLeague}
@@ -200,6 +203,8 @@ function LeagueScheduleSection({
 					Add Segment
 				</Button>
 			</div>
+
+			<SeasonSyncBar league={league} />
 
 			{warning && (
 				<SeasonConfigWarningBanner
@@ -342,7 +347,9 @@ function SegmentRow({ segment }: { segment: Doc<"seasons"> }) {
 						</p>
 					</div>
 				</div>
+				<SourceBadge source={segment.source} />
 				<StatusBadge status={segment.status as SeasonStatus} />
+				{segment.source === "manual" && <UseEspnDatesButton segment={segment} />}
 				<Button
 					type="button"
 					variant="ghost"
@@ -373,9 +380,62 @@ function SegmentRow({ segment }: { segment: Doc<"seasons"> }) {
 	);
 }
 
+/** Drop the admin override and refetch the league's dates from ESPN. */
+function UseEspnDatesButton({ segment }: { segment: Doc<"seasons"> }) {
+	const clearOverride = useConvexMutation(api.seasons.clearOverride);
+	const refreshNow = useConvexAction(api.seasonSync.refreshNow);
+	const [isWorking, setIsWorking] = useState(false);
+
+	const handleClick = async () => {
+		setIsWorking(true);
+		try {
+			await clearOverride({ id: segment._id });
+			await refreshNow({ league: segment.league });
+		} finally {
+			setIsWorking(false);
+		}
+	};
+
+	return (
+		<Button
+			type="button"
+			variant="ghost"
+			size="sm"
+			className="shrink-0"
+			onClick={handleClick}
+			disabled={isWorking}
+			title="Replace these dates with ESPN's"
+		>
+			<RotateCcw className={isWorking ? "animate-spin" : undefined} />
+			Use ESPN dates
+		</Button>
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Badges & pills
 // ---------------------------------------------------------------------------
+
+function SourceBadge({ source }: { source: Doc<"seasons">["source"] }) {
+	if (!source) return null;
+	return (
+		<span
+			className={cn(
+				"inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+				source === "espn"
+					? "bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+					: "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400",
+			)}
+			title={
+				source === "espn"
+					? "Synced from ESPN"
+					: "Edited by an admin; the ESPN sync won't change it"
+			}
+		>
+			{source === "espn" ? "ESPN" : "Manual"}
+		</span>
+	);
+}
 
 function StatusBadge({ status }: { status: SeasonStatus }) {
 	return (
@@ -601,6 +661,11 @@ function SeasonSegmentForm({
 
 			{/* Actions */}
 			<div className="mt-4 flex items-center justify-end gap-3">
+				{season?.source !== "manual" && !message && !error && (
+					<p className="mr-auto text-xs text-muted-foreground">
+						Saving keeps these dates even if ESPN's change.
+					</p>
+				)}
 				{message && (
 					<p className="text-sm font-medium text-green-600 dark:text-green-400">
 						{message}

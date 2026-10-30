@@ -100,13 +100,11 @@ export function StatsTab({ stats }: StatsTabProps) {
                   <div className="h-px flex-1 bg-border" />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <StatCard label="PPG" value={fmt(stats.scoring.ppg)} rawValue={stats.scoring.ppg} formatValue={fmt} icon={Zap} description="Points Per Game" rank={stats.ranks?.rankPpg} delay={0} />
-                  <StatCard label="OPP PPG" value={fmt(stats.scoring.oppPpg)} rawValue={stats.scoring.oppPpg} formatValue={fmt} icon={Shield} description="Opponent Points Per Game" rank={stats.ranks?.rankOppPpg} delay={50} />
-                  <StatCard label="Margin" value={fmtPlusMinus(margin)} rawValue={margin} formatValue={fmtPlusMinus} icon={Target} description="Average Point Differential" rank={stats.ranks?.rankMargin} delay={100} />
-                  <StatCard label="Pace" value={fmt(stats.scoring.pace)} rawValue={stats.scoring.pace} formatValue={fmt} icon={Gauge} description="Possessions Per 48 Minutes" rank={stats.ranks?.rankPace} delay={150} />
-                  <StatCard label="OFF RTG" value={fmt(stats.scoring.ortg)} rawValue={stats.scoring.ortg} formatValue={fmt} icon={TrendingUp} description="Points Per 100 Possessions" rank={stats.ranks?.rankOrtg} delay={200} />
-                  <StatCard label="DEF RTG" value={fmt(stats.scoring.drtg)} rawValue={stats.scoring.drtg} formatValue={fmt} icon={TrendingDown} description="Opponent Pts Per 100 Poss" rank={stats.ranks?.rankDrtg} delay={250} />
-                  <StatCard label="NET RTG" value={fmtPlusMinus(netRtg)} rawValue={netRtg} formatValue={fmtPlusMinus} icon={Target} description="OFF RTG - DEF RTG" rank={stats.ranks?.rankNetRtg} delay={300} />
+                  <StatCard label="PPG" value={fmt(stats.scoring.ppg)} rawValue={stats.scoring.ppg} formatValue={fmt} icon={Zap} description="Points Per Game" rank={stats.ranks?.rankPpg} teamCount={stats.rankedTeamCount} delay={0} />
+                  <StatCard label="Margin" value={fmtPlusMinus(margin)} rawValue={margin} formatValue={fmtPlusMinus} icon={Target} description="Average Point Differential" rank={stats.ranks?.rankMargin} teamCount={stats.rankedTeamCount} delay={50} />
+                  <StatCard label="Pace" value={fmt(stats.scoring.pace)} rawValue={stats.scoring.pace} formatValue={fmt} icon={Gauge} description="Possessions Per 48 Minutes" rank={stats.ranks?.rankPace} teamCount={stats.rankedTeamCount} delay={100} />
+                  <StatCard label="OFF RTG" value={fmt(stats.scoring.ortg)} rawValue={stats.scoring.ortg} formatValue={fmt} icon={TrendingUp} description="Points Per 100 Possessions" rank={stats.ranks?.rankOrtg} teamCount={stats.rankedTeamCount} delay={150} />
+                  <StatCard label="NET RTG" value={fmtPlusMinus(netRtg)} rawValue={netRtg} formatValue={fmtPlusMinus} icon={Target} description="OFF RTG - DEF RTG" rank={stats.ranks?.rankNetRtg} teamCount={stats.rankedTeamCount} delay={200} />
                 </div>
               </div>
 
@@ -118,11 +116,11 @@ export function StatsTab({ stats }: StatsTabProps) {
                   <div className="h-px flex-1 bg-border" />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <StatCard label="FG%" value={fmtPct(stats.shooting.fgPct)} rawValue={stats.shooting.fgPct} formatValue={fmtPct} icon={Target} description="Field Goal Percentage" rank={stats.ranks?.rankFgPct} detail={`${fmt(stats.shooting.fgMade, 0)} / ${fmt(stats.shooting.fgAttempted, 0)} this season`} delay={0} />
-                  <StatCard label="3P%" value={fmtPct(stats.shooting.threePct)} rawValue={stats.shooting.threePct} formatValue={fmtPct} icon={Crosshair} description="Three-Point Percentage" rank={stats.ranks?.rankThreePct} detail={`${fmt(stats.shooting.threeMade, 0)} / ${fmt(stats.shooting.threeAttempted, 0)} this season`} delay={50} />
-                  <StatCard label="FT%" value={fmtPct(stats.shooting.ftPct)} rawValue={stats.shooting.ftPct} formatValue={fmtPct} icon={Circle} description="Free Throw Percentage" rank={stats.ranks?.rankFtPct} detail={`${fmt(stats.shooting.ftMade, 0)} / ${fmt(stats.shooting.ftAttempted, 0)} this season`} delay={100} />
-                  <StatCard label="eFG%" value={fmtPct(stats.shooting.efgPct)} rawValue={stats.shooting.efgPct} formatValue={fmtPct} icon={Percent} description="Effective Field Goal %" rank={stats.ranks?.rankEfgPct} delay={150} />
-                  <StatCard label="TS%" value={fmtPct(stats.shooting.tsPct)} rawValue={stats.shooting.tsPct} formatValue={fmtPct} icon={Sparkles} description="True Shooting %" rank={stats.ranks?.rankTsPct} delay={200} />
+                  <StatCard label="FG%" value={fmtPct(stats.shooting.fgPct)} rawValue={stats.shooting.fgPct} formatValue={fmtPct} icon={Target} description="Field Goal Percentage" rank={stats.ranks?.rankFgPct} teamCount={stats.rankedTeamCount} detail={`${fmt(stats.shooting.fgMade, 0)} / ${fmt(stats.shooting.fgAttempted, 0)} this season`} delay={0} />
+                  <StatCard label="3P%" value={fmtPct(stats.shooting.threePct)} rawValue={stats.shooting.threePct} formatValue={fmtPct} icon={Crosshair} description="Three-Point Percentage" rank={stats.ranks?.rankThreePct} teamCount={stats.rankedTeamCount} detail={`${fmt(stats.shooting.threeMade, 0)} / ${fmt(stats.shooting.threeAttempted, 0)} this season`} delay={50} />
+                  <StatCard label="FT%" value={fmtPct(stats.shooting.ftPct)} rawValue={stats.shooting.ftPct} formatValue={fmtPct} icon={Circle} description="Free Throw Percentage" rank={stats.ranks?.rankFtPct} teamCount={stats.rankedTeamCount} detail={`${fmt(stats.shooting.ftMade, 0)} / ${fmt(stats.shooting.ftAttempted, 0)} this season`} delay={100} />
+                  <StatCard label="eFG%" value={fmtPct(stats.shooting.efgPct)} rawValue={stats.shooting.efgPct} formatValue={fmtPct} icon={Percent} description="Effective Field Goal %" rank={stats.ranks?.rankEfgPct} teamCount={stats.rankedTeamCount} delay={150} />
+                  <StatCard label="TS%" value={fmtPct(stats.shooting.tsPct)} rawValue={stats.shooting.tsPct} formatValue={fmtPct} icon={Sparkles} description="True Shooting %" rank={stats.ranks?.rankTsPct} teamCount={stats.rankedTeamCount} delay={200} />
                 </div>
               </div>
 
@@ -134,9 +132,9 @@ export function StatsTab({ stats }: StatsTabProps) {
                   <div className="h-px flex-1 bg-border" />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <StatCard label="RPG" value={fmt(stats.rebounding.rpg)} rawValue={stats.rebounding.rpg} formatValue={fmt} icon={Grab} description="Rebounds Per Game" rank={stats.ranks?.rankRpg} delay={0} />
-                  <StatCard label="ORPG" value={fmt(stats.rebounding.orpg)} rawValue={stats.rebounding.orpg} formatValue={fmt} icon={ArrowUpFromLine} description="Offensive Rebounds" rank={stats.ranks?.rankOrpg} delay={50} />
-                  <StatCard label="DRPG" value={fmt(stats.rebounding.drpg)} rawValue={stats.rebounding.drpg} formatValue={fmt} icon={ArrowDownToLine} description="Defensive Rebounds" rank={stats.ranks?.rankDrpg} delay={100} />
+                  <StatCard label="RPG" value={fmt(stats.rebounding.rpg)} rawValue={stats.rebounding.rpg} formatValue={fmt} icon={Grab} description="Rebounds Per Game" rank={stats.ranks?.rankRpg} teamCount={stats.rankedTeamCount} delay={0} />
+                  <StatCard label="ORPG" value={fmt(stats.rebounding.orpg)} rawValue={stats.rebounding.orpg} formatValue={fmt} icon={ArrowUpFromLine} description="Offensive Rebounds" rank={stats.ranks?.rankOrpg} teamCount={stats.rankedTeamCount} delay={50} />
+                  <StatCard label="DRPG" value={fmt(stats.rebounding.drpg)} rawValue={stats.rebounding.drpg} formatValue={fmt} icon={ArrowDownToLine} description="Defensive Rebounds" rank={stats.ranks?.rankDrpg} teamCount={stats.rankedTeamCount} delay={100} />
                   {stats.rebounding.orebPct > 0 && (
                     <StatCard label="OREB%" value={fmtPct(stats.rebounding.orebPct)} rawValue={stats.rebounding.orebPct} formatValue={fmtPct} description="Offensive Rebound Percentage" delay={150} />
                   )}
@@ -151,9 +149,9 @@ export function StatsTab({ stats }: StatsTabProps) {
                   <div className="h-px flex-1 bg-border" />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <StatCard label="APG" value={fmt(stats.playmaking.apg)} rawValue={stats.playmaking.apg} formatValue={fmt} icon={Users} description="Assists Per Game" rank={stats.ranks?.rankApg} delay={0} />
-                  <StatCard label="TOV" value={fmt(stats.playmaking.tovPg)} rawValue={stats.playmaking.tovPg} formatValue={fmt} icon={AlertTriangle} description="Turnovers Per Game" rank={stats.ranks?.rankTov} delay={50} />
-                  <StatCard label="AST/TO" value={fmt(stats.playmaking.astToRatio, 2)} rawValue={stats.playmaking.astToRatio} formatValue={(v) => fmt(v, 2)} icon={Repeat} description="Assist to Turnover Ratio" rank={stats.ranks?.rankAstToRatio} delay={100} />
+                  <StatCard label="APG" value={fmt(stats.playmaking.apg)} rawValue={stats.playmaking.apg} formatValue={fmt} icon={Users} description="Assists Per Game" rank={stats.ranks?.rankApg} teamCount={stats.rankedTeamCount} delay={0} />
+                  <StatCard label="TOV" value={fmt(stats.playmaking.tovPg)} rawValue={stats.playmaking.tovPg} formatValue={fmt} icon={AlertTriangle} description="Turnovers Per Game" rank={stats.ranks?.rankTov} teamCount={stats.rankedTeamCount} delay={50} />
+                  <StatCard label="AST/TO" value={fmt(stats.playmaking.astToRatio, 2)} rawValue={stats.playmaking.astToRatio} formatValue={(v) => fmt(v, 2)} icon={Repeat} description="Assist to Turnover Ratio" rank={stats.ranks?.rankAstToRatio} teamCount={stats.rankedTeamCount} delay={100} />
                 </div>
               </div>
 
@@ -165,13 +163,15 @@ export function StatsTab({ stats }: StatsTabProps) {
                   <div className="h-px flex-1 bg-border" />
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <StatCard label="SPG" value={fmt(stats.defense.spg)} rawValue={stats.defense.spg} formatValue={fmt} icon={Hand} description="Steals Per Game" rank={stats.ranks?.rankSpg} delay={0} />
-                  <StatCard label="BPG" value={fmt(stats.defense.bpg)} rawValue={stats.defense.bpg} formatValue={fmt} icon={Shield} description="Blocks Per Game" rank={stats.ranks?.rankBpg} delay={50} />
+                  <StatCard label="OPP PPG" value={fmt(stats.scoring.oppPpg)} rawValue={stats.scoring.oppPpg} formatValue={fmt} icon={Shield} description="Opponent Points Per Game" rank={stats.ranks?.rankOppPpg} teamCount={stats.rankedTeamCount} delay={0} />
+                  <StatCard label="DEF RTG" value={fmt(stats.scoring.drtg)} rawValue={stats.scoring.drtg} formatValue={fmt} icon={TrendingDown} description="Opponent Pts Per 100 Poss" rank={stats.ranks?.rankDrtg} teamCount={stats.rankedTeamCount} delay={50} />
+                  <StatCard label="SPG" value={fmt(stats.defense.spg)} rawValue={stats.defense.spg} formatValue={fmt} icon={Hand} description="Steals Per Game" rank={stats.ranks?.rankSpg} teamCount={stats.rankedTeamCount} delay={100} />
+                  <StatCard label="BPG" value={fmt(stats.defense.bpg)} rawValue={stats.defense.bpg} formatValue={fmt} icon={Shield} description="Blocks Per Game" rank={stats.ranks?.rankBpg} teamCount={stats.rankedTeamCount} delay={150} />
                   {stats.defense.oppFgPct > 0 && (
-                    <StatCard label="OPP FG%" value={fmtPct(stats.defense.oppFgPct)} rawValue={stats.defense.oppFgPct} formatValue={fmtPct} description="Opponent Field Goal %" delay={100} />
+                    <StatCard label="OPP FG%" value={fmtPct(stats.defense.oppFgPct)} rawValue={stats.defense.oppFgPct} formatValue={fmtPct} description="Opponent Field Goal %" delay={200} />
                   )}
                   {stats.defense.oppThreePct > 0 && (
-                    <StatCard label="OPP 3P%" value={fmtPct(stats.defense.oppThreePct)} rawValue={stats.defense.oppThreePct} formatValue={fmtPct} description="Opponent Three-Point %" delay={150} />
+                    <StatCard label="OPP 3P%" value={fmtPct(stats.defense.oppThreePct)} rawValue={stats.defense.oppThreePct} formatValue={fmtPct} description="Opponent Three-Point %" delay={250} />
                   )}
                 </div>
               </div>

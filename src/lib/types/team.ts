@@ -157,6 +157,9 @@ export interface TeamStats {
     oppThreePct: number;
   };
 
+  // Number of teams in the league rankings (to find the bottom five)
+  rankedTeamCount?: number;
+
   // Rankings (league position, from Convex DB)
   ranks?: {
     // Scoring ranks

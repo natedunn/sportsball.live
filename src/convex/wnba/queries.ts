@@ -157,12 +157,23 @@ export const getGameEvent = query({
 export const getTeam = query({
 	args: { espnTeamId: v.string(), season: v.string() },
 	handler: async (ctx, args) => {
-		return await ctx.db
+		const team = await ctx.db
 			.query("wnbaTeam")
 			.withIndex("by_espnTeamId_season", (q) =>
 				q.eq("espnTeamId", args.espnTeamId).eq("season", args.season),
 			)
 			.unique();
+		if (!team) return null;
+
+		// Number of teams in the league rankings (same filter as updateLeagueRankings),
+		// so the UI can tell which ranks are in the bottom five
+		const seasonTeams = await ctx.db
+			.query("wnbaTeam")
+			.withIndex("by_season", (q) => q.eq("season", args.season))
+			.collect();
+		const rankedTeamCount = seasonTeams.filter((t) => (t.offensiveRating ?? 0) > 0).length;
+
+		return { ...team, rankedTeamCount };
 	},
 });
 

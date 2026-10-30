@@ -26,3 +26,19 @@ export function getOrdinalSuffix(n: number): string {
   const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
+
+export type RankTier = "top" | "bottom";
+
+/**
+ * Top ten in the league, or bottom five when the number of ranked teams is known.
+ * Top ten wins if the two overlap (leagues with fewer than 15 teams).
+ */
+export function getRankTier(
+  rank: number | undefined,
+  teamCount: number | undefined,
+): RankTier | undefined {
+  if (rank === undefined || rank <= 0) return undefined;
+  if (rank <= 10) return "top";
+  if (teamCount !== undefined && teamCount > 0 && rank > teamCount - 5) return "bottom";
+  return undefined;
+}

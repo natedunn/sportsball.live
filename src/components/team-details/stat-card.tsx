@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { getOrdinalSuffix } from "./format-utils";
+import { getOrdinalSuffix, getRankTier } from "./format-utils";
 import { AnimatedValue } from "./animated-value";
 import { useHasTabAnimated } from "./animation-context";
 
@@ -12,6 +12,7 @@ interface StatCardProps {
 	detail?: string; // Secondary detail line (e.g., "35.2 / 82.1 per game")
 	icon?: React.ComponentType<{ className?: string }>;
 	rank?: number; // If provided, generates subtitle like "3rd in league"
+	teamCount?: number; // Teams in the league rankings; enables the bottom-five highlight
 	highlight?: boolean; // Force highlight regardless of rank
 	rawValue?: number; // If provided with formatValue, animates counting
 	formatValue?: (v: number) => string;
@@ -26,12 +27,15 @@ export function StatCard({
 	detail,
 	icon: Icon,
 	rank,
+	teamCount,
 	highlight: forceHighlight,
 	rawValue,
 	formatValue,
 	delay,
 }: StatCardProps) {
-	const isTopTen = rank !== undefined && rank > 0 && rank <= 10;
+	const tier = getRankTier(rank, teamCount);
+	const isTopTen = tier === "top";
+	const isBottomFive = tier === "bottom" && !forceHighlight;
 	const isHighlighted = forceHighlight || isTopTen;
 	const hasTabAnimated = useHasTabAnimated();
 	// Lock in at mount time — tab switches don't re-trigger
@@ -55,6 +59,7 @@ export function StatCard({
 			className={cn(
 				"group relative rounded-xl border bg-muted p-4 hover:shadow-md",
 				isHighlighted && "bg-primary/5 border-primary/20",
+				isBottomFive && "bg-destructive/5 border-destructive/20",
 				animate
 					? cn(
 							"transition-[opacity,transform,box-shadow] duration-700 ease-out",
@@ -69,16 +74,25 @@ export function StatCard({
 					className={cn(
 						"absolute -top-2 -right-2 h-8 w-8 rounded-full border bg-background flex items-center justify-center overflow-hidden",
 						isHighlighted && "border-primary/30",
+						isBottomFive && "border-destructive/30",
 					)}
 				>
 					{/* Primary overlay for highlighted */}
 					{isHighlighted && (
 						<div className="absolute inset-0 bg-primary/20" />
 					)}
+					{/* Destructive overlay for bottom five */}
+					{isBottomFive && (
+						<div className="absolute inset-0 bg-destructive/20" />
+					)}
 					<Icon
 						className={cn(
 							"h-4 w-4 relative",
-							isHighlighted ? "text-primary" : "text-muted-foreground",
+							isHighlighted
+								? "text-primary"
+								: isBottomFive
+									? "text-destructive"
+									: "text-muted-foreground",
 						)}
 					/>
 				</div>
@@ -103,7 +117,11 @@ export function StatCard({
 				<div
 					className={cn(
 						"text-xs mt-1 tabular-nums",
-						isTopTen ? "text-primary font-medium" : "text-muted-foreground",
+						isTopTen
+							? "text-primary font-medium"
+							: isBottomFive
+								? "text-destructive font-medium"
+								: "text-muted-foreground",
 					)}
 				>
 					{displaySubtitle}

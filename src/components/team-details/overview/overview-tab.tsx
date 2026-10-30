@@ -44,6 +44,7 @@ export function OverviewTab({
   // Merge stats from the stats query if available
   const quickStats = stats?.scoring ?? overview.stats;
   const ranks = stats?.ranks;
+  const teamCount = stats?.rankedTeamCount;
 
   // Fade-up animation for content below stats (only on first tab visit)
   const hasTabAnimated = useHasTabAnimated();
@@ -61,11 +62,11 @@ export function OverviewTab({
       <section>
         <SectionHeader icon={BarChart3} title="Team Stats" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatCard label="PPG" value={fmt(quickStats.ppg)} rawValue={quickStats.ppg} formatValue={fmt} icon={Zap} description="Points Per Game" rank={ranks?.rankPpg} delay={0} />
-          <StatCard label="OPP PPG" value={fmt(quickStats.oppPpg)} rawValue={quickStats.oppPpg} formatValue={fmt} icon={Shield} description="Opponent Points Per Game" rank={ranks?.rankOppPpg} delay={50} />
-          <StatCard label="OFF RTG" value={fmt(quickStats.ortg)} rawValue={quickStats.ortg} formatValue={fmt} icon={TrendingUp} description="Offensive Rating" rank={ranks?.rankOrtg} delay={100} />
-          <StatCard label="DEF RTG" value={fmt(quickStats.drtg)} rawValue={quickStats.drtg} formatValue={fmt} icon={TrendingDown} description="Defensive Rating" rank={ranks?.rankDrtg} delay={150} />
-          <StatCard label="NET RTG" value={fmtPlusMinus(quickStats.netRtg)} rawValue={quickStats.netRtg} formatValue={fmtPlusMinus} icon={Target} description="Net Rating" rank={ranks?.rankNetRtg} delay={200} />
+          <StatCard label="PPG" value={fmt(quickStats.ppg)} rawValue={quickStats.ppg} formatValue={fmt} icon={Zap} description="Points Per Game" rank={ranks?.rankPpg} teamCount={teamCount} delay={0} />
+          <StatCard label="OPP PPG" value={fmt(quickStats.oppPpg)} rawValue={quickStats.oppPpg} formatValue={fmt} icon={Shield} description="Opponent Points Per Game" rank={ranks?.rankOppPpg} teamCount={teamCount} delay={50} />
+          <StatCard label="OFF RTG" value={fmt(quickStats.ortg)} rawValue={quickStats.ortg} formatValue={fmt} icon={TrendingUp} description="Offensive Rating" rank={ranks?.rankOrtg} teamCount={teamCount} delay={100} />
+          <StatCard label="DEF RTG" value={fmt(quickStats.drtg)} rawValue={quickStats.drtg} formatValue={fmt} icon={TrendingDown} description="Defensive Rating" rank={ranks?.rankDrtg} teamCount={teamCount} delay={150} />
+          <StatCard label="NET RTG" value={fmtPlusMinus(quickStats.netRtg)} rawValue={quickStats.netRtg} formatValue={fmtPlusMinus} icon={Target} description="Net Rating" rank={ranks?.rankNetRtg} teamCount={teamCount} delay={200} />
         </div>
       </section>
 

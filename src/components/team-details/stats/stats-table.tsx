@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
-import { fmt, fmtPct, fmtPlusMinus, getOrdinalSuffix } from "../format-utils";
+import { fmt, fmtPct, fmtPlusMinus, getOrdinalSuffix, getRankTier } from "../format-utils";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { TeamStats } from "@/lib/types/team";
 
@@ -25,11 +25,9 @@ function buildAllRows(stats: TeamStats): StatRow[] {
 
   return [
     { category: "Scoring", label: "Points Per Game", abbr: "PPG", value: fmt(stats.scoring.ppg), rank: stats.ranks?.rankPpg },
-    { category: "Scoring", label: "Opponent Points Per Game", abbr: "OPP PPG", value: fmt(stats.scoring.oppPpg), rank: stats.ranks?.rankOppPpg },
     { category: "Scoring", label: "Average Point Differential", abbr: "Margin", value: fmtPlusMinus(margin), rank: stats.ranks?.rankMargin },
     { category: "Scoring", label: "Possessions Per 48 Minutes", abbr: "Pace", value: fmt(stats.scoring.pace), rank: stats.ranks?.rankPace },
     { category: "Scoring", label: "Points Per 100 Possessions", abbr: "OFF RTG", value: fmt(stats.scoring.ortg), rank: stats.ranks?.rankOrtg },
-    { category: "Scoring", label: "Opponent Pts Per 100 Poss", abbr: "DEF RTG", value: fmt(stats.scoring.drtg), rank: stats.ranks?.rankDrtg },
     { category: "Scoring", label: "Net Rating", abbr: "NET RTG", value: fmtPlusMinus(netRtg), rank: stats.ranks?.rankNetRtg },
     { category: "Shooting", label: "Field Goal Percentage", abbr: "FG%", value: fmtPct(stats.shooting.fgPct), rank: stats.ranks?.rankFgPct },
     { category: "Shooting", label: "Three-Point Percentage", abbr: "3P%", value: fmtPct(stats.shooting.threePct), rank: stats.ranks?.rankThreePct },
@@ -45,6 +43,8 @@ function buildAllRows(stats: TeamStats): StatRow[] {
     { category: "Playmaking", label: "Assists Per Game", abbr: "APG", value: fmt(stats.playmaking.apg), rank: stats.ranks?.rankApg },
     { category: "Playmaking", label: "Turnovers Per Game", abbr: "TOV", value: fmt(stats.playmaking.tovPg), rank: stats.ranks?.rankTov },
     { category: "Playmaking", label: "Assist to Turnover Ratio", abbr: "AST/TO", value: fmt(stats.playmaking.astToRatio, 2), rank: stats.ranks?.rankAstToRatio },
+    { category: "Defense", label: "Opponent Points Per Game", abbr: "OPP PPG", value: fmt(stats.scoring.oppPpg), rank: stats.ranks?.rankOppPpg },
+    { category: "Defense", label: "Opponent Pts Per 100 Poss", abbr: "DEF RTG", value: fmt(stats.scoring.drtg), rank: stats.ranks?.rankDrtg },
     { category: "Defense", label: "Steals Per Game", abbr: "SPG", value: fmt(stats.defense.spg), rank: stats.ranks?.rankSpg },
     { category: "Defense", label: "Blocks Per Game", abbr: "BPG", value: fmt(stats.defense.bpg), rank: stats.ranks?.rankBpg },
     ...(stats.defense.oppFgPct > 0
@@ -116,7 +116,7 @@ export function StatsTable({ stats }: StatsTableProps) {
           </thead>
           <tbody>
             {sortedRows.map((row) => (
-              <StatRowTr key={row.abbr} row={row} />
+              <StatRowTr key={row.abbr} row={row} teamCount={stats.rankedTeamCount} />
             ))}
           </tbody>
         </table>
@@ -125,13 +125,15 @@ export function StatsTable({ stats }: StatsTableProps) {
   );
 }
 
-function StatRowTr({ row }: { row: StatRow }) {
-  const isTopTen = row.rank !== undefined && row.rank > 0 && row.rank <= 10;
+function StatRowTr({ row, teamCount }: { row: StatRow; teamCount?: number }) {
+  const tier = getRankTier(row.rank, teamCount);
+  const isTopTen = tier === "top";
+  const isBottomFive = tier === "bottom";
   return (
     <tr
       className={cn(
         "border-b border-border last:border-b-0 transition-colors",
-        isTopTen ? "bg-primary/5" : "hover:bg-muted/30",
+        isTopTen ? "bg-primary/5" : isBottomFive ? "bg-destructive/5" : "hover:bg-muted/30",
       )}
     >
       <td className="px-4 py-2.5">
@@ -145,7 +147,12 @@ function StatRowTr({ row }: { row: StatRow }) {
       </td>
       <td className="px-4 py-2.5 text-right tabular-nums">
         {row.rank && row.rank > 0 ? (
-          <span className={cn(isTopTen && "text-primary font-medium")}>
+          <span
+            className={cn(
+              isTopTen && "text-primary font-medium",
+              isBottomFive && "text-destructive font-medium",
+            )}
+          >
             {getOrdinalSuffix(row.rank)}
           </span>
         ) : (

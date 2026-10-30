@@ -183,6 +183,9 @@ export default defineSchema({
 		venue: v.optional(v.string()),
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
+		// Each team's overall record (W-L) as of this game, as ESPN reports it
+		homeTeamRecord: v.optional(v.string()),
+		awayTeamRecord: v.optional(v.string()),
 		lastFetchedAt: v.optional(v.number()),
 		syncLockUntil: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
@@ -401,6 +404,9 @@ export default defineSchema({
 		venue: v.optional(v.string()),
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
+		// Each team's overall record (W-L) as of this game, as ESPN reports it
+		homeTeamRecord: v.optional(v.string()),
+		awayTeamRecord: v.optional(v.string()),
 		lastFetchedAt: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
 		updatedAt: v.number(),
@@ -614,6 +620,9 @@ export default defineSchema({
 		venue: v.optional(v.string()),
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
+		// Each team's overall record (W-L) as of this game, as ESPN reports it
+		homeTeamRecord: v.optional(v.string()),
+		awayTeamRecord: v.optional(v.string()),
 		lastFetchedAt: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
 		updatedAt: v.number(),

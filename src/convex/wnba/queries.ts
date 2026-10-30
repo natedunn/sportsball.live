@@ -804,3 +804,22 @@ export const getPlayerEventByGameAndPlayer = internalQuery({
 		return events.find((e) => e.playerId === args.playerId) ?? null;
 	},
 });
+
+// Dates (YYYYMMDD) with a completed game missing its as-of-game records or its
+// ESPN season type (games stored before we kept them)
+export const getDatesMissingRecords = internalQuery({
+	args: { season: v.string() },
+	handler: async (ctx, args) => {
+		const games = await ctx.db
+			.query("wnbaGameEvent")
+			.withIndex("by_season", (q) => q.eq("season", args.season))
+			.collect();
+		const dates = new Set<string>();
+		for (const game of games) {
+			if (game.eventStatus !== "completed") continue;
+			if (game.homeTeamRecord && game.awayTeamRecord && game.seasonType !== undefined) continue;
+			dates.add(game.gameDate);
+		}
+		return [...dates].sort();
+	},
+});

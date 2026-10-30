@@ -193,6 +193,25 @@ export interface ApiRosterResponse {
 	}>;
 }
 
+export interface ApiTeamScheduleEvent {
+	id: string;
+	date: string;
+	seasonType?: { type?: number };
+	competitions?: Array<{
+		status?: { type?: { completed?: boolean } };
+		competitors?: Array<{
+			homeAway?: "home" | "away";
+			team?: { id?: string };
+			score?: { value?: number };
+			winner?: boolean;
+		}>;
+	}>;
+}
+
+export interface ApiTeamScheduleResponse {
+	events?: ApiTeamScheduleEvent[];
+}
+
 // ============================================================
 // Parsed output types (clean data for Convex mutations)
 // ============================================================
@@ -382,6 +401,74 @@ export function parsePlayerBoxScores(boxscorePlayers: ApiBoxscorePlayers | undef
 			plusMinus: plusMinus !== undefined && !isNaN(plusMinus) ? plusMinus : undefined,
 		};
 	});
+}
+
+/**
+ * A competitor's overall record ("W-L") as of the game. Scoreboard competitors
+ * carry it as `records`, summary header competitors as `record`.
+ */
+export function getTotalRecord(
+	competitor:
+		| {
+				records?: Array<{ type?: string; summary?: string }>;
+				record?: Array<{ type?: string; summary?: string }>;
+		  }
+		| undefined,
+): string | undefined {
+	const records = competitor?.records ?? competitor?.record;
+	return records?.find((r) => r.type === "total")?.summary || undefined;
+}
+
+export interface TeamScheduleRecord {
+	espnGameId: string;
+	homeAway: "home" | "away";
+	/** The team's record ("W-L") after this game */
+	record: string;
+	seasonType?: number;
+}
+
+/**
+ * Count a team's record as of each finished game on its ESPN schedule. Each
+ * season type (Tip-Off Tournament, regular season, ...) keeps its own record,
+ * as ESPN reports them.
+ */
+export function getRecordsFromTeamSchedule(
+	espnTeamId: string,
+	events: ApiTeamScheduleEvent[],
+): TeamScheduleRecord[] {
+	const tallies = new Map<number, { wins: number; losses: number }>();
+	const records: TeamScheduleRecord[] = [];
+	const ordered = [...events].sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+
+	for (const event of ordered) {
+		const competition = event.competitions?.[0];
+		if (!competition?.status?.type?.completed) continue;
+		const team = competition.competitors?.find((c) => c.team?.id === espnTeamId);
+		const opponent = competition.competitors?.find((c) => c.team?.id !== espnTeamId);
+		if (!team?.homeAway || !opponent) continue;
+
+		const won =
+			team.winner ??
+			(team.score?.value !== undefined && opponent.score?.value !== undefined
+				? team.score.value > opponent.score.value
+				: undefined);
+		if (won === undefined) continue;
+
+		const seasonType = event.seasonType?.type;
+		const tally = tallies.get(seasonType ?? 0) ?? { wins: 0, losses: 0 };
+		if (won) tally.wins += 1;
+		else tally.losses += 1;
+		tallies.set(seasonType ?? 0, tally);
+
+		records.push({
+			espnGameId: event.id,
+			homeAway: team.homeAway,
+			record: `${tally.wins}-${tally.losses}`,
+			seasonType,
+		});
+	}
+
+	return records;
 }
 
 /** Helper to get a stat value from standings entry stats array */

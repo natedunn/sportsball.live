@@ -3,27 +3,36 @@ import { action, internalAction } from "../_generated/server";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import {
+	getCompetitionYear,
 	getCurrentSeason,
 	getTodayDate,
 	formatGameDate,
 	mapApiStateToEventStatus,
 	sleep,
 	getDateRange,
+	getScheduleSyncRange,
 	parseEspnSeason,
 	seasonFromEspnYear,
 } from "../shared/seasonHelpers";
-import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
+import {
+	parseTeamBoxScore,
+	parsePlayerBoxScores,
+	getTotalRecord,
+	getRecordsFromTeamSchedule,
+} from "../shared/apiParser";
 import type {
 	ApiScoreboardResponse,
 	ApiGameSummaryResponse,
 	ApiStandingsResponse,
 	ApiStandingsTeamEntry,
 	ApiRosterResponse,
+	ApiTeamScheduleResponse,
 } from "../shared/apiParser";
 
 // Bootstrap constants
 const BACKFILL_DELAY_MS = 2000;
 const BACKFILL_GAME_DELAY_MS = 3000;
+const RECORD_BATCH_SIZE = 200;
 const ROSTER_TEAMS_PER_CHUNK = 5;
 // Give ESPN a minute to roll a final into the standings before refreshing
 const STANDINGS_REFRESH_DELAY_MS = 60_000;
@@ -500,6 +509,8 @@ export const discoverTodaysGames = internalAction({
 				venue: competition.venue?.fullName,
 				homeScore: parseApiScore(homeComp.score),
 				awayScore: parseApiScore(awayComp.score),
+				homeTeamRecord: getTotalRecord(homeComp),
+				awayTeamRecord: getTotalRecord(awayComp),
 				// Fresh check budget for the status check scheduled below
 				checkCount: eventStatus === "scheduled" ? 0 : undefined,
 			});
@@ -753,6 +764,8 @@ export const checkGameStatusV2 = internalAction({
 				statusDetail: detail,
 				homeScore,
 				awayScore,
+				homeTeamRecord: getTotalRecord(homeComp),
+				awayTeamRecord: getTotalRecord(awayComp),
 				lastFetchedAt: Date.now(),
 			});
 
@@ -1026,6 +1039,8 @@ export const syncLiveGameData = internalAction({
 			venue: competition?.venue?.fullName,
 			homeScore: scoresAreComplete ? homeScore : undefined,
 			awayScore: scoresAreComplete ? awayScore : undefined,
+			homeTeamRecord: getTotalRecord(homeComp),
+			awayTeamRecord: getTotalRecord(awayComp),
 			lastFetchedAt: Date.now(),
 		});
 
@@ -1399,6 +1414,8 @@ export const backfillDateChunk = internalAction({
 					venue: competition.venue?.fullName,
 					homeScore: parseApiScore(homeComp.score),
 					awayScore: parseApiScore(awayComp.score),
+					homeTeamRecord: getTotalRecord(homeComp),
+					awayTeamRecord: getTotalRecord(awayComp),
 				});
 
 				if (state === "post") {
@@ -1435,28 +1452,84 @@ export const backfillDateChunk = internalAction({
 	},
 });
 
-// Standalone: backfill only upcoming scheduled games (today → season end)
-export const backfillUpcomingSchedule = internalAction({
+// Daily: store the schedule from yesterday through the season's end so the
+// scoreboard can page ahead, and give completed games their as-of-game records.
+// Also safe to run by hand.
+export const syncSchedule = internalAction({
 	args: {},
 	handler: async (ctx) => {
 		const season = await getCurrentSeasonName(ctx);
-		const startDate = getTodayDate();
-		let endDate = await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season));
-		// Before the new season's first game is stored, the resolved season can
-		// still be last season (already over); use the calendar season instead.
-		if (endDate < startDate) {
-			endDate = getSeasonEndDate(getCurrentSeason());
-		}
+		const { startDate, endDate } = getScheduleSyncRange({
+			seasonEndDate: await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season)),
+			calendarSeasonEndDate: getSeasonEndDate(getCurrentSeason()),
+		});
 		const dates = getDateRange(startDate, endDate);
 
-		console.log(`[GLEAGUE Schedule] Backfilling upcoming schedule: ${startDate} to ${endDate} (${dates.length} dates)`);
+		console.log(`[GLEAGUE Schedule] Syncing schedule: ${startDate} to ${endDate} (${dates.length} dates)`);
 
 		await ctx.scheduler.runAfter(100, internal.gleague.actions.backfillDateChunk, {
 			dates,
 			offset: 0,
 		});
+
+		// ESPN's G-League records aren't as of the game; count them from team schedules
+		await ctx.scheduler.runAfter(100, internal.gleague.actions.syncRecordsFromSchedules, { season });
 	},
 });
+
+// ESPN's G-League scoreboards and summaries report each team's final record on
+// every date rather than its record as of the game. Count each team's results
+// from its ESPN schedule instead and store them on every game of the season.
+export const syncRecordsFromSchedules = internalAction({
+	args: { season: v.string() },
+	handler: async (ctx, args) => {
+		const baseUrl = getSiteApi();
+		const espnYear = getCompetitionYear("gleague", args.season);
+		const teams = await ctx.runQuery(internal.gleague.queries.getAllTeamsInternal, {
+			season: args.season,
+		});
+
+		const byGame = new Map<
+			string,
+			{ homeTeamRecord?: string; awayTeamRecord?: string; seasonType?: number }
+		>();
+		for (const team of teams) {
+			try {
+				const res = await fetch(`${baseUrl}/teams/${team.espnTeamId}/schedule?season=${espnYear}`, {
+					headers: { "Content-Type": "application/json" },
+				});
+				if (!res.ok) {
+					console.error(`[GLEAGUE Records] Schedule fetch failed for team ${team.espnTeamId}: ${res.status}`);
+					continue;
+				}
+				const schedule = (await res.json()) as ApiTeamScheduleResponse;
+				for (const entry of getRecordsFromTeamSchedule(team.espnTeamId, schedule.events ?? [])) {
+					const game = byGame.get(entry.espnGameId) ?? {};
+					game[entry.homeAway === "home" ? "homeTeamRecord" : "awayTeamRecord"] = entry.record;
+					game.seasonType = entry.seasonType;
+					byGame.set(entry.espnGameId, game);
+				}
+			} catch (error) {
+				console.error(`[GLEAGUE Records] Schedule fetch error for team ${team.espnTeamId}:`, error);
+			}
+			await sleep(BACKFILL_DELAY_MS);
+		}
+
+		const games = [...byGame].flatMap(([espnGameId, { homeTeamRecord, awayTeamRecord, seasonType }]) =>
+			homeTeamRecord && awayTeamRecord
+				? [{ espnGameId, homeTeamRecord, awayTeamRecord, seasonType }]
+				: [],
+		);
+		let patched = 0;
+		for (let i = 0; i < games.length; i += RECORD_BATCH_SIZE) {
+			patched += await ctx.runMutation(internal.gleague.mutations.setGameRecords, {
+				games: games.slice(i, i + RECORD_BATCH_SIZE),
+			});
+		}
+		console.log(`[GLEAGUE Records] ${args.season}: ${games.length} games counted from ${teams.length} team schedules, ${patched} updated`);
+	},
+});
+
 
 // Step 4: Recalculate all averages and rankings
 export const recalculateAll = internalAction({

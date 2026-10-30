@@ -51,6 +51,31 @@ crons.daily(
 	{},
 );
 
+// Store the schedule from yesterday through the season's end (9:30 AM UTC,
+// after the standings refresh). Discovery only adds today's games, so without
+// this the scoreboard has nothing for upcoming dates. Re-syncing yesterday
+// also stores each finished game's settled as-of-game records.
+crons.daily(
+	"sync-nba-schedule",
+	{ hourUTC: 9, minuteUTC: 30 },
+	internal.nba.actions.syncSchedule,
+	{},
+);
+
+crons.daily(
+	"sync-wnba-schedule",
+	{ hourUTC: 9, minuteUTC: 35 },
+	internal.wnba.actions.syncSchedule,
+	{},
+);
+
+crons.daily(
+	"sync-gleague-schedule",
+	{ hourUTC: 9, minuteUTC: 40 },
+	internal.gleague.actions.syncSchedule,
+	{},
+);
+
 // Reconcile season player stats from ESPN Core to keep non-live stats accurate.
 crons.daily(
 	"reconcile-nba-player-stats",

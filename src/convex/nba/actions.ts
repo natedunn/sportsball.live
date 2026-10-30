@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
-import { getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, getScheduleSyncRange, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
+import { getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, getScheduleSyncRange, getNextSeason, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord, parseRosterPlayer, parseCoreDraft } from "../shared/apiParser";
 import type { Id } from "../_generated/dataModel";
 import type {
@@ -1157,18 +1157,23 @@ async function fetchPlayerDraft(espnPlayerId: string): Promise<PlayerDraft | nul
 }
 
 // Refresh every team's roster from ESPN: bios (birthdates included), trades and
-// signings, and players who've left. Only while the current season runs, so a
-// finished season keeps its final rosters.
+// signings, and players who've left. Once the current season ends, it keeps its
+// final rosters and the sync fills the next season's instead, as soon as ESPN's
+// rosters are for that season, so its team pages aren't empty on opening day.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function runRosterSync(ctx: any) {
-	const season = await getCurrentSeasonName(ctx);
+	const currentSeason = await getCurrentSeasonName(ctx);
 	const seasonEnd = await getSeasonDate(ctx, "nba", "seasonEnd");
-	if (seasonEnd !== null && getTodayDate() > seasonEnd) {
-		console.log(`[NBA Rosters] Season ${season} ended ${seasonEnd}; keeping its final rosters`);
-		return { season, skipped: true, teams: 0, players: 0, flagged: 0 };
-	}
+	const season =
+		seasonEnd !== null && getTodayDate() > seasonEnd
+			? getNextSeason("nba", currentSeason)
+			: currentSeason;
 
 	const teams = await ctx.runQuery(internal.nba.queries.getAllTeamsInternal, { season });
+	if (teams.length === 0) {
+		console.log(`[NBA Rosters] No ${season} teams stored yet; nothing to sync`);
+		return { season, skipped: true, teams: 0, players: 0, flagged: 0 };
+	}
 	// Drafts never change, so each player's is fetched once
 	const knownDrafts = new Set<string>(
 		(await ctx.runQuery(internal.nba.queries.getAllPlayersInternal, { season }))

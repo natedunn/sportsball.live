@@ -3,6 +3,7 @@ import {
 	compareSeasons,
 	countsTowardSeasonAverages,
 	formatGameDate,
+	getNextSeason,
 	getScheduleSyncRange,
 	getTodayDate,
 	parseEspnSeason,
@@ -154,5 +155,17 @@ describe("countsTowardSeasonAverages", () => {
 	it("skips missing games", () => {
 		expect(countsTowardSeasonAverages(null)).toBe(false);
 		expect(countsTowardSeasonAverages(undefined)).toBe(false);
+	});
+});
+
+describe("getNextSeason", () => {
+	it("steps two-year seasons forward", () => {
+		expect(getNextSeason("nba", "2026-27")).toBe("2027-28");
+		expect(getNextSeason("gleague", "2025-26")).toBe("2026-27");
+		expect(getNextSeason("nba", "1999-00")).toBe("2000-01");
+	});
+
+	it("steps WNBA seasons a calendar year forward", () => {
+		expect(getNextSeason("wnba", "2026")).toBe("2027");
 	});
 });

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { PlayerProfileData } from "@/lib/players/mock-data";
-import { getPlayerAge } from "@/lib/players/mock-data";
+import { formatExperience, getPlayerAge } from "@/lib/players/mock-data";
 
 interface PlayerHeaderProps {
 	player: PlayerProfileData;
@@ -31,6 +31,7 @@ function StatusBadge({ status }: { status: PlayerProfileData["bio"]["status"] })
 
 export function PlayerHeader({ player }: PlayerHeaderProps) {
 	const age = getPlayerAge(player.bio);
+	const experience = formatExperience(player.bio.experienceYears);
 	const initials = player.name
 		.split(" ")
 		.map((part) => part[0])
@@ -67,6 +68,12 @@ export function PlayerHeader({ player }: PlayerHeaderProps) {
 									<>
 										<span className="text-muted-foreground/50">|</span>
 										<span className="text-muted-foreground">Age {age}</span>
+									</>
+								)}
+								{experience !== undefined && (
+									<>
+										<span className="text-muted-foreground/50">|</span>
+										<span className="text-muted-foreground">{experience}</span>
 									</>
 								)}
 								<span className="text-muted-foreground/50">|</span>

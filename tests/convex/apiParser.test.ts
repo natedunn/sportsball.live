@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
 	getRecordsFromTeamSchedule,
 	getTotalRecord,
+	parseCoreDraft,
 	parseRosterPlayer,
 	type ApiTeamScheduleEvent,
 } from "@convex/shared/apiParser";
@@ -162,5 +163,35 @@ describe("parseRosterPlayer", () => {
 
 	it("keeps a rookie's zero years of experience", () => {
 		expect(parseRosterPlayer({ id: "1", displayName: "Rookie", experience: { years: 0 } }).experience).toBe("0");
+	});
+});
+
+describe("parseCoreDraft", () => {
+	it("reads year, round, pick and the drafting team", () => {
+		expect(
+			parseCoreDraft({
+				draft: {
+					year: 2024,
+					round: 1,
+					selection: 28,
+					team: {
+						$ref: "http://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2024/teams/7?lang=en&region=us",
+					},
+				},
+			}),
+		).toEqual({ year: 2024, round: 1, pick: 28, teamEspnId: "7" });
+	});
+
+	it("returns null for undrafted players", () => {
+		expect(parseCoreDraft({})).toBeNull();
+		expect(parseCoreDraft({ draft: null })).toBeNull();
+	});
+
+	it("leaves out the team when ESPN doesn't link one", () => {
+		expect(parseCoreDraft({ draft: { year: 2016, round: 1, selection: 1 } })).toEqual({
+			year: 2016,
+			round: 1,
+			pick: 1,
+		});
 	});
 });

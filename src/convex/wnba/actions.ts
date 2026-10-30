@@ -14,7 +14,7 @@ import {
 	parseEspnSeason,
 	seasonFromEspnYear,
 } from "../shared/seasonHelpers";
-import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord, parseRosterPlayer } from "../shared/apiParser";
+import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord, parseRosterPlayer, parseCoreDraft } from "../shared/apiParser";
 import type {
 	ApiEventSeason,
 	ApiScoreboardResponse,
@@ -23,6 +23,8 @@ import type {
 	ApiStandingsTeamEntry,
 	ApiRosterResponse,
 	ApiSiteRosterResponse,
+	ApiCoreAthleteResponse,
+	PlayerDraft,
 } from "../shared/apiParser";
 
 // Bootstrap constants
@@ -1084,6 +1086,21 @@ async function fetchSiteRoster(espnTeamId: string): Promise<ApiSiteRosterRespons
 	return (await response.json()) as ApiSiteRosterResponse;
 }
 
+// A player's draft from ESPN Core: null when undrafted, undefined when the
+// fetch fails (retried on the next sync)
+async function fetchPlayerDraft(espnPlayerId: string): Promise<PlayerDraft | null | undefined> {
+	try {
+		const response = await fetch(`${getCoreApi()}/athletes/${espnPlayerId}?lang=en&region=us`, {
+			headers: { "Content-Type": "application/json" },
+		});
+		if (!response.ok) return undefined;
+		return parseCoreDraft((await response.json()) as ApiCoreAthleteResponse);
+	} catch (error) {
+		console.error(`[WNBA Rosters] Draft fetch failed for player ${espnPlayerId}:`, error);
+		return undefined;
+	}
+}
+
 // Refresh every team's roster from ESPN: bios (birthdates included), trades and
 // signings, and players who've left. Only while the current season runs, so a
 // finished season keeps its final rosters.
@@ -1097,6 +1114,12 @@ async function runRosterSync(ctx: any) {
 	}
 
 	const teams = await ctx.runQuery(internal.wnba.queries.getAllTeamsInternal, { season });
+	// Drafts never change, so each player's is fetched once
+	const knownDrafts = new Set<string>(
+		(await ctx.runQuery(internal.wnba.queries.getAllPlayersInternal, { season }))
+			.filter((player: { draft?: unknown }) => player.draft !== undefined)
+			.map((player: { espnPlayerId: string }) => player.espnPlayerId),
+	);
 	let syncedTeams = 0;
 	let players = 0;
 	let flagged = 0;
@@ -1123,6 +1146,7 @@ async function runRosterSync(ctx: any) {
 					season,
 					teamId: team._id,
 					onRoster: true,
+					draft: knownDrafts.has(athlete.id) ? undefined : await fetchPlayerDraft(athlete.id),
 				});
 			}
 			flagged += await ctx.runMutation(internal.wnba.mutations.markOffRoster, {

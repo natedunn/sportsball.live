@@ -351,6 +351,9 @@ export const getPlayerDetails = query({
 		const teamIds = Array.from(new Set(allSeasonPlayers.map((p) => p.teamId)));
 		const teams = await Promise.all(teamIds.map((teamId) => ctx.db.get(teamId)));
 		const teamMap = new Map(teams.filter(Boolean).map((team) => [team!._id, team!]));
+		const abbreviationByEspnId = new Map(
+			teams.filter(Boolean).map((team) => [team!.espnTeamId, team!.abbreviation]),
+		);
 
 		const mapToProfile = (entry: any, overrides?: Partial<any>) => {
 			const team = teamMap.get(entry.teamId);
@@ -363,7 +366,22 @@ export const getPlayerDetails = query({
 					birthDate: entry.birthDate,
 					age: entry.age,
 					college: entry.college ?? "Unknown",
-					draftInfo: entry.experience ?? "Unknown",
+					// undefined: unknown; null: undrafted
+					draft: entry.draft
+						? {
+								year: entry.draft.year,
+								round: entry.draft.round,
+								pick: entry.draft.pick,
+								team: entry.draft.teamEspnId
+									? abbreviationByEspnId.get(entry.draft.teamEspnId)
+									: undefined,
+							}
+						: entry.draft,
+					// ESPN's season count, this one included (0 for rookies)
+					experienceYears:
+						entry.experience !== undefined && Number.isFinite(Number(entry.experience))
+							? Number(entry.experience)
+							: undefined,
 					height: entry.height ?? "Unknown",
 					weight: entry.weight ?? "Unknown",
 					status: "Active" as const,

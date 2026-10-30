@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
+import { draftValidator } from "../validators";
 import { computeTeamEventAdvancedStats, round } from "../shared/statsCalculations";
 import { countsTowardSeasonAverages } from "../shared/seasonHelpers";
 
@@ -92,6 +93,7 @@ export const upsertPlayer = internalMutation({
 		age: v.optional(v.number()),
 		birthDate: v.optional(v.string()),
 		onRoster: v.optional(v.boolean()),
+		draft: v.optional(v.union(v.null(), draftValidator)),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		gamesPlayed: v.optional(v.number()),

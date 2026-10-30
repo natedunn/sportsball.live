@@ -1,52 +1,51 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { leaguePlayersRoutes } from "@/lib/league-routes";
 import type { League } from "@/lib/shared/league";
 import { useCurrentSeasonName } from "@/lib/use-current-season";
+import { useRouteTab } from "@/lib/route-tabs";
 import {
+	PLAYER_TABS,
 	PlayerDetailsLayout,
 	PlayerDetailsPending,
 } from "@/components/player-details/player-details-layout";
 import { api } from "~api";
 
-export type DetailTab = "overview" | "splits" | "last10" | "comparison";
-
-export interface PlayerSearchParams {
-	tab?: string;
-	compare?: string;
-}
-
 interface PlayerDetailsPageProps {
 	league: League;
 	playerId: string;
-	tab?: string;
-	compare?: string;
-	onNavigate: (args: { id: string; tab?: string; compare?: string }) => void;
+	/** The tab page, from the layout route's `<Outlet />` */
+	children: ReactNode;
 }
 
 export { PlayerDetailsPending };
 
+const playerDetailsQueries = {
+	nba: api.nba.queries.getPlayerDetails,
+	wnba: api.wnba.queries.getPlayerDetails,
+	gleague: api.gleague.queries.getPlayerDetails,
+};
+
+/** The player page's data. The player layout routes prime it in their loader. */
+export function playerDetailsQuery(
+	league: League,
+	season: string,
+	espnPlayerId: string,
+) {
+	return convexQuery(playerDetailsQueries[league], { season, espnPlayerId });
+}
+
 export function PlayerDetailsPage({
 	league,
 	playerId,
-	tab,
-	compare,
-	onNavigate,
+	children,
 }: PlayerDetailsPageProps) {
+	const activeTab = useRouteTab(PLAYER_TABS);
 	const season = useCurrentSeasonName(league);
-	const queryRef = useMemo(() => {
-		const queryMap = {
-			nba: (api as any).nba.queries.getPlayerDetails,
-			wnba: (api as any).wnba.queries.getPlayerDetails,
-			gleague: (api as any).gleague.queries.getPlayerDetails,
-		};
-		return queryMap[league];
-	}, [league]);
-
 	const { data, isLoading } = useQuery({
-		...convexQuery(queryRef, { season: season ?? "", espnPlayerId: playerId }),
+		...playerDetailsQuery(league, season ?? "", playerId),
 		enabled: !!season,
 	});
 
@@ -59,36 +58,6 @@ export function PlayerDetailsPage({
 			.map((teammateId: string) => allById.get(teammateId))
 			.filter(Boolean);
 	}, [allPlayers, player]);
-
-	const [activeTab, setActiveTab] = useState<DetailTab>(
-		(tab as DetailTab) || "overview",
-	);
-	const [compareId, setCompareId] = useState(compare ?? "");
-	const [isLoadingCompare, setIsLoadingCompare] = useState(false);
-	const [loadedCompareId, setLoadedCompareId] = useState(compare ?? "");
-
-	useEffect(() => {
-		setActiveTab((tab as DetailTab) || "overview");
-	}, [tab]);
-
-	useEffect(() => {
-		setCompareId(compare ?? "");
-		setLoadedCompareId(compare ?? "");
-	}, [compare]);
-
-	useEffect(() => {
-		if (!compareId || !player || compareId === player.id) {
-			setLoadedCompareId("");
-			setIsLoadingCompare(false);
-			return;
-		}
-		setIsLoadingCompare(true);
-		const timer = window.setTimeout(() => {
-			setLoadedCompareId(compareId);
-			setIsLoadingCompare(false);
-		}, 500);
-		return () => window.clearTimeout(timer);
-	}, [compareId, player]);
 
 	if (isLoading) {
 		return <PlayerDetailsPending />;
@@ -111,39 +80,6 @@ export function PlayerDetailsPage({
 		);
 	}
 
-	const comparedPlayer = loadedCompareId
-		? allPlayers.find((entry: any) => entry.id === loadedCompareId)
-		: undefined;
-
-	const handleTabChange = (nextTab: string) => {
-		const parsedTab = nextTab as DetailTab;
-		setActiveTab(parsedTab);
-		onNavigate({
-			id: player.id,
-			tab: parsedTab,
-			compare: compareId || undefined,
-		});
-	};
-
-	const handleCompareChange = (nextPlayerId: string) => {
-		setCompareId(nextPlayerId);
-		onNavigate({
-			id: player.id,
-			tab: activeTab,
-			compare: nextPlayerId || undefined,
-		});
-	};
-
-	const handleCompareTeammate = (teammateId: string) => {
-		setActiveTab("comparison");
-		setCompareId(teammateId);
-		onNavigate({
-			id: player.id,
-			tab: "comparison",
-			compare: teammateId,
-		});
-	};
-
 	return (
 		<PlayerDetailsLayout
 			player={player}
@@ -151,12 +87,8 @@ export function PlayerDetailsPage({
 			allPlayers={allPlayers}
 			league={league}
 			activeTab={activeTab}
-			onTabChange={handleTabChange}
-			compareId={compareId}
-			onCompareChange={handleCompareChange}
-			isLoadingCompare={isLoadingCompare}
-			comparedPlayer={comparedPlayer}
-			onCompareTeammate={handleCompareTeammate}
-		/>
+		>
+			{children}
+		</PlayerDetailsLayout>
 	);
 }

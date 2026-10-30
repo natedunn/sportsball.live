@@ -3,13 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import type { SeasonSeries } from "@/lib/shared/game-details.types";
 import type { League } from "@/lib/shared/league";
+import { gameTabRoute } from "./game-details-layout";
 
 interface SeriesMatchupTableProps {
 	allSeries: SeasonSeries[];
 	league: League;
 }
 
-// Typed game link component to handle different league routes
+// Links to another game's matchups page
 function GameLink({
 	league,
 	gameId,
@@ -19,39 +20,11 @@ function GameLink({
 	gameId: string;
 	children: React.ReactNode;
 }) {
-	const className = "link-text text-sm";
-	const search = { tab: "matchups" as const };
-
-	if (league === "nba") {
-		return (
-			<Link
-				to="/nba/game/$gameId"
-				params={{ gameId }}
-				search={search}
-				className={className}
-			>
-				{children}
-			</Link>
-		);
-	}
-	if (league === "wnba") {
-		return (
-			<Link
-				to="/wnba/game/$gameId"
-				params={{ gameId }}
-				search={search}
-				className={className}
-			>
-				{children}
-			</Link>
-		);
-	}
 	return (
 		<Link
-			to="/gleague/game/$gameId"
+			to={gameTabRoute(league, "matchups")}
 			params={{ gameId }}
-			search={search}
-			className={className}
+			className="link-text text-sm"
 		>
 			{children}
 		</Link>

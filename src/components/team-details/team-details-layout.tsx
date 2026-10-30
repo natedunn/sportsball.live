@@ -1,3 +1,4 @@
+import { createContext, useContext, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
@@ -12,17 +13,13 @@ import {
 	Star,
 } from "lucide-react";
 import { AnimationProvider } from "./animation-context";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { TeamHeader } from "./team-header";
-import { OverviewTab } from "./overview/overview-tab";
-import { RosterTab } from "./roster/roster-tab";
-import { GamesTab } from "./games/games-tab";
-import { StatsTab } from "./stats/stats-tab";
-import { TrendsCard } from "./stats/trends-card";
 import { useFavorites } from "@/lib/use-favorites";
 import { leagueLabels, type League } from "@/lib/teams";
-import { leagueRoutes } from "@/lib/league-routes";
+import { leagueRoutes, leagueTeamRoutes } from "@/lib/league-routes";
+import { tabRoute } from "@/lib/route-tabs";
 import type {
 	TeamOverview,
 	RosterPlayer,
@@ -33,36 +30,56 @@ import type {
 } from "@/lib/types/team";
 import type { TeamGameData } from "./stats/trend-chart";
 
-interface TeamDetailsLayoutProps {
+/** Team page tabs, each its own child route. The first is the index route. */
+export const TEAM_TABS = ["overview", "roster", "games", "stats", "trends"] as const;
+export type TeamTab = (typeof TEAM_TABS)[number];
+
+const TAB_ITEMS: Array<{ tab: TeamTab; label: string; icon: typeof Users }> = [
+	{ tab: "overview", label: "Overview", icon: LayoutDashboard },
+	{ tab: "roster", label: "Roster", icon: Users },
+	{ tab: "games", label: "Games", icon: Calendar },
+	{ tab: "stats", label: "Stats", icon: BarChart3 },
+	{ tab: "trends", label: "Trends", icon: TrendingUp },
+];
+
+export function teamTabRoute(league: League, tab: TeamTab) {
+	return tabRoute(leagueTeamRoutes[league], TEAM_TABS, tab);
+}
+
+export interface TeamDetailsData {
 	overview: TeamOverview;
-	providerRoster: RosterPlayer[];
+	roster: RosterPlayer[];
 	schedule: ScheduleGame[];
-	providerStats: TeamStats | undefined;
+	stats: TeamStats | undefined;
 	leaders: TeamLeader[];
 	injuries: InjuredPlayer[];
 	gameLog: TeamGameData[];
 	league: League;
 	teamSlug: string;
-	activeTab: string;
-	onTabChange: (tab: string) => void;
+}
+
+const TeamDetailsContext = createContext<TeamDetailsData | null>(null);
+
+/** Team data for the tab pages, provided by the team layout route */
+export function useTeamDetails() {
+	const data = useContext(TeamDetailsContext);
+	if (!data) {
+		throw new Error("useTeamDetails must be used inside TeamDetailsLayout");
+	}
+	return data;
+}
+
+interface TeamDetailsLayoutProps extends TeamDetailsData {
+	activeTab: TeamTab;
+	children: ReactNode;
 }
 
 export function TeamDetailsLayout({
-	overview,
-	providerRoster,
-	schedule,
-	providerStats,
-	leaders,
-	injuries,
-	gameLog,
-	league,
-	teamSlug,
 	activeTab,
-	onTabChange,
+	children,
+	...data
 }: TeamDetailsLayoutProps) {
-	// Data comes pre-computed from the route (no merging needed)
-	const roster = providerRoster;
-	const stats = providerStats;
+	const { overview, league, teamSlug } = data;
 
 	// Favorites
 	const { isFavorited, toggleFavorite, isLoading: favoritesLoading } = useFavorites();
@@ -72,27 +89,14 @@ export function TeamDetailsLayout({
 	);
 	const isAuthenticated = !!currentUser;
 
-	// Separate past and upcoming/active games
-	const pastGames = schedule
-		.filter((g) => g.state === "post")
-		.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-	const upcomingGames = schedule
-		.filter((g) => g.state === "pre" || g.state === "in")
-		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
 	return (
-		<AnimationProvider activeTab={activeTab}>
-			<div className="flex flex-col pb-16 lg:pb-24">
-				{/* Header with team info */}
-				<TeamHeader overview={overview} league={league} />
+		<TeamDetailsContext.Provider value={data}>
+			<AnimationProvider activeTab={activeTab}>
+				<div className="flex flex-col pb-16 lg:pb-24">
+					{/* Header with team info */}
+					<TeamHeader overview={overview} league={league} />
 
-				{/* Tabbed Content */}
-				<div className="relative bg-background">
-					<Tabs
-						value={activeTab}
-						onValueChange={onTabChange}
-						className="w-full"
-					>
+					<div className="relative bg-background">
 						{/* Navigation row with full-width border */}
 						<div className="border-b border-border">
 							<div className="container">
@@ -106,44 +110,28 @@ export function TeamDetailsLayout({
 										<span>Back to {leagueLabels[league]}</span>
 									</Link>
 
-									{/* Tabs */}
-									<TabsList className="w-full sm:w-auto">
-										<TabsTrigger
-											value="overview"
-											className="flex-1 sm:flex-initial"
-										>
-											<LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
-											Overview
-										</TabsTrigger>
-										<TabsTrigger
-											value="roster"
-											className="flex-1 sm:flex-initial"
-										>
-											<Users className="h-3.5 w-3.5 mr-1.5" />
-											Roster
-										</TabsTrigger>
-										<TabsTrigger
-											value="games"
-											className="flex-1 sm:flex-initial"
-										>
-											<Calendar className="h-3.5 w-3.5 mr-1.5" />
-											Games
-										</TabsTrigger>
-										<TabsTrigger
-											value="stats"
-											className="flex-1 sm:flex-initial"
-										>
-											<BarChart3 className="h-3.5 w-3.5 mr-1.5" />
-											Stats
-										</TabsTrigger>
-										<TabsTrigger
-											value="trends"
-											className="flex-1 sm:flex-initial"
-										>
-											<TrendingUp className="h-3.5 w-3.5 mr-1.5" />
-											Trends
-										</TabsTrigger>
-									</TabsList>
+									{/* Tabs: each links to its own page */}
+									<Tabs value={activeTab} className="w-full sm:w-auto">
+										<TabsList className="w-full sm:w-auto">
+											{TAB_ITEMS.map(({ tab, label, icon: Icon }) => (
+												<TabsTrigger
+													key={tab}
+													value={tab}
+													className="flex-1 sm:flex-initial"
+													render={
+														<Link
+															to={teamTabRoute(league, tab)}
+															params={{ teamId: teamSlug }}
+															activeOptions={{ exact: true, includeSearch: false }}
+														/>
+													}
+												>
+													<Icon className="h-3.5 w-3.5 mr-1.5" />
+													{label}
+												</TabsTrigger>
+											))}
+										</TabsList>
+									</Tabs>
 
 									{/* Favorite button */}
 									<div className="hidden sm:flex sm:w-30 sm:justify-end">
@@ -166,56 +154,11 @@ export function TeamDetailsLayout({
 							</div>
 						</div>
 
-						<div className="container py-8">
-							<TabsContent value="overview" className="mt-0">
-								<OverviewTab
-									overview={overview}
-									stats={stats}
-									leaders={leaders}
-									injuries={injuries}
-									recentGames={pastGames.slice(0, 3)}
-									upcomingGames={upcomingGames.slice(0, 3)}
-									league={league}
-									teamSlug={teamSlug}
-									onTabChange={onTabChange}
-								/>
-							</TabsContent>
-
-							<TabsContent value="roster" className="mt-0">
-								<RosterTab roster={roster} league={league} />
-							</TabsContent>
-
-							<TabsContent value="games" className="mt-0">
-								<GamesTab
-									games={schedule}
-									teamId={overview.id}
-									league={league}
-								/>
-							</TabsContent>
-
-							<TabsContent value="stats" className="mt-0">
-								<StatsTab stats={stats} />
-							</TabsContent>
-
-							<TabsContent value="trends" className="mt-0">
-								{gameLog.length >= 2 ? (
-									<TrendsCard gameData={gameLog} />
-								) : (
-									<div className="flex flex-col items-center justify-center py-16 text-center">
-										<h3 className="text-lg font-semibold mb-1">
-											Trends Unavailable
-										</h3>
-										<p className="text-sm text-muted-foreground max-w-sm">
-											Need at least 2 games of data to show trends.
-										</p>
-									</div>
-								)}
-							</TabsContent>
-						</div>
-					</Tabs>
+						<div className="container py-8">{children}</div>
+					</div>
 				</div>
-			</div>
-		</AnimationProvider>
+			</AnimationProvider>
+		</TeamDetailsContext.Provider>
 	);
 }
 

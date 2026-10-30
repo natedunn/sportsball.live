@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Calendar, Zap, Shield, TrendingUp, TrendingDown, Target, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatCard } from "../stat-card";
@@ -9,6 +10,7 @@ import { TopPerformers } from "./top-performers";
 import { InjuryReport } from "./injury-report";
 import { GamesTable } from "./games-table";
 import { NewsSection } from "./news-section";
+import { teamTabRoute } from "../team-details-layout";
 import type {
   TeamOverview,
   TeamStats,
@@ -27,7 +29,6 @@ interface OverviewTabProps {
   upcomingGames: ScheduleGame[];
   league: League;
   teamSlug: string;
-  onTabChange?: (tab: string) => void;
 }
 
 export function OverviewTab({
@@ -39,7 +40,6 @@ export function OverviewTab({
   upcomingGames,
   league,
   teamSlug,
-  onTabChange,
 }: OverviewTabProps) {
   // Merge stats from the stats query if available
   const quickStats = stats?.scoring ?? overview.stats;
@@ -86,14 +86,15 @@ export function OverviewTab({
             <SectionHeader
               icon={Calendar}
               title="Games"
-              action={onTabChange && (
-                <button
-                  onClick={() => onTabChange("games")}
+              action={
+                <Link
+                  to={teamTabRoute(league, "games")}
+                  params={{ teamId: teamSlug }}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                   View all
-                </button>
-              )}
+                </Link>
+              }
             />
             <GamesTable
               recentGames={recentGames}

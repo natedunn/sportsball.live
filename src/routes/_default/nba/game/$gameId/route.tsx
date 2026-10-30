@@ -1,19 +1,20 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
 import { convexGameDetailsToGameDetails } from "@/lib/shared/convex-adapters";
 import { syncLiveGame } from "@/lib/shared/sync.server";
 import { useLiveScoreSync } from "@/lib/shared/live-score-sync";
 import {
+	GAME_TABS,
 	GameDetailsLayout,
 	GameDetailsPending,
 } from "@/components/game-details/game-details-layout";
+import { redirectLegacyTab, useRouteTab } from "@/lib/route-tabs";
 
 interface GameSearchParams {
 	fromDate?: string;
-	tab?: string;
 }
 
 export const Route = createFileRoute("/_default/nba/game/$gameId")({
@@ -21,8 +22,15 @@ export const Route = createFileRoute("/_default/nba/game/$gameId")({
 		return {
 			fromDate:
 				typeof search.fromDate === "string" ? search.fromDate : undefined,
-			tab: typeof search.tab === "string" ? search.tab : undefined,
 		};
+	},
+	beforeLoad: ({ location, params }) => {
+		redirectLegacyTab({
+			search: location.search,
+			basePath: "/nba/game/$gameId",
+			params,
+			tabs: GAME_TABS,
+		});
 	},
 	loader: async ({ context, params }) => {
 		// Pre-populate Convex data for SSR
@@ -38,8 +46,8 @@ export const Route = createFileRoute("/_default/nba/game/$gameId")({
 
 function NbaGameDetailsPage() {
 	const { gameId } = Route.useParams();
-	const { fromDate, tab } = Route.useSearch();
-	const navigate = useNavigate();
+	const { fromDate } = Route.useSearch();
+	const activeTab = useRouteTab(GAME_TABS);
 
 	const { data: rawGame, refetch } = useQuery(
 		convexQuery(api.nba.queries.getGameDetails, { espnGameId: gameId }),
@@ -56,26 +64,6 @@ function NbaGameDetailsPage() {
 		[rawGame],
 	);
 
-	// Local state for immediate UI feedback
-	const [activeTab, setActiveTab] = useState(tab || "box-score");
-
-	// Sync local state when URL changes (e.g., browser back/forward)
-	useEffect(() => {
-		setActiveTab(tab || "box-score");
-	}, [tab]);
-
-	const handleTabChange = (newTab: string) => {
-		// Immediate UI update
-		setActiveTab(newTab);
-		// Async URL update
-		navigate({
-			to: "/nba/game/$gameId",
-			params: { gameId },
-			search: { fromDate, tab: newTab },
-			replace: true,
-		});
-	};
-
 	if (!game) {
 		return (
 			<div className="container py-12">
@@ -90,7 +78,8 @@ function NbaGameDetailsPage() {
 			league="nba"
 			fromDate={fromDate}
 			activeTab={activeTab}
-			onTabChange={handleTabChange}
-		/>
+		>
+			<Outlet />
+		</GameDetailsLayout>
 	);
 }

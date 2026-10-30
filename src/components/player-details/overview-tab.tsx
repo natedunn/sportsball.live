@@ -12,6 +12,7 @@ import { StatCard } from "@/components/team-details/stat-card";
 import { SectionHeader } from "@/components/team-details/section-header";
 import { Card } from "@/components/ui/card";
 import { leaguePlayerRoutes } from "@/lib/league-routes";
+import { playerTabRoute } from "./player-details-layout";
 import type { League } from "@/lib/shared/league";
 import {
 	formatDraft,
@@ -24,7 +25,6 @@ interface OverviewTabProps {
 	player: PlayerProfileData;
 	teammates: PlayerProfileData[];
 	league: League;
-	onCompareTeammate: (teammateId: string) => void;
 }
 
 function InfoField({ label, value }: { label: string; value: string }) {
@@ -36,7 +36,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 	);
 }
 
-export function OverviewTab({ player, teammates, league, onCompareTeammate }: OverviewTabProps) {
+export function OverviewTab({ player, teammates, league }: OverviewTabProps) {
 	const age = getPlayerAge(player.bio);
 	const draft = formatDraft(player.bio.draft);
 	const experience = formatExperience(player.bio.experienceYears);
@@ -162,13 +162,14 @@ export function OverviewTab({ player, teammates, league, onCompareTeammate }: Ov
 											>
 												Open
 											</Link>
-											<button
-												type="button"
-												onClick={() => onCompareTeammate(teammate.id)}
+											<Link
+												to={playerTabRoute(league, "compare")}
+												params={{ id: player.id }}
+												search={{ compare: teammate.id }}
 												className="text-orange-600 hover:underline dark:text-orange-400"
 											>
 												Compare
-											</button>
+											</Link>
 										</div>
 									</div>
 								))}

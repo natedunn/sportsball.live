@@ -1,3 +1,4 @@
+import { createContext, useContext, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
 	ArrowLeft,
@@ -7,55 +8,70 @@ import {
 	GitCompareArrows,
 } from "lucide-react";
 import { AnimationProvider } from "@/components/team-details/animation-context";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { leaguePlayersRoutes } from "@/lib/league-routes";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { leaguePlayerRoutes, leaguePlayersRoutes } from "@/lib/league-routes";
+import { tabRoute } from "@/lib/route-tabs";
 import { leagueLabels } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
 import { PlayerHeader } from "./player-header";
-import { OverviewTab } from "./overview-tab";
-import { SplitsTab } from "./splits-tab";
-import { Last10Tab } from "./last10-tab";
-import { ComparisonTab } from "./comparison-tab";
 import type { PlayerProfileData } from "@/lib/players/mock-data";
 
-interface PlayerDetailsLayoutProps {
+/** Player page tabs, each its own child route. The first is the index route. */
+export const PLAYER_TABS = ["overview", "splits", "last-10", "compare"] as const;
+export type PlayerTab = (typeof PLAYER_TABS)[number];
+
+const TAB_ITEMS: Array<{
+	tab: PlayerTab;
+	label: string;
+	icon: typeof LayoutDashboard;
+}> = [
+	{ tab: "overview", label: "Overview", icon: LayoutDashboard },
+	{ tab: "splits", label: "Splits", icon: SplitSquareVertical },
+	{ tab: "last-10", label: "Last 10", icon: ListOrdered },
+	{ tab: "compare", label: "Comparison", icon: GitCompareArrows },
+];
+
+export function playerTabRoute(league: League, tab: PlayerTab) {
+	return tabRoute(leaguePlayerRoutes[league], PLAYER_TABS, tab);
+}
+
+export interface PlayerDetailsData {
 	player: PlayerProfileData;
 	teammates: PlayerProfileData[];
 	allPlayers: PlayerProfileData[];
 	league: League;
-	activeTab: string;
-	onTabChange: (tab: string) => void;
-	compareId: string;
-	onCompareChange: (playerId: string) => void;
-	isLoadingCompare: boolean;
-	comparedPlayer: PlayerProfileData | undefined;
-	onCompareTeammate: (teammateId: string) => void;
+}
+
+const PlayerDetailsContext = createContext<PlayerDetailsData | null>(null);
+
+/** Player data for the tab pages, provided by the player layout route */
+export function usePlayerDetails() {
+	const data = useContext(PlayerDetailsContext);
+	if (!data) {
+		throw new Error("usePlayerDetails must be used inside PlayerDetailsLayout");
+	}
+	return data;
+}
+
+interface PlayerDetailsLayoutProps extends PlayerDetailsData {
+	activeTab: PlayerTab;
+	children: ReactNode;
 }
 
 export function PlayerDetailsLayout({
-	player,
-	teammates,
-	allPlayers,
-	league,
 	activeTab,
-	onTabChange,
-	compareId,
-	onCompareChange,
-	isLoadingCompare,
-	comparedPlayer,
-	onCompareTeammate,
+	children,
+	...data
 }: PlayerDetailsLayoutProps) {
-	return (
-		<AnimationProvider activeTab={activeTab}>
-			<div className="flex flex-col pb-16 lg:pb-24">
-				<PlayerHeader player={player} />
+	const { player, league } = data;
 
-				<div className="relative bg-background">
-					<Tabs
-						value={activeTab}
-						onValueChange={onTabChange}
-						className="w-full"
-					>
+	return (
+		<PlayerDetailsContext.Provider value={data}>
+			<AnimationProvider activeTab={activeTab}>
+				<div className="flex flex-col pb-16 lg:pb-24">
+					<PlayerHeader player={player} />
+
+					<div className="relative bg-background">
 						{/* Navigation row with full-width border */}
 						<div className="border-b border-border">
 							<div className="container">
@@ -69,37 +85,28 @@ export function PlayerDetailsLayout({
 										<span>Back to {leagueLabels[league]} players</span>
 									</Link>
 
-									{/* Tabs */}
-									<TabsList className="w-full sm:w-auto">
-										<TabsTrigger
-											value="overview"
-											className="flex-1 sm:flex-initial"
-										>
-											<LayoutDashboard className="h-3.5 w-3.5 mr-1.5" />
-											Overview
-										</TabsTrigger>
-										<TabsTrigger
-											value="splits"
-											className="flex-1 sm:flex-initial"
-										>
-											<SplitSquareVertical className="h-3.5 w-3.5 mr-1.5" />
-											Splits
-										</TabsTrigger>
-										<TabsTrigger
-											value="last10"
-											className="flex-1 sm:flex-initial"
-										>
-											<ListOrdered className="h-3.5 w-3.5 mr-1.5" />
-											Last 10
-										</TabsTrigger>
-										<TabsTrigger
-											value="comparison"
-											className="flex-1 sm:flex-initial"
-										>
-											<GitCompareArrows className="h-3.5 w-3.5 mr-1.5" />
-											Comparison
-										</TabsTrigger>
-									</TabsList>
+									{/* Tabs: each links to its own page */}
+									<Tabs value={activeTab} className="w-full sm:w-auto">
+										<TabsList className="w-full sm:w-auto">
+											{TAB_ITEMS.map(({ tab, label, icon: Icon }) => (
+												<TabsTrigger
+													key={tab}
+													value={tab}
+													className="flex-1 sm:flex-initial"
+													render={
+														<Link
+															to={playerTabRoute(league, tab)}
+															params={{ id: player.id }}
+															activeOptions={{ exact: true, includeSearch: false }}
+														/>
+													}
+												>
+													<Icon className="h-3.5 w-3.5 mr-1.5" />
+													{label}
+												</TabsTrigger>
+											))}
+										</TabsList>
+									</Tabs>
 
 									{/* Empty spacer for alignment */}
 									<div className="hidden sm:flex sm:w-30" />
@@ -107,39 +114,11 @@ export function PlayerDetailsLayout({
 							</div>
 						</div>
 
-						<div className="container py-8">
-							<TabsContent value="overview" className="mt-0">
-								<OverviewTab
-									player={player}
-									teammates={teammates}
-									league={league}
-									onCompareTeammate={onCompareTeammate}
-								/>
-							</TabsContent>
-
-							<TabsContent value="splits" className="mt-0">
-								<SplitsTab splits={player.splits} />
-							</TabsContent>
-
-							<TabsContent value="last10" className="mt-0">
-								<Last10Tab games={player.lastTen} />
-							</TabsContent>
-
-							<TabsContent value="comparison" className="mt-0">
-								<ComparisonTab
-									player={player}
-									allPlayers={allPlayers}
-									compareId={compareId}
-									onCompareChange={onCompareChange}
-									isLoading={isLoadingCompare}
-									comparedPlayer={comparedPlayer}
-								/>
-							</TabsContent>
-						</div>
-					</Tabs>
+						<div className="container py-8">{children}</div>
+					</div>
 				</div>
-			</div>
-		</AnimationProvider>
+			</AnimationProvider>
+		</PlayerDetailsContext.Provider>
 	);
 }
 

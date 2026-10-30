@@ -127,13 +127,13 @@ export function StatsTable({ stats }: StatsTableProps) {
 
 function StatRowTr({ row, teamCount }: { row: StatRow; teamCount?: number }) {
   const tier = getRankTier(row.rank, teamCount);
-  const isTopTen = tier === "top";
-  const isBottomFive = tier === "bottom";
+  const isTop = tier === "top";
+  const isBottom = tier === "bottom";
   return (
     <tr
       className={cn(
         "border-b border-border last:border-b-0 transition-colors",
-        isTopTen ? "bg-primary/5" : isBottomFive ? "bg-destructive/5" : "hover:bg-muted/30",
+        isTop ? "bg-green-500/5" : isBottom ? "bg-destructive/5" : "hover:bg-muted/30",
       )}
     >
       <td className="px-4 py-2.5">
@@ -149,8 +149,8 @@ function StatRowTr({ row, teamCount }: { row: StatRow; teamCount?: number }) {
         {row.rank && row.rank > 0 ? (
           <span
             className={cn(
-              isTopTen && "text-primary font-medium",
-              isBottomFive && "text-destructive font-medium",
+              isTop && "text-green-600 dark:text-green-400 font-medium",
+              isBottom && "text-destructive font-medium",
             )}
           >
             {getOrdinalSuffix(row.rank)}

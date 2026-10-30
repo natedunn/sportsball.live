@@ -30,15 +30,17 @@ export function getOrdinalSuffix(n: number): string {
 export type RankTier = "top" | "bottom";
 
 /**
- * Top ten in the league, or bottom five when the number of ranked teams is known.
- * Top ten wins if the two overlap (leagues with fewer than 15 teams).
+ * Top third of the league (green) or bottom sixth (red), so every league gets the
+ * same share: NBA and G League top 10 / bottom 5, WNBA top 5 / bottom 3.
+ * Without a team count, falls back to top ten and no bottom tier.
  */
 export function getRankTier(
   rank: number | undefined,
   teamCount: number | undefined,
 ): RankTier | undefined {
   if (rank === undefined || rank <= 0) return undefined;
-  if (rank <= 10) return "top";
-  if (teamCount !== undefined && teamCount > 0 && rank > teamCount - 5) return "bottom";
+  if (teamCount === undefined || teamCount <= 0) return rank <= 10 ? "top" : undefined;
+  if (rank <= Math.round(teamCount / 3)) return "top";
+  if (rank > teamCount - Math.round(teamCount / 6)) return "bottom";
   return undefined;
 }

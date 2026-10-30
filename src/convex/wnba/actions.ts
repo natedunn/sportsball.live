@@ -414,9 +414,13 @@ export const refreshStandings = internalAction({
 	args: { seasonYear: v.optional(v.number()) },
 	handler: async (ctx, args) => {
 		const standings = await fetchStandings(args.seasonYear);
-		if (!standings) return;
+		if (!standings) {
+			await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "wnba", ok: false, summary: "standings fetch failed" });
+			return;
+		}
 		if (!standings.season) {
 			console.error("[WNBA] Standings payload has no season; skipping refresh");
+			await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "wnba", ok: true, summary: "no standings published" });
 			return;
 		}
 
@@ -429,6 +433,7 @@ export const refreshStandings = internalAction({
 		}
 
 		console.log(`[WNBA] Refreshed standings for ${standings.teams.length} teams, season ${standings.season}`);
+		await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "wnba", ok: true });
 	},
 });
 
@@ -449,6 +454,7 @@ export const discoverTodaysGames = internalAction({
 
 		if (!scoreboardRes.ok) {
 			console.error(`[WNBA] Scoreboard fetch failed: ${scoreboardRes.status}`);
+			await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "wnba", ok: false, summary: `scoreboard fetch failed (${scoreboardRes.status})` });
 			return;
 		}
 
@@ -528,6 +534,7 @@ export const discoverTodaysGames = internalAction({
 		}
 
 		console.log(`[WNBA] Discovery complete: ${events.length} games processed`);
+		await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "wnba", ok: true, summary: `${events.length} games` });
 	},
 });
 
@@ -1187,6 +1194,13 @@ export const refreshPlayers = internalAction({
 	handler: async (ctx) => {
 		const rosters = await runRosterSync(ctx);
 		const stats = await runCorePlayerStatsBackfill(ctx, {});
+		// A few per-player ESPN errors fix themselves the next day; many mean ESPN is down
+		await ctx.runMutation(internal.health.recordJobRun, {
+			job: "refreshPlayers",
+			league: "wnba",
+			ok: stats.errors <= Math.max(5, stats.scanned * 0.05),
+			summary: `${stats.errors} of ${stats.scanned} player stat lookups failed`,
+		});
 		return { rosters, stats };
 	},
 });
@@ -1601,6 +1615,8 @@ export const syncSchedule = internalAction({
 				recordsOnly: true,
 			});
 		}
+
+		await ctx.runMutation(internal.health.recordJobRun, { job: "syncSchedule", league: "wnba", ok: true });
 	},
 });
 

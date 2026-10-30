@@ -5,6 +5,9 @@
  */
 import { getTeamStaticData } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
+import type { FunctionReturnType } from "convex/server";
+import type { Doc } from "@convex/_generated/dataModel";
+import type { api } from "~api";
 import type { GameData, GameTeam } from "@/lib/types";
 import type { StandingTeam, StandingsResponse } from "@/lib/types/standings";
 import type {
@@ -22,6 +25,12 @@ import type {
 	TeamLeader,
 } from "@/lib/types/team";
 import type { TeamGameData } from "@/components/team-details/stats/trend-chart";
+
+// Convex team and player records, for any league (same fields in each)
+type TeamDoc = Doc<"nbaTeam"> | Doc<"wnbaTeam"> | Doc<"gleagueTeam">;
+type PlayerDoc = Doc<"nbaPlayer"> | Doc<"wnbaPlayer"> | Doc<"gleaguePlayer">;
+// One row of a team's game log (each league's getTeamGameLog returns the same shape)
+type GameLogRow = FunctionReturnType<typeof api.nba.queries.getTeamGameLog>[number];
 
 // ============================================================
 // Event status → State mapping
@@ -358,8 +367,7 @@ export function convexGameDetailsToGameDetails(data: any, league: League): GameD
 // Team Page → TeamOverview
 // ============================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function convexTeamToOverview(team: any, league: League): TeamOverview {
+export function convexTeamToOverview(team: TeamDoc, league: League): TeamOverview {
 	const staticData = getTeamStaticData(league, team.espnTeamId);
 	const colors = staticData
 		? { darkColor: staticData.colors.display.dark, lightColor: staticData.colors.display.light }
@@ -409,8 +417,7 @@ export function convexTeamToOverview(team: any, league: League): TeamOverview {
 // Team Page → TeamStats
 // ============================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function convexTeamToStats(team: any): TeamStats {
+export function convexTeamToStats(team: TeamDoc): TeamStats {
 	return {
 		scoring: {
 			ppg: team.pointsFor ?? 0,
@@ -479,8 +486,7 @@ export function convexTeamToStats(team: any): TeamStats {
 // Team Page → RosterPlayer[]
 // ============================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function convexRosterToPlayers(players: any[]): RosterPlayer[] {
+export function convexRosterToPlayers(players: PlayerDoc[]): RosterPlayer[] {
 	return players.map((p) => ({
 		id: p.espnPlayerId,
 		name: p.name,
@@ -576,10 +582,7 @@ export function convexScheduleToGames(
 // Team Page → TeamGameData[] (for trend charts)
 // ============================================================
 
-export function convexGameLogToTrendData(
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	gameLog: any[],
-): TeamGameData[] {
+export function convexGameLogToTrendData(gameLog: GameLogRow[]): TeamGameData[] {
 	return gameLog.map((event) => ({
 		gameDate: event.gameDate,
 		pointsFor: event.score,

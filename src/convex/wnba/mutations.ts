@@ -417,7 +417,7 @@ export const recalculateTeamAverages = internalMutation({
 		const games = await Promise.all(allEvents.map((e) => ctx.db.get(e.gameEventId)));
 		const events = allEvents.filter((_, i) => countsTowardSeasonAverages(games[i]));
 
-		if (events.length === 0) return;
+		if (events.length === 0) return false;
 
 		const gamesPlayed = events.length;
 
@@ -473,7 +473,7 @@ export const recalculateTeamAverages = internalMutation({
 
 		const astToRatio = totalTov > 0 ? round((totalAssists / gamesPlayed) / (totalTov / gamesPlayed), 2) : 0;
 
-		await ctx.db.patch(args.teamId, {
+		const averages = {
 			pointsFor: ppg,
 			pointsAgainst: oppPpg,
 			margin: round(ppg - oppPpg, 1),
@@ -500,8 +500,20 @@ export const recalculateTeamAverages = internalMutation({
 			totalThreeAttempted,
 			totalFtMade,
 			totalFtAttempted,
-			updatedAt: Date.now(),
-		});
+		};
+
+		// Report whether anything moved, so the daily health check can tell when a
+		// recalculation was missed. The standings refresh stores ESPN's unrounded
+		// points per game, so values within rounding count as unchanged.
+		const team = await ctx.db.get(args.teamId);
+		const changed =
+			!team ||
+			(Object.keys(averages) as Array<keyof typeof averages>).some((key) => {
+				const stored = team[key];
+				return stored === undefined || Math.abs(stored - averages[key]) > 0.051;
+			});
+		await ctx.db.patch(args.teamId, { ...averages, updatedAt: Date.now() });
+		return changed;
 	},
 });
 

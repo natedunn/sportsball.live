@@ -433,6 +433,7 @@ export const discoverTodaysGames = internalAction({
 
 		if (!scoreboardRes.ok) {
 			console.error(`[GLEAGUE] Scoreboard fetch failed: ${scoreboardRes.status}`);
+			await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "gleague", ok: false, summary: `scoreboard fetch failed (${scoreboardRes.status})` });
 			return;
 		}
 
@@ -507,6 +508,7 @@ export const discoverTodaysGames = internalAction({
 		}
 
 		console.log(`[GLEAGUE] Discovery complete: ${events.length} games processed`);
+		await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "gleague", ok: true, summary: `${events.length} games` });
 	},
 });
 
@@ -517,10 +519,14 @@ export const refreshStandings = internalAction({
 	args: {},
 	handler: async (ctx): Promise<{ season?: string; teamCount: number }> => {
 		const standings = await fetchStandings();
-		if (!standings) return { teamCount: 0 };
+		if (!standings) {
+			await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "gleague", ok: false, summary: "standings fetch failed" });
+			return { teamCount: 0 };
+		}
 
 		if (!standings.season) {
 			console.error("[GLEAGUE] Standings payload has no season; skipping refresh");
+			await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "gleague", ok: true, summary: "no standings published" });
 			return { teamCount: 0 };
 		}
 
@@ -532,6 +538,7 @@ export const refreshStandings = internalAction({
 		}
 
 		console.log(`[GLEAGUE] Refreshed standings for ${standings.entries.length} teams, season ${standings.season}`);
+		await ctx.runMutation(internal.health.recordJobRun, { job: "refreshStandings", league: "gleague", ok: true });
 		return { season: standings.season, teamCount: standings.entries.length };
 	},
 });
@@ -1170,6 +1177,13 @@ export const refreshPlayers = internalAction({
 	handler: async (ctx) => {
 		const rosters = await runRosterSync(ctx);
 		const stats = await runCorePlayerStatsBackfill(ctx, {});
+		// A few per-player ESPN errors fix themselves the next day; many mean ESPN is down
+		await ctx.runMutation(internal.health.recordJobRun, {
+			job: "refreshPlayers",
+			league: "gleague",
+			ok: stats.errors <= Math.max(5, stats.scanned * 0.05),
+			summary: `${stats.errors} of ${stats.scanned} player stat lookups failed`,
+		});
 		return { rosters, stats };
 	},
 });
@@ -1549,6 +1563,8 @@ export const syncSchedule = internalAction({
 
 		// ESPN's G-League records aren't as of the game; count them from team schedules
 		await ctx.scheduler.runAfter(100, internal.gleague.actions.syncRecordsFromSchedules, { season });
+
+		await ctx.runMutation(internal.health.recordJobRun, { job: "syncSchedule", league: "gleague", ok: true });
 	},
 });
 

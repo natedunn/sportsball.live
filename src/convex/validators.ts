@@ -13,3 +13,20 @@ export const draftValidator = v.object({
 	pick: v.number(),
 	teamEspnId: v.optional(v.string()),
 });
+
+/**
+ * One health check result: "repaired" means the check found a problem and
+ * fixed it; "failing" means it couldn't, and needs a person.
+ */
+export const healthResultValidator = v.object({
+	league: v.optional(leagueValidator),
+	check: v.string(),
+	status: v.union(
+		v.literal("ok"),
+		v.literal("repaired"),
+		v.literal("failing"),
+		v.literal("skipped"),
+	),
+	message: v.string(),
+	details: v.optional(v.array(v.string())),
+});

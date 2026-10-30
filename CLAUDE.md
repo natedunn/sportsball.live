@@ -64,6 +64,7 @@ Each league (NBA, WNBA, G-League) follows the same pattern:
 - **Logo Proxy**: External logo URLs are mapped through `/api/{league}/logo/{slug}` routes to hide CDN origins
 - **Server Functions**: Use `createServerFn` from TanStack Start for server-side data fetching
 - **Query Integration**: Routes use `loader` with `ensureQueryData` for SSR, components use `useQuery`
+- **Data Health**: Daily jobs record heartbeats; a daily Convex health check compares stored data with ESPN and repairs what it can, and a GitHub Action turns unresolved problems into an issue. See docs/data-health.md
 - **Dark/Light Colors**: Teams have both `darkColor` and `lightColor` - components use `useIsDarkMode` hook to select appropriate color
 
 ### Path Aliases

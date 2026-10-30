@@ -417,7 +417,9 @@ export function convexTeamToOverview(team: TeamDoc, league: League): TeamOvervie
 // Team Page → TeamStats
 // ============================================================
 
-export function convexTeamToStats(team: TeamDoc): TeamStats {
+export function convexTeamToStats(
+	team: TeamDoc & { rankedTeamCount?: number },
+): TeamStats {
 	return {
 		scoring: {
 			ppg: team.pointsFor ?? 0,
@@ -457,6 +459,7 @@ export function convexTeamToStats(team: TeamDoc): TeamStats {
 			oppFgPct: 0, // Not computed in Convex yet
 			oppThreePct: 0, // Not computed in Convex yet
 		},
+		rankedTeamCount: team.rankedTeamCount,
 		ranks: {
 			rankPpg: team.rankPpg,
 			rankOppPpg: team.rankOppPpg,

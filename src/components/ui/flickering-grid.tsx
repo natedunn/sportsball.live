@@ -71,7 +71,7 @@ export function FlickeringGrid({
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
 
-		let setup = setupCanvas();
+		const setup = setupCanvas();
 		if (!setup) return;
 
 		let { canvasWidth, canvasHeight, cols, rows, squares, dpr } = setup;

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
-import { api, internal } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
 import type { Id } from "../_generated/dataModel";
 import {
@@ -784,7 +784,6 @@ export const checkGameStatusV2 = internalAction({
 });
 
 // Helper: sync box score data from API summary response into Convex
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBoxScoreData(
 	ctx: any,
 	gameEventId: string,
@@ -1081,7 +1080,6 @@ export const bootstrapTeams = internalAction({
 	args: { bootstrapRunId: v.optional(v.string()) },
 	handler: async (ctx, args) => {
 		const season = await getCurrentSeasonName(ctx);
-		const baseUrl = getSiteApi();
 
 		console.log(`[GLEAGUE Bootstrap] Fetching standings for season ${season}...`);
 

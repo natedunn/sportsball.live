@@ -4,7 +4,6 @@
  * without modifying downstream components.
  */
 import { getTeamStaticData } from "@/lib/teams";
-import { getTeamColors, getProxiedLogoUrl } from "@/lib/shared/team-utils";
 import type { League } from "@/lib/shared/league";
 import type { GameData, GameTeam } from "@/lib/types";
 import type { StandingTeam, StandingsResponse } from "@/lib/types/standings";
@@ -14,7 +13,6 @@ import type {
 	Player,
 	PlayerStats,
 	TeamStats as GameTeamStats,
-	SeasonSeries,
 } from "@/lib/shared/game-details.types";
 import type {
 	TeamOverview,

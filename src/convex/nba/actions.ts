@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
-import { api, internal } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
 import { getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, getScheduleSyncRange, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord } from "../shared/apiParser";
@@ -807,7 +807,6 @@ export const checkGameStatusV2 = internalAction({
 });
 
 // Helper: sync box score data from API summary response into Convex
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBoxScoreData(
 	ctx: any,
 	gameEventId: string,
@@ -1153,7 +1152,6 @@ export const bootstrapTeams = internalAction({
 });
 
 // Helper: fetch a team's roster from the API and upsert all players into Convex
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchAndUpsertRoster(
 	ctx: any,
 	commonBase: string,

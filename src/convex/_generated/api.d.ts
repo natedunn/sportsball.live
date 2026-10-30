@@ -36,6 +36,7 @@ import type * as shared_statsCalculations from "../shared/statsCalculations.js";
 import type * as users from "../users.js";
 import type * as validators from "../validators.js";
 import type * as wnba_actions from "../wnba/actions.js";
+import type * as wnba_migrations from "../wnba/migrations.js";
 import type * as wnba_mutations from "../wnba/mutations.js";
 import type * as wnba_queries from "../wnba/queries.js";
 
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   users: typeof users;
   validators: typeof validators;
   "wnba/actions": typeof wnba_actions;
+  "wnba/migrations": typeof wnba_migrations;
   "wnba/mutations": typeof wnba_mutations;
   "wnba/queries": typeof wnba_queries;
 }>;

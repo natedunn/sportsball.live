@@ -380,9 +380,11 @@ function parseStandings(data: ApiStandingsResponse): StandingsSnapshot {
 	return { season: getStandingsSeason(data), teams };
 }
 
-// Fetch and parse league standings; null when the request fails
-async function fetchStandings(): Promise<StandingsSnapshot | null> {
-	const standingsUrl = getSiteApi().replace("/site/v2/", "/v2/") + "/standings";
+// Fetch and parse league standings; null when the request fails.
+// `seasonYear` (e.g. 2025) fetches a past season's final standings.
+async function fetchStandings(seasonYear?: number): Promise<StandingsSnapshot | null> {
+	const standingsUrl =
+		getSiteApi().replace("/site/v2/", "/v2/") + "/standings" + (seasonYear ? `?season=${seasonYear}` : "");
 	try {
 		const standingsRes = await fetch(standingsUrl, {
 			headers: { "User-Agent": "Mozilla/5.0" },
@@ -404,9 +406,9 @@ async function scheduleStandingsRefresh(ctx: any) {
 
 // Refresh every team's record from ESPN standings (cron + after games complete)
 export const refreshStandings = internalAction({
-	args: {},
-	handler: async (ctx) => {
-		const standings = await fetchStandings();
+	args: { seasonYear: v.optional(v.number()) },
+	handler: async (ctx, args) => {
+		const standings = await fetchStandings(args.seasonYear);
 		if (!standings) return;
 		if (!standings.season) {
 			console.error("[WNBA] Standings payload has no season; skipping refresh");

@@ -286,8 +286,8 @@ type StandingsRecord = {
 	last10: string;
 	divisionRecord: string;
 	conferenceRecord: string;
-	pointsFor: number;
-	pointsAgainst: number;
+	// Points per game come from our box scores (recalculateTeamAverages), not
+	// standings, so one source sets them (ESPN's can disagree with its own box scores)
 };
 
 type StandingsTeam = {
@@ -340,8 +340,6 @@ function parseStandings(data: ApiStandingsResponse): ParsedStandings {
 					last10: getDisplay("Last Ten Games"),
 					divisionRecord: getDisplay("vs. Div."),
 					conferenceRecord: getDisplay("vs. Conf."),
-					pointsFor: getStat("avgPointsFor"),
-					pointsAgainst: getStat("avgPointsAgainst"),
 				},
 			});
 		}
@@ -492,6 +490,7 @@ export const discoverTodaysGames = internalAction({
 				espnGameId: event.id,
 				season,
 				seasonType,
+				competitionType: competition.type?.abbreviation,
 				homeTeamId,
 				awayTeamId,
 				gameDate: date,
@@ -705,6 +704,26 @@ export const checkGameStatusV2 = internalAction({
 			return;
 		}
 
+		if (state === "post" && (eventStatus === "postponed" || eventStatus === "cancelled")) {
+			// No box score and nothing counts; the rescheduled game gets its own check
+			console.log(`[NBA] Game ${args.espnGameId} ${eventStatus}`);
+			await ctx.runMutation(internal.nba.mutations.updateGameEventStatus, {
+				gameEventId: args.gameEventId,
+				seasonType,
+				eventStatus,
+				statusDetail: detail,
+				lastFetchedAt: Date.now(),
+			});
+			if (currentGame?.eventStatus === "completed") {
+				await recalculateTeamsAndRankings(
+					ctx,
+					[currentGame.homeTeamId, currentGame.awayTeamId],
+					currentGame.season,
+				);
+			}
+			return;
+		}
+
 		if (state === "post") {
 			// Game completed: final update
 			if (homeScore === undefined || awayScore === undefined) {
@@ -832,6 +851,13 @@ async function syncBoxScoreData(
 	const headerAway = competition?.competitors?.find((c) => c.homeAway === "away");
 
 	if (!headerHome || !headerAway) return false;
+
+	// Postponed and canceled games have an all-zero box score; nothing to store
+	const finalStatus = mapApiStateToEventStatus(
+		competition?.status?.type?.state,
+		competition?.status?.type?.detail,
+	);
+	if (finalStatus === "postponed" || finalStatus === "cancelled") return false;
 
 	// Pre-game summaries have no scores or box score yet
 	if (competition?.status?.type?.state === "pre") return false;
@@ -1083,12 +1109,11 @@ export const syncLiveGameData = internalAction({
 			// Sync box score data
 			if (!isPreGame) {
 				const boxScoreChanged = await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
-				// Season averages count finished games only: recompute when a game
-				// goes final or ESPN revises a finished game's box score
-				if (
-					nextEventStatus === "completed" &&
-					(boxScoreChanged || existingGame?.eventStatus !== "completed")
-				) {
+				// Season averages count finished games only: recompute when a game goes
+				// final, stops being final (postponed), or ESPN revises its box score
+				const wasCompleted = existingGame?.eventStatus === "completed";
+				const isCompleted = nextEventStatus === "completed";
+				if (isCompleted !== wasCompleted || (isCompleted && boxScoreChanged)) {
 					await recalculateTeamsAndRankings(ctx, [homeTeamId, awayTeamId], season);
 				}
 			}
@@ -1647,6 +1672,7 @@ export const backfillDateChunk = internalAction({
 					espnGameId: event.id,
 					season,
 					seasonType,
+					competitionType: competition.type?.abbreviation,
 					homeTeamId,
 					awayTeamId,
 					gameDate: date,

@@ -3,7 +3,7 @@ import { query, internalQuery } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
 import { getSeriesRecordForGame, isPlayoffGame } from "../shared/scoreboardSeries";
-import { countsTowardSeasonAverages, getSeasonEndYear, getSeasonStartYear } from "../shared/seasonHelpers";
+import { countsTowardGameLog, getSeasonEndYear, getSeasonStartYear } from "../shared/seasonHelpers";
 import { computePlayerSeasonRatings, playedInGame } from "../shared/statsCalculations";
 
 // Get all games for a specific date (scoreboard)
@@ -216,8 +216,8 @@ export const getTeamGameLog = query({
 		const enriched = await Promise.all(
 			teamEvents.map(async (te) => {
 				const gameEvent = await ctx.db.get(te.gameEventId);
-				// Trends cover the same games as the season averages
-				if (!countsTowardSeasonAverages(gameEvent)) return null;
+				// Trends cover every game the team played this season, playoffs included
+				if (!countsTowardGameLog(gameEvent)) return null;
 				const oppScore = te.isHome ? gameEvent.awayScore : gameEvent.homeScore;
 				return {
 					gameDate: gameEvent.gameDate,
@@ -416,11 +416,11 @@ export const getPlayerDetails = query({
 		const enrichedEvents: EnrichedPlayerEvent[] = (
 			await Promise.all(
 				playerEvents.map(async (event) => {
-					// Splits and the game log cover the games the season averages do,
-					// and only the ones the player appeared in
+					// Splits and the game log cover every game the player appeared in,
+					// playoffs included
 					if (!playedInGame(event)) return null;
 					const game = await ctx.db.get(event.gameEventId);
-					if (!countsTowardSeasonAverages(game)) return null;
+					if (!countsTowardGameLog(game)) return null;
 
 					const isHome = game.homeTeamId === player.teamId;
 					const opponentId = isHome ? game.awayTeamId : game.homeTeamId;

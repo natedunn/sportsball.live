@@ -8,12 +8,14 @@ export interface PlayerRankingRow {
 	rebounds: number;
 	assists: number;
 	trueShootingPct: number;
-	usagePct: number;
 	efficiency: number;
 }
 
 export interface PlayerBio {
-	birthDate: string;
+	/** YYYY-MM-DD, when ESPN provides it */
+	birthDate?: string;
+	/** Age as of the last roster sync; birthDate is preferred when known */
+	age?: number;
 	college: string;
 	draftInfo: string;
 	height: string;
@@ -60,8 +62,8 @@ export interface PlayerProfileData {
 	};
 	calculatedStats: {
 		trueShootingPct: number;
-		usagePct: number;
-		playerEfficiency: number;
+		/** NBA efficiency (EFF) per game */
+		efficiency: number;
 		assistToTurnover: number;
 	};
 	splits: PlayerSplitLine[];
@@ -93,8 +95,7 @@ const playerProfiles: PlayerProfileData[] = [
 		},
 		calculatedStats: {
 			trueShootingPct: 62.3,
-			usagePct: 31.9,
-			playerEfficiency: 26.8,
+			efficiency: 26.8,
 			assistToTurnover: 2.6,
 		},
 		splits: [
@@ -140,8 +141,7 @@ const playerProfiles: PlayerProfileData[] = [
 		},
 		calculatedStats: {
 			trueShootingPct: 60.2,
-			usagePct: 27.5,
-			playerEfficiency: 23.4,
+			efficiency: 23.4,
 			assistToTurnover: 1.7,
 		},
 		splits: [
@@ -187,8 +187,7 @@ const playerProfiles: PlayerProfileData[] = [
 		},
 		calculatedStats: {
 			trueShootingPct: 64.1,
-			usagePct: 24.8,
-			playerEfficiency: 24.3,
+			efficiency: 24.3,
 			assistToTurnover: 1.2,
 		},
 		splits: [
@@ -234,8 +233,7 @@ const playerProfiles: PlayerProfileData[] = [
 		},
 		calculatedStats: {
 			trueShootingPct: 58.9,
-			usagePct: 22.4,
-			playerEfficiency: 16.6,
+			efficiency: 16.6,
 			assistToTurnover: 2.1,
 		},
 		splits: [
@@ -281,8 +279,7 @@ const playerProfiles: PlayerProfileData[] = [
 		},
 		calculatedStats: {
 			trueShootingPct: 61.0,
-			usagePct: 30.4,
-			playerEfficiency: 24.7,
+			efficiency: 24.7,
 			assistToTurnover: 2.8,
 		},
 		splits: [
@@ -317,8 +314,7 @@ const playerProfiles: PlayerProfileData[] = [
 		},
 		calculatedStats: {
 			trueShootingPct: 59.7,
-			usagePct: 28.1,
-			playerEfficiency: 22.1,
+			efficiency: 22.1,
 			assistToTurnover: 1.6,
 		},
 		splits: [
@@ -363,12 +359,11 @@ export function getPlayerRankings(): PlayerRankingRow[] {
 			rebounds: player.basicStats.rebounds,
 			assists: player.basicStats.assists,
 			trueShootingPct: player.calculatedStats.trueShootingPct,
-			usagePct: player.calculatedStats.usagePct,
-			efficiency: player.calculatedStats.playerEfficiency,
+			efficiency: player.calculatedStats.efficiency,
 		}))
 		.sort((a, b) => b.points - a.points);
 }
 
-export function getPlayerAge(birthDate: string): number {
-	return calculateAge(birthDate);
+export function getPlayerAge(bio: PlayerBio): number | undefined {
+	return bio.birthDate ? calculateAge(bio.birthDate) : bio.age;
 }

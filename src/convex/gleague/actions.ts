@@ -18,6 +18,7 @@ import {
 	parseTeamBoxScore,
 	parsePlayerBoxScores,
 	getTotalRecord,
+	parseRosterPlayer,
 	getRecordsFromTeamSchedule,
 } from "../shared/apiParser";
 import type {
@@ -26,6 +27,7 @@ import type {
 	ApiStandingsResponse,
 	ApiStandingsTeamEntry,
 	ApiRosterResponse,
+	ApiSiteRosterResponse,
 	ApiTeamScheduleResponse,
 } from "../shared/apiParser";
 
@@ -759,17 +761,7 @@ export const checkGameStatusV2 = internalAction({
 			});
 
 			if (game) {
-				await ctx.runMutation(internal.gleague.mutations.recalculateTeamAverages, {
-					teamId: game.homeTeamId,
-				});
-				await ctx.runMutation(internal.gleague.mutations.recalculateTeamAverages, {
-					teamId: game.awayTeamId,
-				});
-
-				// Update league rankings
-				await ctx.runMutation(internal.gleague.mutations.updateLeagueRankings, {
-					season: game.season,
-				});
+				await recalculateTeamsAndRankings(ctx, [game.homeTeamId, game.awayTeamId], game.season);
 			}
 
 			console.log(`[GLEAGUE] Game ${args.espnGameId} fully processed`);
@@ -783,32 +775,41 @@ export const checkGameStatusV2 = internalAction({
 	},
 });
 
-// Helper: sync box score data from API summary response into Convex
+// Recompute season averages for the given teams, then the season's league rankings
+async function recalculateTeamsAndRankings(ctx: any, teamIds: Id<"gleagueTeam">[], season: string) {
+	for (const teamId of new Set(teamIds)) {
+		await ctx.runMutation(internal.gleague.mutations.recalculateTeamAverages, { teamId });
+	}
+	await ctx.runMutation(internal.gleague.mutations.updateLeagueRankings, { season });
+}
+
+// Helper: sync box score data from API summary response into Convex.
+// Returns whether either team's box score was new or changed.
 async function syncBoxScoreData(
 	ctx: any,
 	gameEventId: string,
 	espnGameId: string,
 	summaryData: ApiGameSummaryResponse,
-) {
+): Promise<boolean> {
 	const boxscoreTeams = summaryData.boxscore?.teams;
 	const boxscorePlayers = summaryData.boxscore?.players;
 
-	if (!boxscoreTeams || boxscoreTeams.length < 2) return;
+	if (!boxscoreTeams || boxscoreTeams.length < 2) return false;
 
 	const competition = summaryData.header?.competitions?.[0];
 	// Pre-game summaries have no score yet; nothing to sync and nothing anomalous
-	if (competition?.status?.type?.state === "pre") return;
+	if (competition?.status?.type?.state === "pre") return false;
 
 	const headerHome = competition?.competitors?.find((c) => c.homeAway === "home");
 	const headerAway = competition?.competitors?.find((c) => c.homeAway === "away");
 
-	if (!headerHome || !headerAway) return;
+	if (!headerHome || !headerAway) return false;
 
 	// Get team IDs from game event
 	const game = await ctx.runQuery(internal.gleague.queries.getGameEventInternal, {
 		espnGameId,
 	});
-	if (!game) return;
+	if (!game) return false;
 
 	const season = game.season;
 
@@ -832,12 +833,13 @@ async function syncBoxScoreData(
 			rawHomeScore: headerHome.score,
 			rawAwayScore: headerAway.score,
 		});
-		return;
+		return false;
 	}
 
 	// Upsert team events
+	let boxScoreChanged = false;
 	if (homeBoxTeam) {
-		await ctx.runMutation(internal.gleague.mutations.upsertTeamEvent, {
+		const { changed } = await ctx.runMutation(internal.gleague.mutations.upsertTeamEvent, {
 			gameEventId: game._id,
 			teamId: game.homeTeamId,
 			isHome: true,
@@ -846,10 +848,11 @@ async function syncBoxScoreData(
 			winner: homeScore > awayScore,
 			...homeStats,
 		});
+		boxScoreChanged ||= changed;
 	}
 
 	if (awayBoxTeam) {
-		await ctx.runMutation(internal.gleague.mutations.upsertTeamEvent, {
+		const { changed } = await ctx.runMutation(internal.gleague.mutations.upsertTeamEvent, {
 			gameEventId: game._id,
 			teamId: game.awayTeamId,
 			isHome: false,
@@ -858,6 +861,7 @@ async function syncBoxScoreData(
 			winner: awayScore > homeScore,
 			...awayStats,
 		});
+		boxScoreChanged ||= changed;
 	}
 
 	// Parse and upsert player events
@@ -870,7 +874,7 @@ async function syncBoxScoreData(
 	) => {
 		for (const player of parsedPlayers) {
 			// Ensure player record exists
-			const playerId = await ctx.runMutation(internal.gleague.mutations.upsertPlayer, {
+			const playerId = await ctx.runMutation(internal.gleague.mutations.upsertPlayerFromBoxScore, {
 				espnPlayerId: player.espnPlayerId,
 				season,
 				teamId,
@@ -912,6 +916,8 @@ async function syncBoxScoreData(
 
 	await processPlayerBoxScores(homePlayerBoxScores, game.homeTeamId);
 	await processPlayerBoxScores(awayPlayerBoxScores, game.awayTeamId);
+
+	return boxScoreChanged;
 }
 
 // Sync a live game from API provider (triggered by page load server function)
@@ -1022,16 +1028,19 @@ export const syncLiveGameData = internalAction({
 		if (isPreGame) return;
 
 		// Sync box score data
-		await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+		const boxScoreChanged = await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
 
 		// First transition to completed: refresh W-L once ESPN has rolled the final in
-		const isNewlyCompleted =
-			eventStatus === "completed" &&
-			scoresAreComplete &&
-			!suspiciousFinal &&
-			existingGame?.eventStatus !== "completed";
+		const isCompleted = eventStatus === "completed" && scoresAreComplete && !suspiciousFinal;
+		const isNewlyCompleted = isCompleted && existingGame?.eventStatus !== "completed";
 		if (isNewlyCompleted) {
 			await scheduleStandingsRefresh(ctx);
+		}
+
+		// Season averages count finished games only: recompute when a game
+		// goes final or ESPN revises a finished game's box score
+		if (isCompleted && (boxScoreChanged || isNewlyCompleted)) {
+			await recalculateTeamsAndRankings(ctx, [homeTeamId, awayTeamId], teamSeason);
 		}
 	},
 });
@@ -1067,6 +1076,95 @@ export const backfillPlayerStatsFromCoreInternal = internalAction({
 	},
 	handler: async (ctx, args) => {
 		return await runCorePlayerStatsBackfill(ctx, args);
+	},
+});
+
+// Fetch a team's roster from the site API (the common API roster has no birthdates)
+async function fetchSiteRoster(espnTeamId: string): Promise<ApiSiteRosterResponse | null> {
+	const response = await fetch(`${getSiteApi()}/teams/${espnTeamId}/roster`, {
+		headers: { "Content-Type": "application/json" },
+	});
+	if (!response.ok) {
+		console.error(`[GLEAGUE Rosters] Roster fetch failed for team ${espnTeamId}: ${response.status}`);
+		return null;
+	}
+	return (await response.json()) as ApiSiteRosterResponse;
+}
+
+// Refresh every team's roster from ESPN: bios (birthdates included), trades and
+// signings, and players who've left. Only while the current season runs, so a
+// finished season keeps its final rosters.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function runRosterSync(ctx: any) {
+	const season = await getCurrentSeasonName(ctx);
+	const seasonEnd = await getSeasonDate(ctx, "gleague", "seasonEnd");
+	if (seasonEnd !== null && getTodayDate() > seasonEnd) {
+		console.log(`[GLEAGUE Rosters] Season ${season} ended ${seasonEnd}; keeping its final rosters`);
+		return { season, skipped: true, teams: 0, players: 0, flagged: 0 };
+	}
+
+	const teams = await ctx.runQuery(internal.gleague.queries.getAllTeamsInternal, { season });
+	let syncedTeams = 0;
+	let players = 0;
+	let flagged = 0;
+
+	for (const team of teams) {
+		// Placeholder teams (TBD) have no roster
+		if (!/^\d+$/.test(team.espnTeamId)) continue;
+		try {
+			const roster = await fetchSiteRoster(team.espnTeamId);
+			const athletes = roster?.athletes ?? [];
+			const rosterYear = roster?.season?.year;
+			// Never empty a roster from a failed response or another season's roster
+			if (
+				athletes.length === 0 ||
+				rosterYear === undefined ||
+				seasonFromEspnYear("gleague", rosterYear) !== season
+			) {
+				continue;
+			}
+
+			for (const athlete of athletes) {
+				await ctx.runMutation(internal.gleague.mutations.upsertPlayer, {
+					...parseRosterPlayer(athlete),
+					season,
+					teamId: team._id,
+					onRoster: true,
+				});
+			}
+			flagged += await ctx.runMutation(internal.gleague.mutations.markOffRoster, {
+				teamId: team._id,
+				rosterEspnPlayerIds: athletes.map((athlete) => athlete.id),
+			});
+			syncedTeams += 1;
+			players += athletes.length;
+		} catch (error) {
+			console.error(`[GLEAGUE Rosters] Roster sync failed for team ${team.espnTeamId}:`, error);
+		}
+	}
+
+	console.log(
+		`[GLEAGUE Rosters] Synced ${syncedTeams}/${teams.length} teams (${players} players), ${flagged} newly off-roster`,
+	);
+	return { season, skipped: false, teams: syncedTeams, players, flagged };
+}
+
+// Refresh rosters on their own (the daily player refresh runs this first)
+export const syncRosters = internalAction({
+	args: {},
+	handler: async (ctx) => {
+		return await runRosterSync(ctx);
+	},
+});
+
+// Daily: refresh rosters, then season stats from ESPN Core, so a newly signed
+// player has their stats the same day
+export const refreshPlayers = internalAction({
+	args: {},
+	handler: async (ctx) => {
+		const rosters = await runRosterSync(ctx);
+		const stats = await runCorePlayerStatsBackfill(ctx, {});
+		return { rosters, stats };
 	},
 });
 
@@ -1215,22 +1313,9 @@ export const bootstrapPlayersChunk = internalAction({
 						athlete.id,
 					);
 					await ctx.runMutation(internal.gleague.mutations.upsertPlayer, {
-						espnPlayerId: athlete.id,
+						...parseRosterPlayer(athlete),
 						season,
 						teamId: teamInfo.convexTeamId,
-						name: athlete.displayName,
-						firstName: athlete.firstName,
-						lastName: athlete.lastName,
-						jersey: athlete.jersey,
-						position: athlete.position?.abbreviation,
-						headshot: athlete.headshot?.href,
-						height: athlete.displayHeight,
-						weight: athlete.displayWeight,
-						age: athlete.age,
-						experience: athlete.experience?.years !== undefined
-							? `${athlete.experience.years}`
-							: undefined,
-						college: athlete.college?.name,
 						...(coreStats ?? {}),
 					});
 				}
@@ -1350,6 +1435,8 @@ export const backfillDateChunk = internalAction({
 			console.log(`[GLEAGUE Backfill] ${date}: ${events.length} games found`);
 
 			let processedGames = 0;
+			// Teams whose finished games changed, by season, to recompute after the date
+			const changedTeams = new Map<string, Id<"gleagueTeam">[]>();
 
 			for (const event of events) {
 				const competition = event.competitions[0];
@@ -1401,8 +1488,12 @@ export const backfillDateChunk = internalAction({
 
 						if (summaryRes.ok) {
 							const summaryData = (await summaryRes.json()) as ApiGameSummaryResponse;
-							await syncBoxScoreData(ctx, gameEventId, event.id, summaryData);
+							const boxScoreChanged = await syncBoxScoreData(ctx, gameEventId, event.id, summaryData);
 							processedGames++;
+							// Bootstrap recalculates everything once the backfill is done
+							if (boxScoreChanged && !args.bootstrapRunId) {
+								changedTeams.set(season, [...(changedTeams.get(season) ?? []), homeTeamId, awayTeamId]);
+							}
 						} else {
 							console.error(`[GLEAGUE Backfill] Summary fetch failed for game ${event.id}: ${summaryRes.status}`);
 						}
@@ -1410,6 +1501,10 @@ export const backfillDateChunk = internalAction({
 						console.error(`[GLEAGUE Backfill] Error processing game ${event.id}:`, error);
 					}
 				}
+			}
+
+			for (const [season, teamIds] of changedTeams) {
+				await recalculateTeamsAndRankings(ctx, teamIds, season);
 			}
 
 			console.log(`[GLEAGUE Backfill] ${date}: processed ${processedGames} completed games`);
@@ -1425,8 +1520,9 @@ export const backfillDateChunk = internalAction({
 	},
 });
 
-// Daily: store the schedule from yesterday through the season's end so the
-// scoreboard can page ahead, and give completed games their as-of-game records.
+// Daily: store the schedule from three days back through the season's end so
+// the scoreboard can page ahead, give completed games their as-of-game records,
+// and pick up ESPN's box score corrections.
 // Also safe to run by hand.
 export const syncSchedule = internalAction({
 	args: {},

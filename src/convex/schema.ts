@@ -147,6 +147,10 @@ export default defineSchema({
 		height: v.optional(v.string()),
 		weight: v.optional(v.string()),
 		age: v.optional(v.number()),
+		birthDate: v.optional(v.string()), // YYYY-MM-DD
+		// false once the daily roster sync finds the player gone from the team's
+		// ESPN roster; unset until the sync first sees them
+		onRoster: v.optional(v.boolean()),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		// Seasonal averages (computed from nbaPlayerEvent)
@@ -371,6 +375,10 @@ export default defineSchema({
 		height: v.optional(v.string()),
 		weight: v.optional(v.string()),
 		age: v.optional(v.number()),
+		birthDate: v.optional(v.string()), // YYYY-MM-DD
+		// false once the daily roster sync finds the player gone from the team's
+		// ESPN roster; unset until the sync first sees them
+		onRoster: v.optional(v.boolean()),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		gamesPlayed: v.optional(v.number()),
@@ -587,6 +595,10 @@ export default defineSchema({
 		height: v.optional(v.string()),
 		weight: v.optional(v.string()),
 		age: v.optional(v.number()),
+		birthDate: v.optional(v.string()), // YYYY-MM-DD
+		// false once the daily roster sync finds the player gone from the team's
+		// ESPN roster; unset until the sync first sees them
+		onRoster: v.optional(v.boolean()),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		gamesPlayed: v.optional(v.number()),

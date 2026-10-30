@@ -60,10 +60,11 @@ crons.daily(
 	{},
 );
 
-// Store the schedule from yesterday through the season's end (9:30 AM UTC,
-// after the standings refresh). Discovery only adds today's games, so without
-// this the scoreboard has nothing for upcoming dates. Re-syncing yesterday
-// also stores each finished game's settled as-of-game records.
+// Store the schedule from three days back through the season's end (9:30 AM
+// UTC, after the standings refresh). Discovery only adds today's games, so
+// without this the scoreboard has nothing for upcoming dates. Re-syncing recent
+// days also stores each finished game's settled as-of-game records and picks up
+// ESPN's box score corrections (recomputing the teams' season averages).
 crons.daily(
 	"sync-nba-schedule",
 	{ hourUTC: 9, minuteUTC: 30 },
@@ -85,25 +86,26 @@ crons.daily(
 	{},
 );
 
-// Reconcile season player stats from ESPN Core to keep non-live stats accurate.
+// Refresh rosters from ESPN (bios, trades, signings, players who've left), then
+// reconcile season player stats from ESPN Core to keep non-live stats accurate.
 crons.daily(
-	"reconcile-nba-player-stats",
+	"refresh-nba-players",
 	{ hourUTC: 18, minuteUTC: 0 },
-	internal.nba.actions.backfillPlayerStatsFromCoreInternal,
+	internal.nba.actions.refreshPlayers,
 	{},
 );
 
 crons.daily(
-	"reconcile-wnba-player-stats",
+	"refresh-wnba-players",
 	{ hourUTC: 18, minuteUTC: 20 },
-	internal.wnba.actions.backfillPlayerStatsFromCoreInternal,
+	internal.wnba.actions.refreshPlayers,
 	{},
 );
 
 crons.daily(
-	"reconcile-gleague-player-stats",
+	"refresh-gleague-players",
 	{ hourUTC: 18, minuteUTC: 40 },
-	internal.gleague.actions.backfillPlayerStatsFromCoreInternal,
+	internal.gleague.actions.refreshPlayers,
 	{},
 );
 

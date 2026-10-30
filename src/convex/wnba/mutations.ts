@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { computeTeamEventAdvancedStats, round } from "../shared/statsCalculations";
+import { countsTowardSeasonAverages } from "../shared/seasonHelpers";
 
 // Event status validator (must match schema)
 const eventStatusValidator = v.union(
@@ -88,6 +89,8 @@ export const upsertPlayer = internalMutation({
 		height: v.optional(v.string()),
 		weight: v.optional(v.string()),
 		age: v.optional(v.number()),
+		birthDate: v.optional(v.string()),
+		onRoster: v.optional(v.boolean()),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		gamesPlayed: v.optional(v.number()),
@@ -130,6 +133,61 @@ export const upsertPlayer = internalMutation({
 		} else {
 			return await ctx.db.insert("wnbaPlayer", data);
 		}
+	},
+});
+
+// Ensure a player seen in a box score exists. Once the daily roster sync
+// manages a player (onRoster set), it owns their team and bio: re-synced older
+// box scores would otherwise move a traded player back to their old team.
+export const upsertPlayerFromBoxScore = internalMutation({
+	args: {
+		espnPlayerId: v.string(),
+		season: v.string(),
+		teamId: v.id("wnbaTeam"),
+		name: v.string(),
+		jersey: v.optional(v.string()),
+		position: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const existing = await ctx.db
+			.query("wnbaPlayer")
+			.withIndex("by_espnPlayerId_season", (q) =>
+				q.eq("espnPlayerId", args.espnPlayerId).eq("season", args.season),
+			)
+			.unique();
+
+		if (existing?.onRoster !== undefined) return existing._id;
+
+		const data = omitUndefined({ ...args, updatedAt: Date.now() });
+		if (existing) {
+			await ctx.db.patch(existing._id, data);
+			return existing._id;
+		}
+		return await ctx.db.insert("wnbaPlayer", data);
+	},
+});
+
+// Flag a team's players who are no longer on its ESPN roster. Returns how many
+// were newly flagged.
+export const markOffRoster = internalMutation({
+	args: {
+		teamId: v.id("wnbaTeam"),
+		rosterEspnPlayerIds: v.array(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const rostered = new Set(args.rosterEspnPlayerIds);
+		const players = await ctx.db
+			.query("wnbaPlayer")
+			.withIndex("by_teamId", (q) => q.eq("teamId", args.teamId))
+			.collect();
+
+		let flagged = 0;
+		for (const player of players) {
+			if (rostered.has(player.espnPlayerId) || player.onRoster === false) continue;
+			await ctx.db.patch(player._id, { onRoster: false, updatedAt: Date.now() });
+			flagged += 1;
+		}
+		return flagged;
 	},
 });
 
@@ -285,11 +343,15 @@ export const upsertTeamEvent = internalMutation({
 		};
 
 		if (existing) {
+			// ESPN revises box scores after the final; callers recalculate
+			// season averages when a finished game's stats change
+			const changed = (Object.keys(rest) as Array<keyof typeof rest>).some(
+				(key) => existing[key] !== rest[key],
+			);
 			await ctx.db.patch(existing._id, data);
-			return existing._id;
-		} else {
-			return await ctx.db.insert("wnbaTeamEvent", data);
+			return { teamEventId: existing._id, changed };
 		}
+		return { teamEventId: await ctx.db.insert("wnbaTeamEvent", data), changed: true };
 	},
 });
 
@@ -344,10 +406,14 @@ export const upsertPlayerEvent = internalMutation({
 export const recalculateTeamAverages = internalMutation({
 	args: { teamId: v.id("wnbaTeam") },
 	handler: async (ctx, args) => {
-		const events = await ctx.db
+		const allEvents = await ctx.db
 			.query("wnbaTeamEvent")
 			.withIndex("by_teamId", (q) => q.eq("teamId", args.teamId))
 			.collect();
+
+		// Only finished games count, and preseason games don't count at all
+		const games = await Promise.all(allEvents.map((e) => ctx.db.get(e.gameEventId)));
+		const events = allEvents.filter((_, i) => countsTowardSeasonAverages(games[i]));
 
 		if (events.length === 0) return;
 
@@ -426,74 +492,6 @@ export const recalculateTeamAverages = internalMutation({
 			astToRatio,
 			spg: round(totalSteals / gamesPlayed, 1),
 			bpg: round(totalBlocks / gamesPlayed, 1),
-			totalFgMade,
-			totalFgAttempted,
-			totalThreeMade,
-			totalThreeAttempted,
-			totalFtMade,
-			totalFtAttempted,
-			updatedAt: Date.now(),
-		});
-	},
-});
-
-// Recalculate seasonal averages for a player from all wnbaPlayerEvent rows
-export const recalculatePlayerAverages = internalMutation({
-	args: { playerId: v.id("wnbaPlayer") },
-	handler: async (ctx, args) => {
-		const events = await ctx.db
-			.query("wnbaPlayerEvent")
-			.withIndex("by_playerId", (q) => q.eq("playerId", args.playerId))
-			.collect();
-
-		if (events.length === 0) return;
-
-		const activeEvents = events.filter((e) => e.active && e.minutes > 0);
-		const gamesPlayed = activeEvents.length;
-		const gamesStarted = activeEvents.filter((e) => e.starter).length;
-
-		if (gamesPlayed === 0) return;
-
-		let totalMinutes = 0, totalPoints = 0;
-		let totalReb = 0, totalOreb = 0, totalDreb = 0;
-		let totalAst = 0, totalStl = 0, totalBlk = 0, totalTov = 0;
-		let totalFgMade = 0, totalFgAttempted = 0;
-		let totalThreeMade = 0, totalThreeAttempted = 0;
-		let totalFtMade = 0, totalFtAttempted = 0;
-
-		for (const e of activeEvents) {
-			totalMinutes += e.minutes;
-			totalPoints += e.points;
-			totalReb += e.totalRebounds;
-			totalOreb += e.offensiveRebounds;
-			totalDreb += e.defensiveRebounds;
-			totalAst += e.assists;
-			totalStl += e.steals;
-			totalBlk += e.blocks;
-			totalTov += e.turnovers;
-			totalFgMade += e.fieldGoalsMade;
-			totalFgAttempted += e.fieldGoalsAttempted;
-			totalThreeMade += e.threePointMade;
-			totalThreeAttempted += e.threePointAttempted;
-			totalFtMade += e.freeThrowsMade;
-			totalFtAttempted += e.freeThrowsAttempted;
-		}
-
-		await ctx.db.patch(args.playerId, {
-			gamesPlayed,
-			gamesStarted,
-			minutesPerGame: round(totalMinutes / gamesPlayed, 1),
-			pointsPerGame: round(totalPoints / gamesPlayed, 1),
-			reboundsPerGame: round(totalReb / gamesPlayed, 1),
-			assistsPerGame: round(totalAst / gamesPlayed, 1),
-			stealsPerGame: round(totalStl / gamesPlayed, 1),
-			blocksPerGame: round(totalBlk / gamesPlayed, 1),
-			turnoversPerGame: round(totalTov / gamesPlayed, 1),
-			fieldGoalPct: totalFgAttempted > 0 ? round((totalFgMade / totalFgAttempted) * 100, 1) : 0,
-			threePointPct: totalThreeAttempted > 0 ? round((totalThreeMade / totalThreeAttempted) * 100, 1) : 0,
-			freeThrowPct: totalFtAttempted > 0 ? round((totalFtMade / totalFtAttempted) * 100, 1) : 0,
-			offRebPerGame: round(totalOreb / gamesPlayed, 1),
-			defRebPerGame: round(totalDreb / gamesPlayed, 1),
 			totalFgMade,
 			totalFgAttempted,
 			totalThreeMade,

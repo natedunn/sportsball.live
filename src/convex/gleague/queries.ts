@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { query, internalQuery } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { getSeriesRecordForGame, isPlayoffGame } from "../shared/scoreboardSeries";
+import { countsTowardSeasonAverages } from "../shared/seasonHelpers";
+import { computePlayerSeasonRatings, playedInGame } from "../shared/statsCalculations";
 
 // Get all games for a specific date (scoreboard)
 export const getScoreboard = query({
@@ -213,7 +215,8 @@ export const getTeamGameLog = query({
 		const enriched = await Promise.all(
 			teamEvents.map(async (te) => {
 				const gameEvent = await ctx.db.get(te.gameEventId);
-				if (!gameEvent) return null;
+				// Trends cover the same games as the season averages
+				if (!countsTowardSeasonAverages(gameEvent)) return null;
 				const oppScore = te.isHome ? gameEvent.awayScore : gameEvent.homeScore;
 				return {
 					gameDate: gameEvent.gameDate,
@@ -249,10 +252,12 @@ export const getTeamRoster = query({
 		if (!args.teamId) return [];
 		const teamId = args.teamId;
 
-		return await ctx.db
+		const players = await ctx.db
 			.query("gleaguePlayer")
 			.withIndex("by_teamId", (q) => q.eq("teamId", teamId))
 			.collect();
+		// Players who've left keep their stats but drop off the roster
+		return players.filter((p) => p.onRoster !== false);
 	},
 });
 
@@ -326,36 +331,6 @@ function aggregateEvents(events: EnrichedPlayerEvent[]) {
 	);
 }
 
-function deriveBirthDate(age?: number): string {
-	const currentYear = new Date().getUTCFullYear();
-	const birthYear = currentYear - (age ?? 25);
-	return `${birthYear}-01-01`;
-}
-
-function calculatedStats(player: any) {
-	const fga = player.fieldGoalsAttempted ?? 0;
-	const fgm = player.fieldGoalsMade ?? 0;
-	const fta = player.freeThrowsAttempted ?? 0;
-	const ftm = player.freeThrowsMade ?? 0;
-	const tov = player.turnoversPerGame ?? 0;
-	const ast = player.assistsPerGame ?? 0;
-	const pts = player.pointsPerGame ?? 0;
-	const reb = player.reboundsPerGame ?? 0;
-	const stl = player.stealsPerGame ?? 0;
-	const blk = player.blocksPerGame ?? 0;
-	const tsDenom = 2 * (fga + 0.44 * fta);
-	const tsPct = tsDenom > 0 ? (pts / tsDenom) * 100 : player.fieldGoalPct ?? 0;
-	const efficiency =
-		pts + reb + ast + stl + blk - (fga - fgm) - (fta - ftm) - tov;
-
-	return {
-		trueShootingPct: tsPct,
-		usagePct: Math.min(50, (fga + 0.44 * fta + tov) * 1.5),
-		playerEfficiency: efficiency,
-		assistToTurnover: ast / Math.max(tov, 0.1),
-	};
-}
-
 export const getPlayerDetails = query({
 	args: { season: v.string(), espnPlayerId: v.string() },
 	handler: async (ctx, args) => {
@@ -385,7 +360,8 @@ export const getPlayerDetails = query({
 				team: team?.abbreviation ?? "UNK",
 				position: entry.position ?? "",
 				bio: {
-					birthDate: deriveBirthDate(entry.age),
+					birthDate: entry.birthDate,
+					age: entry.age,
 					college: entry.college ?? "Unknown",
 					draftInfo: entry.experience ?? "Unknown",
 					height: entry.height ?? "Unknown",
@@ -400,7 +376,7 @@ export const getPlayerDetails = query({
 					steals: entry.stealsPerGame ?? 0,
 					blocks: entry.blocksPerGame ?? 0,
 				},
-				calculatedStats: calculatedStats(entry),
+				calculatedStats: computePlayerSeasonRatings(entry),
 				splits: [],
 				lastTen: [],
 				teammateIds: [],
@@ -409,7 +385,7 @@ export const getPlayerDetails = query({
 		};
 
 		const teammateIds = allSeasonPlayers
-			.filter((p) => p.teamId === player.teamId && p._id !== player._id)
+			.filter((p) => p.teamId === player.teamId && p._id !== player._id && p.onRoster !== false)
 			.map((p) => p.espnPlayerId);
 
 		const playerEvents = await ctx.db
@@ -420,8 +396,11 @@ export const getPlayerDetails = query({
 		const enrichedEvents: EnrichedPlayerEvent[] = (
 			await Promise.all(
 				playerEvents.map(async (event) => {
+					// Splits and the game log cover the games the season averages do,
+					// and only the ones the player appeared in
+					if (!playedInGame(event)) return null;
 					const game = await ctx.db.get(event.gameEventId);
-					if (!game) return null;
+					if (!countsTowardSeasonAverages(game)) return null;
 
 					const isHome = game.homeTeamId === player.teamId;
 					const opponentId = isHome ? game.awayTeamId : game.homeTeamId;

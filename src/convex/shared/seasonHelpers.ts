@@ -68,6 +68,18 @@ export const ESPN_SEASON_TYPE = {
 } as const;
 
 /**
+ * Whether a game counts toward a team's season averages and trends: finished
+ * games only, never preseason.
+ */
+export function countsTowardSeasonAverages<
+	T extends { eventStatus?: string; seasonType?: number },
+>(game: T | null | undefined): game is T {
+	return (
+		game?.eventStatus === "completed" && game.seasonType !== ESPN_SEASON_TYPE.preseason
+	);
+}
+
+/**
  * Convert ESPN's season year (the year the season ends, e.g. 2027 for 2026-27)
  * into our season string: "2026-27" for NBA/G-League, "2026" for WNBA.
  */
@@ -180,10 +192,13 @@ export function getDateRange(startDate: string, endDate: string): string[] {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_MIN_DAYS_AHEAD = 7;
+// ESPN revises box scores for a day or two after the final
+const SCHEDULE_RESYNC_DAYS_BACK = 3;
 
 /**
- * Dates (YYYYMMDD, US Eastern) the daily schedule sync covers: from yesterday,
- * so last night's finals pick up their settled records, through the current
+ * Dates (YYYYMMDD, US Eastern) the daily schedule sync covers: from three days
+ * back, so recent finals pick up their settled records and ESPN's box score
+ * corrections, through the current
  * season's last day. Once that season is over, it runs through the latest
  * scheduled season instead (the next one, once ESPN publishes it). Always at
  * least a week ahead, so a season ESPN hasn't published yet still shows up.
@@ -195,7 +210,7 @@ export function getScheduleSyncRange(
 	}: { seasonEndDate: string | null; latestScheduledEndDate: string | null },
 	now: number = Date.now(),
 ): { startDate: string; endDate: string } {
-	const startDate = formatGameDate(now - DAY_MS);
+	const startDate = formatGameDate(now - SCHEDULE_RESYNC_DAYS_BACK * DAY_MS);
 	const today = formatGameDate(now);
 	const seasonEnd =
 		seasonEndDate !== null && seasonEndDate >= today ? seasonEndDate : latestScheduledEndDate;

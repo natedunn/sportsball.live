@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
 	getRecordsFromTeamSchedule,
 	getTotalRecord,
+	parseRosterPlayer,
 	type ApiTeamScheduleEvent,
 } from "@convex/shared/apiParser";
 
@@ -106,3 +107,60 @@ describe("getRecordsFromTeamSchedule", () => {
 	});
 });
 
+
+describe("parseRosterPlayer", () => {
+	it("maps a site API roster athlete to the stored bio", () => {
+		expect(
+			parseRosterPlayer({
+				id: "3136193",
+				displayName: "Devin Booker",
+				firstName: "Devin",
+				lastName: "Booker",
+				jersey: "15",
+				position: { abbreviation: "SG" },
+				displayHeight: `6' 5"`,
+				displayWeight: "206 lbs",
+				age: 29,
+				dateOfBirth: "1996-10-30T08:00Z",
+				experience: { years: 11 },
+				college: { name: "Kentucky" },
+				headshot: { href: "https://a.espncdn.com/booker.png" },
+			}),
+		).toEqual({
+			espnPlayerId: "3136193",
+			name: "Devin Booker",
+			firstName: "Devin",
+			lastName: "Booker",
+			jersey: "15",
+			position: "SG",
+			headshot: "https://a.espncdn.com/booker.png",
+			height: `6' 5"`,
+			weight: "206 lbs",
+			age: 29,
+			birthDate: "1996-10-30",
+			experience: "11",
+			college: "Kentucky",
+		});
+	});
+
+	it("leaves out fields ESPN sends as null", () => {
+		const parsed = parseRosterPlayer({
+			id: "4593968",
+			displayName: "Josiah Allick",
+			displayWeight: null,
+			dateOfBirth: null,
+			experience: null,
+			college: null,
+			headshot: null,
+		});
+		expect(parsed.weight).toBeUndefined();
+		expect(parsed.birthDate).toBeUndefined();
+		expect(parsed.experience).toBeUndefined();
+		expect(parsed.college).toBeUndefined();
+		expect(parsed.headshot).toBeUndefined();
+	});
+
+	it("keeps a rookie's zero years of experience", () => {
+		expect(parseRosterPlayer({ id: "1", displayName: "Rookie", experience: { years: 0 } }).experience).toBe("0");
+	});
+});

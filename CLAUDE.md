@@ -65,6 +65,7 @@ Each league (NBA, WNBA, G-League) follows the same pattern:
 - **Server Functions**: Use `createServerFn` from TanStack Start for server-side data fetching
 - **Query Integration**: Routes use `loader` with `ensureQueryData` for SSR, components use `useQuery`
 - **Data Health**: Daily jobs record heartbeats; a daily Convex health check compares stored data with ESPN and repairs what it can, and a GitHub Action turns unresolved problems into an issue. See docs/data-health.md
+- **Known Gaps**: Known stats issues and pending product decisions (pace/rating methodology, G League Tip-Off averages, playoff stats view, ESPN quirks) are tracked in docs/known-gaps.md. Check it before changing stats code, and remove entries you fix
 - **Dark/Light Colors**: Teams have both `darkColor` and `lightColor` - components use `useIsDarkMode` hook to select appropriate color
 
 ### Path Aliases

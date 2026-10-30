@@ -35,3 +35,5 @@ Stats come from ESPN and are kept current by daily Convex jobs (`src/convex/cron
   ```
 
 Expected noise: ESPN occasionally disagrees with itself. For example, its season totals don't add up to its own box scores. The checks compare against ESPN's box scores, schedules, standings and rosters, so that doesn't cause alerts.
+
+Known limits of these checks, and stats issues they can't catch, are in [known-gaps.md](known-gaps.md).

@@ -78,7 +78,6 @@ const iconSizeClasses = {
 };
 
 export function SelectTrigger({
-	children,
 	className,
 	placeholder,
 	size = "sm",

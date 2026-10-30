@@ -1,6 +1,5 @@
 import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
-import { internal } from "../_generated/api";
 import { computeTeamEventAdvancedStats, round } from "../shared/statsCalculations";
 
 // Event status validator (must match schema)

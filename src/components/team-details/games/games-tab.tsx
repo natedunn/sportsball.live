@@ -49,7 +49,7 @@ function formatScheduleDate(dateStr: string, isCompleted: boolean): { date: stri
   return { date: dateFormatted, time: `${time} ${tz}` };
 }
 
-export function GamesTab({ games, teamId, league }: GamesTabProps) {
+export function GamesTab({ games, league }: GamesTabProps) {
   const [locationFilter, setLocationFilter] = useState<Filter>("all");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const nextGameRef = useRef<HTMLTableRowElement>(null);

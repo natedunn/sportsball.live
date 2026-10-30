@@ -396,7 +396,6 @@ function TeamRow({
 	isWinner,
 	isLoser,
 	isTop,
-	isDark,
 	league,
 }: {
 	team: BracketTeam | null;

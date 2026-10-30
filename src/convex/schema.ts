@@ -192,6 +192,9 @@ export default defineSchema({
 		season: v.string(),
 		// ESPN season type: 1 preseason, 2 regular season, 3 postseason, 5 play-in/showdown cup
 		seasonType: v.optional(v.number()),
+		// ESPN's competition type: "STD" for a normal game, "CC" for a Cup
+		// championship, "ALLSTAR"... (season type 2 covers all of them)
+		competitionType: v.optional(v.string()),
 		homeTeamId: v.id("nbaTeam"),
 		awayTeamId: v.id("nbaTeam"),
 		gameDate: v.string(),
@@ -419,6 +422,9 @@ export default defineSchema({
 		season: v.string(),
 		// ESPN season type: 1 preseason, 2 regular season, 3 postseason, 5 play-in/showdown cup
 		seasonType: v.optional(v.number()),
+		// ESPN's competition type: "STD" for a normal game, "CC" for a Cup
+		// championship, "ALLSTAR"... (season type 2 covers all of them)
+		competitionType: v.optional(v.string()),
 		homeTeamId: v.id("wnbaTeam"),
 		awayTeamId: v.id("wnbaTeam"),
 		gameDate: v.string(),
@@ -641,6 +647,9 @@ export default defineSchema({
 		season: v.string(),
 		// ESPN season type: 1 preseason, 2 regular season, 3 postseason, 5 play-in/showdown cup
 		seasonType: v.optional(v.number()),
+		// ESPN's competition type: "STD" for a normal game, "CC" for a Cup
+		// championship, "ALLSTAR"... (season type 2 covers all of them)
+		competitionType: v.optional(v.string()),
 		homeTeamId: v.id("gleagueTeam"),
 		awayTeamId: v.id("gleagueTeam"),
 		gameDate: v.string(),

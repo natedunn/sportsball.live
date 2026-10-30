@@ -249,6 +249,7 @@ export const upsertGameEvent = internalMutation({
 		lastFetchedAt: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
 		seasonType: v.optional(v.number()),
+		competitionType: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
 		const existing = await ctx.db

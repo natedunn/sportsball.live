@@ -117,6 +117,10 @@ export interface ApiScoreboardEvent {
 		venue?: {
 			fullName?: string;
 		};
+		/** "STD", "CC" (Cup championship), "ALLSTAR"... */
+		type?: {
+			abbreviation?: string;
+		};
 		competitors: Array<{
 			homeAway: "home" | "away";
 			team: {

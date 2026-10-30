@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
 	compareSeasons,
+	countsTowardGameLog,
 	countsTowardSeasonAverages,
 	formatGameDate,
 	getNextSeason,
 	getScheduleSyncRange,
 	getTodayDate,
+	mapApiStateToEventStatus,
 	parseEspnSeason,
 	seasonFromEspnYear,
 } from "@convex/shared/seasonHelpers";
@@ -132,29 +134,69 @@ describe("getScheduleSyncRange", () => {
 });
 
 describe("countsTowardSeasonAverages", () => {
-	it("counts finished regular season, play-in and playoff games", () => {
+	it("counts finished regular-season games", () => {
 		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 2 })).toBe(true);
-		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 3 })).toBe(true);
-		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 5 })).toBe(true);
+		expect(
+			countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 2, competitionType: "STD" }),
+		).toBe(true);
 	});
 
-	it("counts finished games with no season type yet", () => {
-		expect(countsTowardSeasonAverages({ eventStatus: "completed" })).toBe(true);
+	it("skips playoffs, play-in, preseason and the G League Tip-Off Tournament", () => {
+		for (const seasonType of [1, 3, 5]) {
+			expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType })).toBe(false);
+		}
 	});
 
-	it("skips preseason games", () => {
-		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 1 })).toBe(false);
+	it("skips Cup championships and All-Star games ESPN files as regular season", () => {
+		expect(
+			countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 2, competitionType: "CC" }),
+		).toBe(false);
+		expect(
+			countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 2, competitionType: "ALLSTAR" }),
+		).toBe(false);
 	});
 
-	it("skips games that haven't finished", () => {
-		expect(countsTowardSeasonAverages({ eventStatus: "in_progress", seasonType: 2 })).toBe(false);
-		expect(countsTowardSeasonAverages({ eventStatus: "halftime", seasonType: 2 })).toBe(false);
-		expect(countsTowardSeasonAverages({ eventStatus: "scheduled", seasonType: 2 })).toBe(false);
+	it("skips games with no season type", () => {
+		expect(countsTowardSeasonAverages({ eventStatus: "completed" })).toBe(false);
 	});
 
-	it("skips missing games", () => {
+	it("skips games that haven't finished, or didn't happen", () => {
+		for (const eventStatus of ["in_progress", "halftime", "scheduled", "postponed", "cancelled"]) {
+			expect(countsTowardSeasonAverages({ eventStatus, seasonType: 2 })).toBe(false);
+		}
 		expect(countsTowardSeasonAverages(null)).toBe(false);
 		expect(countsTowardSeasonAverages(undefined)).toBe(false);
+	});
+});
+
+describe("countsTowardGameLog", () => {
+	it("includes every finished game a team really played", () => {
+		for (const seasonType of [2, 3, 5]) {
+			expect(countsTowardGameLog({ eventStatus: "completed", seasonType })).toBe(true);
+		}
+		expect(countsTowardGameLog({ eventStatus: "completed", seasonType: 2, competitionType: "CC" })).toBe(true);
+	});
+
+	it("skips preseason, All-Star, untagged and unfinished games", () => {
+		expect(countsTowardGameLog({ eventStatus: "completed", seasonType: 1 })).toBe(false);
+		expect(countsTowardGameLog({ eventStatus: "completed", seasonType: 2, competitionType: "ALLSTAR" })).toBe(
+			false,
+		);
+		expect(countsTowardGameLog({ eventStatus: "completed" })).toBe(false);
+		expect(countsTowardGameLog({ eventStatus: "postponed", seasonType: 2 })).toBe(false);
+	});
+});
+
+describe("mapApiStateToEventStatus", () => {
+	it("maps finished games to completed", () => {
+		expect(mapApiStateToEventStatus("post", "Final")).toBe("completed");
+		expect(mapApiStateToEventStatus("post", "Final/OT")).toBe("completed");
+	});
+
+	it("keeps postponed and canceled games, which ESPN also reports as post, out of completed", () => {
+		expect(mapApiStateToEventStatus("post", "Postponed")).toBe("postponed");
+		expect(mapApiStateToEventStatus("post", "Canceled")).toBe("cancelled");
+		expect(mapApiStateToEventStatus("post", "Cancelled")).toBe("cancelled");
 	});
 });
 

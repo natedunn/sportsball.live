@@ -67,15 +67,35 @@ export const ESPN_SEASON_TYPE = {
 	special: 5,
 } as const;
 
+type StatGame = { eventStatus?: string; seasonType?: number; competitionType?: string };
+
 /**
- * Whether a game counts toward a team's season averages and trends: finished
- * games only, never preseason.
+ * Whether a game counts toward season averages: finished regular-season games
+ * (ESPN season type 2) only, as ESPN and the leagues report them. ESPN also
+ * files Cup championships ("CC") and All-Star games under type 2; neither
+ * counts. Games with no season type don't count.
  */
-export function countsTowardSeasonAverages<
-	T extends { eventStatus?: string; seasonType?: number },
->(game: T | null | undefined): game is T {
+export function countsTowardSeasonAverages<T extends StatGame>(game: T | null | undefined): game is T {
 	return (
-		game?.eventStatus === "completed" && game.seasonType !== ESPN_SEASON_TYPE.preseason
+		game?.eventStatus === "completed" &&
+		game.seasonType === ESPN_SEASON_TYPE.regular &&
+		game.competitionType !== "CC" &&
+		game.competitionType !== "ALLSTAR"
+	);
+}
+
+/**
+ * Whether a game belongs in game logs, trends and recent-form splits: every
+ * finished game a team really played (regular season, play-in, playoffs, Cup
+ * championships), but not preseason or All-Star games.
+ */
+export function countsTowardGameLog<T extends StatGame>(game: T | null | undefined): game is T {
+	return (
+		game?.eventStatus === "completed" &&
+		(game.seasonType === ESPN_SEASON_TYPE.regular ||
+			game.seasonType === ESPN_SEASON_TYPE.postseason ||
+			game.seasonType === ESPN_SEASON_TYPE.special) &&
+		game.competitionType !== "ALLSTAR"
 	);
 }
 
@@ -153,8 +173,14 @@ export function mapApiStateToEventStatus(
 			if (detailLower.includes("overtime") || detailLower.includes(" ot")) return "overtime";
 			return "in_progress";
 		}
-		case "post":
+		case "post": {
+			// ESPN reports postponed and canceled games as "post" too, with an
+			// all-zero box score
+			const detailLower = detail?.toLowerCase() ?? "";
+			if (detailLower.includes("postponed")) return "postponed";
+			if (detailLower.includes("canceled") || detailLower.includes("cancelled")) return "cancelled";
 			return "completed";
+		}
 		default:
 			if (state === "postponed") return "postponed";
 			if (state === "cancelled") return "cancelled";

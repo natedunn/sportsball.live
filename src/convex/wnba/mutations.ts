@@ -236,6 +236,7 @@ export const upsertGameEvent = internalMutation({
 		espnGameId: v.string(),
 		season: v.string(),
 		seasonType: v.optional(v.number()),
+		competitionType: v.optional(v.string()),
 		homeTeamId: v.id("wnbaTeam"),
 		awayTeamId: v.id("wnbaTeam"),
 		gameDate: v.string(),

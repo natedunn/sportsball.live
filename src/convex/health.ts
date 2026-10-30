@@ -160,7 +160,8 @@ async function getSnapshot(ctx: Ctx, league: League, season: string): Promise<Sn
 // ---------- games ----------
 
 // Every game ESPN has as final (any season type but preseason) is stored as
-// final with both teams' box scores. Repair: sync the game.
+// final with both teams' box scores, and no game ESPN lists as unfinished
+// (postponed, say) is stored as final. Repair: sync the game.
 async function checkGames(ctx: Ctx, league: League, season: string, snapshot: Snapshot) {
 	const site = getSiteApi(league);
 	const espnYear = getSeasonEndYear(season);
@@ -172,34 +173,49 @@ async function checkGames(ctx: Ctx, league: League, season: string, snapshot: Sn
 			),
 	);
 	const espnFinals = new Set<string>();
+	const espnListed = new Set<string>();
 	for (const schedule of schedules) {
 		for (const event of schedule?.events ?? []) {
+			espnListed.add(event.id);
 			if (event.competitions?.[0]?.status?.type?.completed) espnFinals.add(event.id);
 		}
 	}
 
-	const findMissing = (snap: Snapshot) => {
+	// "game X: missing" for finals we don't have as final, "game X: not final on
+	// ESPN" for games we have as final that ESPN lists as unfinished
+	const findWrong = (snap: Snapshot) => {
 		const eventCounts = new Map<string, number>();
 		for (const event of snap.teamEvents) {
 			eventCounts.set(event.gameId, (eventCounts.get(event.gameId) ?? 0) + 1);
 		}
 		const stored = new Map(snap.games.map((game) => [game.espnGameId, game]));
-		return [...espnFinals].filter((espnGameId) => {
-			const game = stored.get(espnGameId);
-			return !game || game.eventStatus !== "completed" || (eventCounts.get(game.id) ?? 0) < 2;
-		});
+		const missing = [...espnFinals]
+			.filter((espnGameId) => {
+				const game = stored.get(espnGameId);
+				return !game || game.eventStatus !== "completed" || (eventCounts.get(game.id) ?? 0) < 2;
+			})
+			.map((espnGameId) => `game ${espnGameId}: missing or unfinished`);
+		const notFinal = snap.games
+			.filter(
+				(game) =>
+					game.eventStatus === "completed" &&
+					espnListed.has(game.espnGameId) &&
+					!espnFinals.has(game.espnGameId),
+			)
+			.map((game) => `game ${game.espnGameId}: final here, not on ESPN`);
+		return [...missing, ...notFinal];
 	};
 
-	const missing = findMissing(snapshot);
-	for (const espnGameId of missing.slice(0, MAX_GAME_REPAIRS)) {
-		await ctx.runAction(LEAGUE_FUNCTIONS[league].syncLiveGameData, { espnGameId });
+	const wrong = findWrong(snapshot);
+	for (const detail of wrong.slice(0, MAX_GAME_REPAIRS)) {
+		await ctx.runAction(LEAGUE_FUNCTIONS[league].syncLiveGameData, { espnGameId: detail.split(/[ :]/)[1] });
 	}
-	const stillMissing = missing.length > 0 ? findMissing(await getSnapshot(ctx, league, season)) : [];
+	const stillWrong = wrong.length > 0 ? findWrong(await getSnapshot(ctx, league, season)) : [];
 
-	return resultFor(league, "games", missing.map((id) => `game ${id}`), stillMissing.map((id) => `game ${id}`), {
+	return resultFor(league, "games", wrong, stillWrong, {
 		ok: `All ${espnFinals.size} final games stored`,
-		repaired: `Synced ${missing.length} final games that were missing or unfinished`,
-		failing: `${stillMissing.length} final games still missing or unfinished after syncing`,
+		repaired: `Synced ${wrong.length} games whose final status differed from ESPN`,
+		failing: `${stillWrong.length} games still differ from ESPN's final status after syncing`,
 	});
 }
 

@@ -1,4 +1,4 @@
-import { redirect, useRouterState } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 
 /**
  * Helpers for detail pages whose tabs are child routes, e.g.
@@ -22,35 +22,4 @@ export function useRouteTab<T extends string>(tabs: readonly T[]): T {
 			state.location.pathname.replace(/\/+$/, "").split("/").pop() ?? "",
 	});
 	return tabs.find((tab) => tab === segment) ?? tabs[0];
-}
-
-/**
- * Tabs used to be a `?tab=` search param. Redirect those links to the child
- * route, keeping any other search params. Call from a layout route's
- * `beforeLoad`. `legacyTabs` maps old `?tab=` values whose names changed.
- */
-export function redirectLegacyTab<T extends string>({
-	search,
-	basePath,
-	params,
-	tabs,
-	legacyTabs,
-}: {
-	search: Record<string, unknown>;
-	basePath: string;
-	params: Record<string, string>;
-	tabs: readonly T[];
-	legacyTabs?: Record<string, T>;
-}) {
-	const legacy = search.tab;
-	if (typeof legacy !== "string") return;
-	const tab =
-		legacyTabs?.[legacy] ?? tabs.find((t) => t === legacy) ?? tabs[0];
-	const { tab: _legacy, ...rest } = search;
-	throw redirect({
-		to: tabRoute(basePath, tabs, tab),
-		params,
-		search: rest,
-		statusCode: 301,
-	});
 }

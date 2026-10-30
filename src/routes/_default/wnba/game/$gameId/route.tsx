@@ -11,7 +11,7 @@ import {
 	GameDetailsLayout,
 	GameDetailsPending,
 } from "@/components/game-details/game-details-layout";
-import { redirectLegacyTab, useRouteTab } from "@/lib/route-tabs";
+import { useRouteTab } from "@/lib/route-tabs";
 
 interface GameSearchParams {
 	fromDate?: string;
@@ -23,14 +23,6 @@ export const Route = createFileRoute("/_default/wnba/game/$gameId")({
 			fromDate:
 				typeof search.fromDate === "string" ? search.fromDate : undefined,
 		};
-	},
-	beforeLoad: ({ location, params }) => {
-		redirectLegacyTab({
-			search: location.search,
-			basePath: "/wnba/game/$gameId",
-			params,
-			tabs: GAME_TABS,
-		});
 	},
 	loader: async ({ context, params }) => {
 		// Pre-populate Convex data for SSR

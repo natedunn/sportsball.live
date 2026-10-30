@@ -19,20 +19,12 @@ import {
 	TeamDetailsLayout,
 	TeamDetailsPending,
 } from "@/components/team-details/team-details-layout";
-import { redirectLegacyTab, useRouteTab } from "@/lib/route-tabs";
+import { useRouteTab } from "@/lib/route-tabs";
 import type { Id } from "@convex/_generated/dataModel";
 
 const LIVE_REFRESH_INTERVAL_MS = 30_000;
 
 export const Route = createFileRoute("/_default/gleague/team/$teamId")({
-	beforeLoad: ({ location, params }) => {
-		redirectLegacyTab({
-			search: location.search,
-			basePath: "/gleague/team/$teamId",
-			params,
-			tabs: TEAM_TABS,
-		});
-	},
 	loader: async ({ context, params }) => {
 		// Look up ESPN team ID from static registry (params.teamId is the slug)
 		const staticData = getTeamStaticData("gleague", params.teamId);

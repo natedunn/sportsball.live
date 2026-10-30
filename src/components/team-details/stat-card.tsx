@@ -12,8 +12,7 @@ interface StatCardProps {
 	detail?: string; // Secondary detail line (e.g., "35.2 / 82.1 per game")
 	icon?: React.ComponentType<{ className?: string }>;
 	rank?: number; // If provided, generates subtitle like "3rd in league"
-	teamCount?: number; // Teams in the league rankings; enables the bottom-five highlight
-	highlight?: boolean; // Force highlight regardless of rank
+	teamCount?: number; // Teams in the league rankings; sizes the green/red tiers
 	rawValue?: number; // If provided with formatValue, animates counting
 	formatValue?: (v: number) => string;
 	delay?: number; // Stagger delay for animation (ms)
@@ -28,15 +27,13 @@ export function StatCard({
 	icon: Icon,
 	rank,
 	teamCount,
-	highlight: forceHighlight,
 	rawValue,
 	formatValue,
 	delay,
 }: StatCardProps) {
 	const tier = getRankTier(rank, teamCount);
-	const isTopTen = tier === "top";
-	const isBottomFive = tier === "bottom" && !forceHighlight;
-	const isHighlighted = forceHighlight || isTopTen;
+	const isTop = tier === "top";
+	const isBottom = tier === "bottom";
 	const hasTabAnimated = useHasTabAnimated();
 	// Lock in at mount time — tab switches don't re-trigger
 	const animate = useRef(!hasTabAnimated && delay !== undefined).current;
@@ -58,8 +55,8 @@ export function StatCard({
 		<div
 			className={cn(
 				"group relative rounded-xl border bg-muted p-4 hover:shadow-md",
-				isHighlighted && "bg-primary/5 border-primary/20",
-				isBottomFive && "bg-destructive/5 border-destructive/20",
+				isTop && "bg-green-500/5 border-green-500/20",
+				isBottom && "bg-destructive/5 border-destructive/20",
 				animate
 					? cn(
 							"transition-[opacity,transform,box-shadow] duration-700 ease-out",
@@ -73,24 +70,23 @@ export function StatCard({
 				<div
 					className={cn(
 						"absolute -top-2 -right-2 h-8 w-8 rounded-full border bg-background flex items-center justify-center overflow-hidden",
-						isHighlighted && "border-primary/30",
-						isBottomFive && "border-destructive/30",
+						isTop && "border-green-500/30",
+						isBottom && "border-destructive/30",
 					)}
 				>
-					{/* Primary overlay for highlighted */}
-					{isHighlighted && (
-						<div className="absolute inset-0 bg-primary/20" />
+					{/* Tinted overlay for top (green) and bottom (red) tiers */}
+					{isTop && (
+						<div className="absolute inset-0 bg-green-500/20" />
 					)}
-					{/* Destructive overlay for bottom five */}
-					{isBottomFive && (
+					{isBottom && (
 						<div className="absolute inset-0 bg-destructive/20" />
 					)}
 					<Icon
 						className={cn(
 							"h-4 w-4 relative",
-							isHighlighted
-								? "text-primary"
-								: isBottomFive
+							isTop
+								? "text-green-600 dark:text-green-400"
+								: isBottom
 									? "text-destructive"
 									: "text-muted-foreground",
 						)}
@@ -117,9 +113,9 @@ export function StatCard({
 				<div
 					className={cn(
 						"text-xs mt-1 tabular-nums",
-						isTopTen
-							? "text-primary font-medium"
-							: isBottomFive
+						isTop
+							? "text-green-600 dark:text-green-400 font-medium"
+							: isBottom
 								? "text-destructive font-medium"
 								: "text-muted-foreground",
 					)}

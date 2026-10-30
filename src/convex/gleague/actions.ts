@@ -13,6 +13,7 @@ import {
 	getScheduleSyncRange,
 	parseEspnSeason,
 	seasonFromEspnYear,
+	getNextSeason,
 } from "../shared/seasonHelpers";
 import {
 	parseTeamBoxScore,
@@ -1092,18 +1093,23 @@ async function fetchSiteRoster(espnTeamId: string): Promise<ApiSiteRosterRespons
 }
 
 // Refresh every team's roster from ESPN: bios (birthdates included), trades and
-// signings, and players who've left. Only while the current season runs, so a
-// finished season keeps its final rosters.
+// signings, and players who've left. Once the current season ends, it keeps its
+// final rosters and the sync fills the next season's instead, as soon as ESPN's
+// rosters are for that season, so its team pages aren't empty on opening day.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function runRosterSync(ctx: any) {
-	const season = await getCurrentSeasonName(ctx);
+	const currentSeason = await getCurrentSeasonName(ctx);
 	const seasonEnd = await getSeasonDate(ctx, "gleague", "seasonEnd");
-	if (seasonEnd !== null && getTodayDate() > seasonEnd) {
-		console.log(`[GLEAGUE Rosters] Season ${season} ended ${seasonEnd}; keeping its final rosters`);
-		return { season, skipped: true, teams: 0, players: 0, flagged: 0 };
-	}
+	const season =
+		seasonEnd !== null && getTodayDate() > seasonEnd
+			? getNextSeason("gleague", currentSeason)
+			: currentSeason;
 
 	const teams = await ctx.runQuery(internal.gleague.queries.getAllTeamsInternal, { season });
+	if (teams.length === 0) {
+		console.log(`[GLEAGUE Rosters] No ${season} teams stored yet; nothing to sync`);
+		return { season, skipped: true, teams: 0, players: 0, flagged: 0 };
+	}
 	let syncedTeams = 0;
 	let players = 0;
 	let flagged = 0;

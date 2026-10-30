@@ -88,6 +88,11 @@ export function seasonFromEspnYear(league: League, year: number): string {
 	return `${year - 1}-${String(year).slice(-2)}`;
 }
 
+/** The season after this one: "2026-27" after "2025-26", "2027" after "2026" (WNBA). */
+export function getNextSeason(league: League, season: string): string {
+	return seasonFromEspnYear(league, getSeasonEndYear(season) + 1);
+}
+
 /**
  * Read the season string and season type ESPN attaches to an event
  * (`event.season` on the scoreboard, `header.season` on the summary).

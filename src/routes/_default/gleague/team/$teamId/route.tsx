@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { getTeamStaticData } from "@/lib/teams";
 import {
 	convexTeamToOverview,
@@ -15,22 +15,23 @@ import {
 import { syncGamesForView } from "@/lib/shared/sync.server";
 import { teamInjuriesQueryOptions } from "@/lib/gleague/team.queries";
 import {
+	TEAM_TABS,
 	TeamDetailsLayout,
 	TeamDetailsPending,
 } from "@/components/team-details/team-details-layout";
+import { redirectLegacyTab, useRouteTab } from "@/lib/route-tabs";
 import type { Id } from "@convex/_generated/dataModel";
-
-interface TeamSearchParams {
-	tab?: string;
-}
 
 const LIVE_REFRESH_INTERVAL_MS = 30_000;
 
 export const Route = createFileRoute("/_default/gleague/team/$teamId")({
-	validateSearch: (search: Record<string, unknown>): TeamSearchParams => {
-		return {
-			tab: typeof search.tab === "string" ? search.tab : undefined,
-		};
+	beforeLoad: ({ location, params }) => {
+		redirectLegacyTab({
+			search: location.search,
+			basePath: "/gleague/team/$teamId",
+			params,
+			tabs: TEAM_TABS,
+		});
 	},
 	loader: async ({ context, params }) => {
 		// Look up ESPN team ID from static registry (params.teamId is the slug)
@@ -103,8 +104,7 @@ export const Route = createFileRoute("/_default/gleague/team/$teamId")({
 
 function GleagueTeamPage() {
 	const { teamId: teamSlug } = Route.useParams();
-	const { tab } = Route.useSearch();
-	const navigate = useNavigate();
+	const activeTab = useRouteTab(TEAM_TABS);
 
 	// Resolve slug → ESPN team ID
 	const staticData = getTeamStaticData("gleague", teamSlug);
@@ -171,14 +171,6 @@ function GleagueTeamPage() {
 		[rawGameLog],
 	);
 
-	// Local state for immediate UI feedback
-	const [activeTab, setActiveTab] = useState(tab || "overview");
-
-	// Sync local state when URL changes
-	useEffect(() => {
-		setActiveTab(tab || "overview");
-	}, [tab]);
-
 	useEffect(() => {
 		if (!teamId) return;
 		if (activeTab !== "overview" && activeTab !== "games") return;
@@ -243,16 +235,6 @@ function GleagueTeamPage() {
 		};
 	}, [activeTab, rawSchedule, refetchSchedule, teamId]);
 
-	const handleTabChange = (newTab: string) => {
-		setActiveTab(newTab);
-		navigate({
-			to: "/gleague/team/$teamId",
-			params: { teamId: teamSlug },
-			search: { tab: newTab },
-			replace: true,
-		});
-	};
-
 	if (!overview) {
 		return (
 			<div className="container py-12">
@@ -264,16 +246,17 @@ function GleagueTeamPage() {
 	return (
 		<TeamDetailsLayout
 			overview={overview}
-			providerRoster={roster}
+			roster={roster}
 			schedule={schedule}
-			providerStats={stats}
+			stats={stats}
 			leaders={leaders}
 			injuries={injuries ?? []}
 			gameLog={gameLog}
 			league="gleague"
 			teamSlug={teamSlug}
 			activeTab={activeTab}
-			onTabChange={handleTabChange}
-		/>
+		>
+			<Outlet />
+		</TeamDetailsLayout>
 	);
 }

@@ -91,6 +91,8 @@ interface TabsTriggerProps {
 	value: string;
 	className?: string;
 	disabled?: boolean;
+	/** Render the tab as another element, such as a router `<Link>`, so it navigates */
+	render?: React.ReactElement;
 }
 
 export function TabsTrigger({
@@ -98,11 +100,14 @@ export function TabsTrigger({
 	value,
 	className,
 	disabled,
+	render,
 }: TabsTriggerProps) {
 	return (
 		<BaseTabs.Tab
 			value={value}
 			disabled={disabled}
+			render={render}
+			nativeButton={!render}
 			className={cn(
 				"relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all",
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -153,11 +158,19 @@ export function TabsContent({ children, value, className }: TabsContentProps) {
 /** Extracts tab info from TabsTrigger children */
 function extractTabs(
 	children: React.ReactNode,
-): Array<{ value: string; label: React.ReactNode }> {
-	const tabs: Array<{ value: string; label: React.ReactNode }> = [];
+): Array<{ value: string; label: React.ReactNode; render?: React.ReactElement }> {
+	const tabs: Array<{
+		value: string;
+		label: React.ReactNode;
+		render?: React.ReactElement;
+	}> = [];
 	React.Children.forEach(children, (child) => {
 		if (React.isValidElement<TabsTriggerProps>(child) && child.props.value) {
-			tabs.push({ value: child.props.value, label: child.props.children });
+			tabs.push({
+				value: child.props.value,
+				label: child.props.children,
+				render: child.props.render,
+			});
 		}
 	});
 	return tabs;
@@ -199,6 +212,7 @@ function TabsMenu({ children }: { children: React.ReactNode }) {
 						{tabs.map((tab) => (
 							<BaseMenu.Item
 								key={tab.value}
+								render={tab.render}
 								onClick={() => context?.onValueChange?.(tab.value)}
 								className={cn(
 									"relative flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm outline-none transition-colors",

@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { getTeamStaticData } from "@/lib/teams";
 import {
 	convexTeamToOverview,
@@ -13,39 +13,40 @@ import {
 	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
 import { syncGamesForView } from "@/lib/shared/sync.server";
-import { teamInjuriesQueryOptions } from "@/lib/wnba/team.queries";
+import { teamInjuriesQueryOptions } from "@/lib/nba/team.queries";
 import {
+	TEAM_TABS,
 	TeamDetailsLayout,
 	TeamDetailsPending,
 } from "@/components/team-details/team-details-layout";
+import { redirectLegacyTab, useRouteTab } from "@/lib/route-tabs";
 import type { Id } from "@convex/_generated/dataModel";
-
-interface TeamSearchParams {
-	tab?: string;
-}
 
 const LIVE_REFRESH_INTERVAL_MS = 30_000;
 
-export const Route = createFileRoute("/_default/wnba/team/$teamId")({
-	validateSearch: (search: Record<string, unknown>): TeamSearchParams => {
-		return {
-			tab: typeof search.tab === "string" ? search.tab : undefined,
-		};
+export const Route = createFileRoute("/_default/nba/team/$teamId")({
+	beforeLoad: ({ location, params }) => {
+		redirectLegacyTab({
+			search: location.search,
+			basePath: "/nba/team/$teamId",
+			params,
+			tabs: TEAM_TABS,
+		});
 	},
 	loader: async ({ context, params }) => {
 		// Look up ESPN team ID from static registry (params.teamId is the slug)
-		const staticData = getTeamStaticData("wnba", params.teamId);
+		const staticData = getTeamStaticData("nba", params.teamId);
 		const espnTeamId = staticData?.api.id;
 
 		if (espnTeamId) {
 			const season = await context.queryClient.ensureQueryData(
-				convexQuery(api.seasons.getCurrentName, { league: "wnba" }),
+				convexQuery(api.seasons.getCurrentName, { league: "nba" }),
 			);
 			if (!season) return;
 
 			// Fetch team data from Convex (this gives us the Convex _id for subsequent queries)
 			const team = await context.queryClient.ensureQueryData(
-				convexQuery(api.wnba.queries.getTeam, { espnTeamId, season }),
+				convexQuery(api.nba.queries.getTeam, { espnTeamId, season }),
 			);
 
 			if (team) {
@@ -53,10 +54,14 @@ export const Route = createFileRoute("/_default/wnba/team/$teamId")({
 				// Fetch roster and schedule in parallel
 				const [, rawSchedule] = await Promise.all([
 					context.queryClient.ensureQueryData(
-						convexQuery(api.wnba.queries.getTeamRoster, { teamId: team._id as Id<"wnbaTeam"> }),
+						convexQuery(api.nba.queries.getTeamRoster, {
+							teamId: team._id as Id<"nbaTeam">,
+						}),
 					),
 					context.queryClient.ensureQueryData(
-						convexQuery(api.wnba.queries.getTeamSchedule, { teamId: team._id as Id<"wnbaTeam"> }),
+						convexQuery(api.nba.queries.getTeamSchedule, {
+							teamId: team._id as Id<"nbaTeam">,
+						}),
 					),
 				]);
 				const scheduleForSync = (rawSchedule ?? []) as Array<{
@@ -68,7 +73,7 @@ export const Route = createFileRoute("/_default/wnba/team/$teamId")({
 
 				await syncGamesForView({
 					data: {
-						league: "wnba",
+						league: "nba",
 						games: scheduleForSync
 							.filter((game) => {
 								if (
@@ -92,48 +97,49 @@ export const Route = createFileRoute("/_default/wnba/team/$teamId")({
 				});
 
 				await context.queryClient.ensureQueryData(
-					convexQuery(api.wnba.queries.getTeamSchedule, { teamId: team._id as Id<"wnbaTeam"> }),
+					convexQuery(api.nba.queries.getTeamSchedule, {
+						teamId: team._id as Id<"nbaTeam">,
+					}),
 				);
 			}
 		}
 	},
 	pendingComponent: TeamDetailsPending,
-	component: WnbaTeamPage,
+	component: NbaTeamPage,
 });
 
-function WnbaTeamPage() {
+function NbaTeamPage() {
 	const { teamId: teamSlug } = Route.useParams();
-	const { tab } = Route.useSearch();
-	const navigate = useNavigate();
+	const activeTab = useRouteTab(TEAM_TABS);
 
 	// Resolve slug → ESPN team ID
-	const staticData = getTeamStaticData("wnba", teamSlug);
+	const staticData = getTeamStaticData("nba", teamSlug);
 	const espnTeamId = staticData?.api.id ?? "";
 	const { data: season } = useQuery(
-		convexQuery(api.seasons.getCurrentName, { league: "wnba" }),
+		convexQuery(api.seasons.getCurrentName, { league: "nba" }),
 	);
 
 	// Fetch team data from Convex
 	const { data: rawTeam } = useQuery({
-		...convexQuery(api.wnba.queries.getTeam, { espnTeamId, season: season ?? "" }),
+		...convexQuery(api.nba.queries.getTeam, { espnTeamId, season: season ?? "" }),
 		enabled: !!season && !!espnTeamId,
 	});
 
 	// Use team._id for related queries
-	const teamId = rawTeam?._id as Id<"wnbaTeam"> | undefined;
+	const teamId = rawTeam?._id as Id<"nbaTeam"> | undefined;
 
 	const { data: rawRoster } = useQuery({
-		...convexQuery(api.wnba.queries.getTeamRoster, { teamId }),
+		...convexQuery(api.nba.queries.getTeamRoster, { teamId }),
 		enabled: !!teamId,
 	});
 
 	const { data: rawSchedule, refetch: refetchSchedule } = useQuery({
-		...convexQuery(api.wnba.queries.getTeamSchedule, { teamId }),
+		...convexQuery(api.nba.queries.getTeamSchedule, { teamId }),
 		enabled: !!teamId,
 	});
 
 	const { data: rawGameLog } = useQuery({
-		...convexQuery(api.wnba.queries.getTeamGameLog, { teamId }),
+		...convexQuery(api.nba.queries.getTeamGameLog, { teamId }),
 		enabled: !!teamId,
 	});
 
@@ -142,12 +148,12 @@ function WnbaTeamPage() {
 
 	// Transform Convex data to component types
 	const overview = useMemo(
-		() => rawTeam ? convexTeamToOverview(rawTeam, "wnba") : null,
+		() => (rawTeam ? convexTeamToOverview(rawTeam, "nba") : null),
 		[rawTeam],
 	);
 
 	const stats = useMemo(
-		() => rawTeam ? convexTeamToStats(rawTeam) : undefined,
+		() => (rawTeam ? convexTeamToStats(rawTeam) : undefined),
 		[rawTeam],
 	);
 
@@ -157,27 +163,16 @@ function WnbaTeamPage() {
 	);
 
 	const schedule = useMemo(
-		() => convexScheduleToGames(rawSchedule ?? [], "wnba"),
+		() => convexScheduleToGames(rawSchedule ?? [], "nba"),
 		[rawSchedule],
 	);
 
-	const leaders = useMemo(
-		() => deriveTeamLeaders(roster),
-		[roster],
-	);
+	const leaders = useMemo(() => deriveTeamLeaders(roster), [roster]);
 
 	const gameLog = useMemo(
 		() => convexGameLogToTrendData(rawGameLog ?? []),
 		[rawGameLog],
 	);
-
-	// Local state for immediate UI feedback
-	const [activeTab, setActiveTab] = useState(tab || "overview");
-
-	// Sync local state when URL changes
-	useEffect(() => {
-		setActiveTab(tab || "overview");
-	}, [tab]);
 
 	useEffect(() => {
 		if (!teamId) return;
@@ -217,7 +212,7 @@ function WnbaTeamPage() {
 
 			await syncGamesForView({
 				data: {
-					league: "wnba",
+					league: "nba",
 					games,
 				},
 			});
@@ -243,16 +238,6 @@ function WnbaTeamPage() {
 		};
 	}, [activeTab, rawSchedule, refetchSchedule, teamId]);
 
-	const handleTabChange = (newTab: string) => {
-		setActiveTab(newTab);
-		navigate({
-			to: "/wnba/team/$teamId",
-			params: { teamId: teamSlug },
-			search: { tab: newTab },
-			replace: true,
-		});
-	};
-
 	if (!overview) {
 		return (
 			<div className="container py-12">
@@ -264,16 +249,17 @@ function WnbaTeamPage() {
 	return (
 		<TeamDetailsLayout
 			overview={overview}
-			providerRoster={roster}
+			roster={roster}
 			schedule={schedule}
-			providerStats={stats}
+			stats={stats}
 			leaders={leaders}
 			injuries={injuries ?? []}
 			gameLog={gameLog}
-			league="wnba"
+			league="nba"
 			teamSlug={teamSlug}
 			activeTab={activeTab}
-			onTabChange={handleTabChange}
-		/>
+		>
+			<Outlet />
+		</TeamDetailsLayout>
 	);
 }

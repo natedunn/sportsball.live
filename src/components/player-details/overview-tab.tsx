@@ -13,7 +13,12 @@ import { SectionHeader } from "@/components/team-details/section-header";
 import { Card } from "@/components/ui/card";
 import { leaguePlayerRoutes } from "@/lib/league-routes";
 import type { League } from "@/lib/shared/league";
-import { getPlayerAge, type PlayerProfileData } from "@/lib/players/mock-data";
+import {
+	formatDraft,
+	formatExperience,
+	getPlayerAge,
+	type PlayerProfileData,
+} from "@/lib/players/mock-data";
 
 interface OverviewTabProps {
 	player: PlayerProfileData;
@@ -33,6 +38,8 @@ function InfoField({ label, value }: { label: string; value: string }) {
 
 export function OverviewTab({ player, teammates, league, onCompareTeammate }: OverviewTabProps) {
 	const age = getPlayerAge(player.bio);
+	const draft = formatDraft(player.bio.draft);
+	const experience = formatExperience(player.bio.experienceYears);
 
 	return (
 		<div className="space-y-8">
@@ -93,7 +100,10 @@ export function OverviewTab({ player, teammates, league, onCompareTeammate }: Ov
 									)}
 									{age !== undefined && <InfoField label="Age" value={`${age}`} />}
 									<InfoField label="College" value={player.bio.college} />
-									<InfoField label="Draft" value={player.bio.draftInfo} />
+									{draft !== undefined && <InfoField label="Draft" value={draft} />}
+									{experience !== undefined && (
+										<InfoField label="Experience" value={experience} />
+									)}
 									<InfoField label="Height" value={player.bio.height} />
 									<InfoField label="Weight" value={player.bio.weight} />
 								</div>

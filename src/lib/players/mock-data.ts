@@ -11,13 +11,24 @@ export interface PlayerRankingRow {
 	efficiency: number;
 }
 
+export interface PlayerDraftInfo {
+	year: number;
+	round: number;
+	pick: number;
+	/** Abbreviation of the team that made the pick */
+	team?: string;
+}
+
 export interface PlayerBio {
 	/** YYYY-MM-DD, when ESPN provides it */
 	birthDate?: string;
 	/** Age as of the last roster sync; birthDate is preferred when known */
 	age?: number;
 	college: string;
-	draftInfo: string;
+	/** Undefined when unknown, null when undrafted */
+	draft?: PlayerDraftInfo | null;
+	/** ESPN's season count, this one included (0 for rookies) */
+	experienceYears?: number;
 	height: string;
 	weight: string;
 	status: "Active" | "Questionable" | "Out";
@@ -80,7 +91,7 @@ const playerProfiles: PlayerProfileData[] = [
 		bio: {
 			birthDate: "2000-11-02",
 			college: "Baylor",
-			draftInfo: "2022, R1 Pick 14",
+			draft: { year: 2022, round: 1, pick: 14 },
 			height: "6'4\"",
 			weight: "198 lb",
 			status: "Active",
@@ -126,7 +137,7 @@ const playerProfiles: PlayerProfileData[] = [
 		bio: {
 			birthDate: "1998-07-16",
 			college: "Gonzaga",
-			draftInfo: "2020, R1 Pick 8",
+			draft: { year: 2020, round: 1, pick: 8 },
 			height: "6'8\"",
 			weight: "224 lb",
 			status: "Questionable",
@@ -172,7 +183,7 @@ const playerProfiles: PlayerProfileData[] = [
 		bio: {
 			birthDate: "1997-03-11",
 			college: "Duke",
-			draftInfo: "2019, R1 Pick 3",
+			draft: { year: 2019, round: 1, pick: 3 },
 			height: "6'11\"",
 			weight: "248 lb",
 			status: "Active",
@@ -218,7 +229,7 @@ const playerProfiles: PlayerProfileData[] = [
 		bio: {
 			birthDate: "2001-01-19",
 			college: "UCLA",
-			draftInfo: "2023, R1 Pick 20",
+			draft: { year: 2023, round: 1, pick: 20 },
 			height: "6'3\"",
 			weight: "190 lb",
 			status: "Active",
@@ -264,7 +275,7 @@ const playerProfiles: PlayerProfileData[] = [
 		bio: {
 			birthDate: "1999-05-04",
 			college: "South Carolina",
-			draftInfo: "2021, R1 Pick 6",
+			draft: { year: 2021, round: 1, pick: 6 },
 			height: "5'11\"",
 			weight: "170 lb",
 			status: "Active",
@@ -299,7 +310,7 @@ const playerProfiles: PlayerProfileData[] = [
 		bio: {
 			birthDate: "1996-10-22",
 			college: "Kansas",
-			draftInfo: "2018, R2 Pick 35",
+			draft: { year: 2018, round: 2, pick: 35 },
 			height: "6'7\"",
 			weight: "220 lb",
 			status: "Out",
@@ -362,6 +373,24 @@ export function getPlayerRankings(): PlayerRankingRow[] {
 			efficiency: player.calculatedStats.efficiency,
 		}))
 		.sort((a, b) => b.points - a.points);
+}
+
+/** "2015 · Rd 1, Pk 13 (PHX)", "Undrafted", or undefined when unknown */
+export function formatDraft(draft: PlayerDraftInfo | null | undefined): string | undefined {
+	if (draft === undefined) return undefined;
+	if (draft === null) return "Undrafted";
+	const team = draft.team ? ` (${draft.team})` : "";
+	return `${draft.year} · Rd ${draft.round}, Pk ${draft.pick}${team}`;
+}
+
+/** "12th season", "Rookie", or undefined when unknown */
+export function formatExperience(years: number | undefined): string | undefined {
+	if (years === undefined) return undefined;
+	if (years <= 0) return "Rookie";
+	const lastTwo = years % 100;
+	const suffix =
+		lastTwo >= 11 && lastTwo <= 13 ? "th" : (["th", "st", "nd", "rd"][years % 10] ?? "th");
+	return `${years}${suffix} season`;
 }
 
 export function getPlayerAge(bio: PlayerBio): number | undefined {

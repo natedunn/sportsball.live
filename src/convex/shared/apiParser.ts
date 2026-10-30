@@ -203,6 +203,39 @@ export interface ApiSiteRosterResponse {
 	athletes?: ApiRosterAthlete[];
 }
 
+/** Core API athlete (`/athletes/{id}`): carries the draft, absent for undrafted players */
+export interface ApiCoreAthleteResponse {
+	draft?: {
+		year?: number;
+		round?: number;
+		selection?: number;
+		team?: { $ref?: string };
+	} | null;
+}
+
+export interface PlayerDraft {
+	year: number;
+	round: number;
+	pick: number;
+	/** ESPN id of the team that made the pick (before any draft-night trade) */
+	teamEspnId?: string;
+}
+
+/** A player's draft from the Core athlete record; null when undrafted */
+export function parseCoreDraft(athlete: ApiCoreAthleteResponse): PlayerDraft | null {
+	const draft = athlete.draft;
+	if (!draft || draft.year === undefined || draft.round === undefined || draft.selection === undefined) {
+		return null;
+	}
+	const teamEspnId = draft.team?.$ref?.match(/\/teams\/(\d+)/)?.[1];
+	return {
+		year: draft.year,
+		round: draft.round,
+		pick: draft.selection,
+		...(teamEspnId ? { teamEspnId } : {}),
+	};
+}
+
 /** A roster athlete's bio, as stored on the player record (missing fields left out) */
 export function parseRosterPlayer(athlete: ApiRosterAthlete) {
 	const years = athlete.experience?.years;

@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { leagueValidator } from "./validators";
+import { draftValidator, leagueValidator } from "./validators";
 
 // Event status validator shared across all league game event tables
 const eventStatusValidator = v.union(
@@ -151,6 +151,8 @@ export default defineSchema({
 		// false once the daily roster sync finds the player gone from the team's
 		// ESPN roster; unset until the sync first sees them
 		onRoster: v.optional(v.boolean()),
+		// From ESPN Core: null when undrafted, unset until fetched (G League: never)
+		draft: v.optional(v.union(v.null(), draftValidator)),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		// Seasonal averages (computed from nbaPlayerEvent)
@@ -379,6 +381,8 @@ export default defineSchema({
 		// false once the daily roster sync finds the player gone from the team's
 		// ESPN roster; unset until the sync first sees them
 		onRoster: v.optional(v.boolean()),
+		// From ESPN Core: null when undrafted, unset until fetched (G League: never)
+		draft: v.optional(v.union(v.null(), draftValidator)),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		gamesPlayed: v.optional(v.number()),
@@ -599,6 +603,8 @@ export default defineSchema({
 		// false once the daily roster sync finds the player gone from the team's
 		// ESPN roster; unset until the sync first sees them
 		onRoster: v.optional(v.boolean()),
+		// From ESPN Core: null when undrafted, unset until fetched (G League: never)
+		draft: v.optional(v.union(v.null(), draftValidator)),
 		experience: v.optional(v.string()),
 		college: v.optional(v.string()),
 		gamesPlayed: v.optional(v.number()),

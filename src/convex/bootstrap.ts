@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
+import { requireCurrentSeason } from "./shared/currentSeason";
 
 // Full bootstrap: teams → discover today → players (all via scheduler, no timeout risk)
 // Each step schedules the next, so no single action runs longer than a few minutes.
@@ -171,10 +172,7 @@ export const verifyTeamData = internalAction({
 		espnTeamId: v.string(), // e.g. "21" for Phoenix Suns (API provider team ID)
 	},
 	handler: async (ctx, args) => {
-		const { getCurrentSeason } = await import("./shared/seasonHelpers");
-		const season =
-			(await ctx.runQuery(api.seasons.getCurrentName, { league: "nba" })) ??
-			getCurrentSeason();
+		const season = await requireCurrentSeason(ctx, "nba");
 		const issues: string[] = [];
 
 		console.log(`\n[Verify] ════════════════════════════════════════`);

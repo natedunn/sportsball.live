@@ -1,9 +1,9 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { api, internal } from "../_generated/api";
+import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
 import {
 	getCompetitionYear,
-	getCurrentSeason,
 	getTodayDate,
 	formatGameDate,
 	mapApiStateToEventStatus,
@@ -219,39 +219,15 @@ async function runCorePlayerStatsBackfill(ctx: any, args: BackfillPlayerStatsArg
 	};
 }
 
-function getSeasonStartDate(season: string): string {
-	const competitionYear = getCompetitionYear("wnba", season);
-	// WNBA season typically starts in May
-	return `${competitionYear}0501`;
-}
-
-/** Get the end date for the WNBA regular season (mid-September). */
-function getSeasonEndDate(season: string): string {
-	const competitionYear = getCompetitionYear("wnba", season);
-	return `${competitionYear}0920`;
-}
-
-function compactIsoDate(date: string): string {
-	return date.replaceAll("-", "");
-}
-
 async function getCurrentSeasonName(ctx: any): Promise<string> {
-	return (
-		(await ctx.runQuery(api.seasons.getCurrentName, { league: "wnba" })) ??
-		getCurrentSeason()
-	);
+	return await requireCurrentSeason(ctx, "wnba");
 }
 
 async function getCurrentSeasonEventDate(
 	ctx: any,
-	eventType: "preseasonStart" | "playoffEnd",
-	fallback: string,
-): Promise<string> {
-	const date = await ctx.runQuery(api.seasons.getCurrentEventDate, {
-		league: "wnba",
-		eventType,
-	});
-	return date ? compactIsoDate(date) : fallback;
+	eventType: "seasonStart" | "seasonEnd" | "latestScheduledEnd",
+): Promise<string | null> {
+	return await getSeasonDate(ctx, "wnba", eventType);
 }
 
 function parseApiScore(rawScore: string | undefined): number | undefined {
@@ -1281,12 +1257,11 @@ export const backfillGames = internalAction({
 	},
 	handler: async (ctx, args) => {
 		const season = await getCurrentSeasonName(ctx);
-		const startDate =
-			args.startDate ??
-			(await getCurrentSeasonEventDate(ctx, "preseasonStart", getSeasonStartDate(season)));
-		const endDate =
-			args.endDate ??
-			(await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season)));
+		const startDate = args.startDate ?? (await getCurrentSeasonEventDate(ctx, "seasonStart"));
+		const endDate = args.endDate ?? (await getCurrentSeasonEventDate(ctx, "seasonEnd"));
+		if (!startDate || !endDate) {
+			throw new Error(`[WNBA Backfill] Season ${season} has no dates in the seasons table; pass startDate and endDate`);
+		}
 		const dates = getDateRange(startDate, endDate);
 
 		console.log(`[WNBA Backfill] Starting game backfill: ${startDate} to ${endDate} (${dates.length} dates)`);
@@ -1471,8 +1446,8 @@ export const syncSchedule = internalAction({
 	handler: async (ctx) => {
 		const season = await getCurrentSeasonName(ctx);
 		const { startDate, endDate } = getScheduleSyncRange({
-			seasonEndDate: await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season)),
-			calendarSeasonEndDate: getSeasonEndDate(getCurrentSeason()),
+			seasonEndDate: await getCurrentSeasonEventDate(ctx, "seasonEnd"),
+			latestScheduledEndDate: await getCurrentSeasonEventDate(ctx, "latestScheduledEnd"),
 		});
 		const dates = getDateRange(startDate, endDate);
 

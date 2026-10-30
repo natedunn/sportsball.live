@@ -3,7 +3,6 @@ import { query, mutation, internalMutation, internalAction, type MutationCtx, ty
 import { internal } from "./_generated/api";
 import { leagueValidator } from "./validators";
 import { getCurrentProfile } from "./auth";
-import { getCurrentSeason } from "./shared/seasonHelpers";
 import { resolveCurrentSeasonKey } from "./seasons";
 import type { Id } from "./_generated/dataModel";
 
@@ -47,9 +46,12 @@ const TABLE_NAMES = {
 	gleague: { team: "gleagueTeam", player: "gleaguePlayer", game: "gleagueGameEvent" },
 } as const;
 
-/** Current season key for a league, preferring ESPN-tagged games over a stale seasons table. */
-async function getCurrentSeasonName(ctx: QueryCtx, league: League): Promise<string> {
-	return (await resolveCurrentSeasonKey(ctx, league)) ?? getCurrentSeason();
+/**
+ * Current season key for a league, preferring ESPN-tagged games over a stale
+ * seasons table. Null before the league has any seasons or games.
+ */
+async function getCurrentSeasonName(ctx: QueryCtx, league: League): Promise<string | null> {
+	return await resolveCurrentSeasonKey(ctx, league);
 }
 
 function isSuspiciousZeroBlowout(homeScore: number | undefined, awayScore: number | undefined): boolean {
@@ -91,6 +93,7 @@ export const getDataCounts = query({
 	args: { league: leagueValidator },
 	handler: async (ctx, args) => {
 		const season = await getCurrentSeasonName(ctx, args.league);
+		if (!season) return { teams: 0, players: 0, games: 0, season: null };
 		const tables = TABLE_NAMES[args.league];
 
 		const teams = await ctx.db
@@ -192,6 +195,7 @@ export const getDerivedScoreAnomalies = query({
 
 		for (const league of ["nba", "wnba", "gleague"] as const) {
 			const season = await getCurrentSeasonName(ctx, league);
+			if (!season) continue;
 			const table = TABLE_NAMES[league].game;
 			const games = await ctx.db
 				.query(table)
@@ -396,6 +400,7 @@ export const backfillScoreAnomalies = mutation({
 
 		for (const league of ["nba", "wnba", "gleague"] as const) {
 			const season = await getCurrentSeasonName(ctx, league);
+			if (!season) continue;
 			const table = TABLE_NAMES[league].game;
 			const games = await ctx.db
 				.query(table)

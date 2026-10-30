@@ -119,7 +119,9 @@ function LeagueCard({ league }: { league: League }) {
 						<p className="mt-1 text-sm text-muted-foreground">
 							{counts.teams} teams &middot; {counts.players} players &middot;{" "}
 							{counts.games} games
-							<span className="ml-2 text-xs">({counts.season})</span>
+							{counts.season && (
+								<span className="ml-2 text-xs">({counts.season})</span>
+							)}
 						</p>
 					)}
 				</div>

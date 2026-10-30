@@ -28,6 +28,7 @@ import type * as randomUsername from "../randomUsername.js";
 import type * as seasonSync from "../seasonSync.js";
 import type * as seasons from "../seasons.js";
 import type * as shared_apiParser from "../shared/apiParser.js";
+import type * as shared_currentSeason from "../shared/currentSeason.js";
 import type * as shared_espnSeasons from "../shared/espnSeasons.js";
 import type * as shared_scoreboardSeries from "../shared/scoreboardSeries.js";
 import type * as shared_seasonHelpers from "../shared/seasonHelpers.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   seasonSync: typeof seasonSync;
   seasons: typeof seasons;
   "shared/apiParser": typeof shared_apiParser;
+  "shared/currentSeason": typeof shared_currentSeason;
   "shared/espnSeasons": typeof shared_espnSeasons;
   "shared/scoreboardSeries": typeof shared_scoreboardSeries;
   "shared/seasonHelpers": typeof shared_seasonHelpers;

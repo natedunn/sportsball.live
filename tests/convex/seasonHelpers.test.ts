@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
 	compareSeasons,
 	formatGameDate,
-	getCurrentSeason,
 	getScheduleSyncRange,
 	getTodayDate,
 	parseEspnSeason,
@@ -44,13 +43,6 @@ describe("getTodayDate", () => {
 	it("returns a valid YYYYMMDD string", () => {
 		const result = getTodayDate();
 		expect(result).toMatch(/^\d{8}$/);
-	});
-});
-
-describe("getCurrentSeason", () => {
-	it("returns a season string in YYYY-YY format", () => {
-		const result = getCurrentSeason();
-		expect(result).toMatch(/^\d{4}-\d{2}$/);
 	});
 });
 
@@ -118,21 +110,21 @@ describe("getScheduleSyncRange", () => {
 	// Oct 29 2026, 9:30 AM UTC = 5:30 AM EDT, when the daily sync runs
 	const now = Date.UTC(2026, 9, 29, 9, 30, 0);
 
-	it("starts yesterday (ET) and runs to the season's end", () => {
+	it("starts yesterday (ET) and runs to the current season's last day", () => {
 		expect(
-			getScheduleSyncRange({ seasonEndDate: "20270420", calendarSeasonEndDate: "20270420" }, now),
-		).toEqual({ startDate: "20261028", endDate: "20270420" });
+			getScheduleSyncRange({ seasonEndDate: "20270625", latestScheduledEndDate: "20270625" }, now),
+		).toEqual({ startDate: "20261028", endDate: "20270625" });
 	});
 
-	it("runs to the calendar season's end once the stored season is over", () => {
+	it("runs through the next season once the current one is over", () => {
 		expect(
-			getScheduleSyncRange({ seasonEndDate: "20260413", calendarSeasonEndDate: "20270331" }, now),
-		).toEqual({ startDate: "20261028", endDate: "20270331" });
+			getScheduleSyncRange({ seasonEndDate: "20261025", latestScheduledEndDate: "20271130" }, now),
+		).toEqual({ startDate: "20261028", endDate: "20271130" });
 	});
 
-	it("still covers the next week when both seasons have ended", () => {
+	it("still covers the next week with no season dates at all", () => {
 		expect(
-			getScheduleSyncRange({ seasonEndDate: "20261025", calendarSeasonEndDate: "20261025" }, now),
+			getScheduleSyncRange({ seasonEndDate: null, latestScheduledEndDate: null }, now),
 		).toEqual({ startDate: "20261028", endDate: "20261105" });
 	});
 });

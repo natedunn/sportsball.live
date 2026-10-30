@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Trophy } from "lucide-react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { getCurrentSeason } from "@/lib/shared/season";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
 	EasternConferenceIcon,
@@ -18,9 +17,9 @@ import {
 
 const TITLE = "NBA Playoffs";
 
-const season = getCurrentSeason();
-const DESCRIPTION = `${season} NBA Playoff Bracket`;
-const bracketQuery = () =>
+const DESCRIPTION = "NBA Playoff Bracket";
+const seasonQuery = () => convexQuery(api.seasons.getCurrentName, { league: "nba" });
+const bracketQuery = (season: string) =>
 	convexQuery(api.nba.queries.getPlayoffBracket, { season });
 
 type PlayoffTab = "western" | "eastern" | "finals";
@@ -36,7 +35,10 @@ export const Route = createFileRoute("/_default/nba/playoffs")({
 		};
 	},
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(bracketQuery());
+		const season = await context.queryClient.ensureQueryData(seasonQuery());
+		if (season) {
+			await context.queryClient.ensureQueryData(bracketQuery(season));
+		}
 	},
 	pendingComponent: () => (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
@@ -77,7 +79,11 @@ function getInitialTab(searchParam?: string): PlayoffTab {
 function NbaPlayoffsPage() {
 	const { tab: searchTab } = Route.useSearch();
 	const navigate = useNavigate();
-	const { data } = useQuery(bracketQuery());
+	const { data: season } = useQuery(seasonQuery());
+	const { data } = useQuery({
+		...bracketQuery(season ?? ""),
+		enabled: !!season,
+	});
 
 	const [activeTab, setActiveTab] = useState<PlayoffTab>(() =>
 		getInitialTab(searchTab),
@@ -110,7 +116,9 @@ function NbaPlayoffsPage() {
 					<h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl">
 						{TITLE}
 					</h1>
-					<p className="text-center text-muted-foreground/50">{DESCRIPTION}</p>
+					<p className="text-center text-muted-foreground/50">
+						{season ? `${season} ${DESCRIPTION}` : DESCRIPTION}
+					</p>
 				</div>
 			</div>
 

@@ -192,3 +192,31 @@ export function getDateRange(startDate: string, endDate: string): string[] {
 
 	return dates;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SCHEDULE_MIN_DAYS_AHEAD = 7;
+
+/**
+ * Dates (YYYYMMDD, US Eastern) the daily schedule sync covers: from yesterday,
+ * so last night's finals pick up their settled records, through the season's
+ * end. Once that season is over (the stored season lags until the next one
+ * starts), it runs to the end of the calendar's current season instead. Always
+ * at least a week ahead, since playoff games get scheduled late and can fall
+ * past a configured or default season end.
+ */
+export function getScheduleSyncRange(
+	{
+		seasonEndDate,
+		calendarSeasonEndDate,
+	}: { seasonEndDate: string; calendarSeasonEndDate: string },
+	now: number = Date.now(),
+): { startDate: string; endDate: string } {
+	const startDate = formatGameDate(now - DAY_MS);
+	const today = formatGameDate(now);
+	const seasonEnd = seasonEndDate >= today ? seasonEndDate : calendarSeasonEndDate;
+	const minEndDate = formatGameDate(now + SCHEDULE_MIN_DAYS_AHEAD * DAY_MS);
+	return {
+		startDate,
+		endDate: seasonEnd > minEndDate ? seasonEnd : minEndDate,
+	};
+}

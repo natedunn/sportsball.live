@@ -53,6 +53,22 @@ function mapEventStatusToState(status: EventStatus | string): "pre" | "in" | "po
 }
 
 // ============================================================
+// Record shown next to a team in a game
+// ============================================================
+
+/**
+ * A finished game shows each team's record as of that game, so past dates read
+ * as they were. Upcoming and live games fall back to the team's current record.
+ */
+function getRecordAsOfGame(
+	game: { eventStatus?: string; homeTeamRecord?: string; awayTeamRecord?: string },
+	side: "home" | "away",
+): string | undefined {
+	if (game.eventStatus !== "completed") return undefined;
+	return side === "home" ? game.homeTeamRecord : game.awayTeamRecord;
+}
+
+// ============================================================
 // Helper: build a GameTeam from Convex team data
 // ============================================================
 
@@ -118,8 +134,18 @@ export function convexScoreboardToGameData(games: any[], league: League): GameDa
 			start: game.scheduledStart ? new Date(game.scheduledStart).toISOString() : undefined,
 			detail: game.statusDetail,
 		},
-		away: buildGameTeam(league, game.awayTeam, game.awayScore, game.seriesRecord?.away),
-		home: buildGameTeam(league, game.homeTeam, game.homeScore, game.seriesRecord?.home),
+		away: buildGameTeam(
+			league,
+			game.awayTeam,
+			game.awayScore,
+			game.seriesRecord?.away ?? getRecordAsOfGame(game, "away"),
+		),
+		home: buildGameTeam(
+			league,
+			game.homeTeam,
+			game.homeScore,
+			game.seriesRecord?.home ?? getRecordAsOfGame(game, "home"),
+		),
 	}));
 }
 
@@ -315,7 +341,7 @@ export function convexGameDetailsToGameDetails(data: any, league: League): GameD
 			awayPlayerEvents ?? [],
 			awayScore,
 			homeScore,
-			data.seriesRecord?.away,
+			data.seriesRecord?.away ?? getRecordAsOfGame(game, "away"),
 		),
 		home: buildGameDetailsTeam(
 			league,
@@ -324,7 +350,7 @@ export function convexGameDetailsToGameDetails(data: any, league: League): GameD
 			homePlayerEvents ?? [],
 			homeScore,
 			awayScore,
-			data.seriesRecord?.home,
+			data.seriesRecord?.home ?? getRecordAsOfGame(game, "home"),
 		),
 		allSeries: [],
 	};

@@ -3,6 +3,7 @@ import {
 	compareSeasons,
 	formatGameDate,
 	getCurrentSeason,
+	getScheduleSyncRange,
 	getTodayDate,
 	parseEspnSeason,
 	seasonFromEspnYear,
@@ -110,5 +111,28 @@ describe("compareSeasons", () => {
 	it("orders single-year WNBA seasons", () => {
 		expect(compareSeasons("2026", "2025")).toBeGreaterThan(0);
 		expect(compareSeasons("2025", "2026")).toBeLessThan(0);
+	});
+});
+
+describe("getScheduleSyncRange", () => {
+	// Oct 29 2026, 9:30 AM UTC = 5:30 AM EDT, when the daily sync runs
+	const now = Date.UTC(2026, 9, 29, 9, 30, 0);
+
+	it("starts yesterday (ET) and runs to the season's end", () => {
+		expect(
+			getScheduleSyncRange({ seasonEndDate: "20270420", calendarSeasonEndDate: "20270420" }, now),
+		).toEqual({ startDate: "20261028", endDate: "20270420" });
+	});
+
+	it("runs to the calendar season's end once the stored season is over", () => {
+		expect(
+			getScheduleSyncRange({ seasonEndDate: "20260413", calendarSeasonEndDate: "20270331" }, now),
+		).toEqual({ startDate: "20261028", endDate: "20270331" });
+	});
+
+	it("still covers the next week when both seasons have ended", () => {
+		expect(
+			getScheduleSyncRange({ seasonEndDate: "20261025", calendarSeasonEndDate: "20261025" }, now),
+		).toEqual({ startDate: "20261028", endDate: "20261105" });
 	});
 });

@@ -187,6 +187,8 @@ export const upsertGameEvent = internalMutation({
 		venue: v.optional(v.string()),
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
+		homeTeamRecord: v.optional(v.string()),
+		awayTeamRecord: v.optional(v.string()),
 		lastFetchedAt: v.optional(v.number()),
 		checkCount: v.optional(v.number()),
 	},
@@ -605,6 +607,8 @@ export const updateGameEventStatus = internalMutation({
 		seasonType: v.optional(v.number()),
 		homeScore: v.optional(v.number()),
 		awayScore: v.optional(v.number()),
+		homeTeamRecord: v.optional(v.string()),
+		awayTeamRecord: v.optional(v.string()),
 		checkCount: v.optional(v.number()),
 		lastFetchedAt: v.optional(v.number()),
 	},
@@ -614,5 +618,47 @@ export const updateGameEventStatus = internalMutation({
 			...updates,
 			updatedAt: Date.now(),
 		}));
+	},
+});
+
+// Store each team's as-of-game record on games we already have, and ESPN's
+// season type on games stored before we kept it. Never inserts, and skips games
+// with nothing new. Returns how many it patched.
+export const setGameRecords = internalMutation({
+	args: {
+		games: v.array(
+			v.object({
+				espnGameId: v.string(),
+				homeTeamRecord: v.string(),
+				awayTeamRecord: v.string(),
+				seasonType: v.optional(v.number()),
+			}),
+		),
+	},
+	handler: async (ctx, args) => {
+		let patched = 0;
+		for (const game of args.games) {
+			const existing = await ctx.db
+				.query("gleagueGameEvent")
+				.withIndex("by_espnGameId", (q) => q.eq("espnGameId", game.espnGameId))
+				.unique();
+			if (!existing) continue;
+			const patch: { homeTeamRecord?: string; awayTeamRecord?: string; seasonType?: number } = {};
+			if (
+				existing.homeTeamRecord !== game.homeTeamRecord ||
+				existing.awayTeamRecord !== game.awayTeamRecord
+			) {
+				patch.homeTeamRecord = game.homeTeamRecord;
+				patch.awayTeamRecord = game.awayTeamRecord;
+			}
+			// Playoff detection falls back to configured dates without a season type
+			if (existing.seasonType === undefined && game.seasonType !== undefined) {
+				patch.seasonType = game.seasonType;
+			}
+			if (Object.keys(patch).length === 0) continue;
+			await ctx.db.patch(existing._id, patch);
+			patched += 1;
+		}
+		return patched;
 	},
 });

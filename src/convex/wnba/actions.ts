@@ -9,10 +9,11 @@ import {
 	mapApiStateToEventStatus,
 	sleep,
 	getDateRange,
+	getScheduleSyncRange,
 	parseEspnSeason,
 	seasonFromEspnYear,
 } from "../shared/seasonHelpers";
-import { parseTeamBoxScore, parsePlayerBoxScores } from "../shared/apiParser";
+import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord } from "../shared/apiParser";
 import type {
 	ApiEventSeason,
 	ApiScoreboardResponse,
@@ -525,6 +526,8 @@ export const discoverTodaysGames = internalAction({
 				venue: competition.venue?.fullName,
 				homeScore: parseApiScore(homeComp.score),
 				awayScore: parseApiScore(awayComp.score),
+				homeTeamRecord: getTotalRecord(homeComp),
+				awayTeamRecord: getTotalRecord(awayComp),
 				// Fresh check budget for the status check scheduled below
 				checkCount: eventStatus === "scheduled" ? 0 : undefined,
 			});
@@ -752,6 +755,8 @@ export const checkGameStatusV2 = internalAction({
 				statusDetail: detail,
 				homeScore,
 				awayScore,
+				homeTeamRecord: getTotalRecord(homeComp),
+				awayTeamRecord: getTotalRecord(awayComp),
 				lastFetchedAt: Date.now(),
 			});
 
@@ -1025,6 +1030,8 @@ export const syncLiveGameData = internalAction({
 			venue: competition?.venue?.fullName,
 			homeScore: scoresAreComplete ? homeScore : undefined,
 			awayScore: scoresAreComplete ? awayScore : undefined,
+			homeTeamRecord: getTotalRecord(homeComp),
+			awayTeamRecord: getTotalRecord(awayComp),
 			lastFetchedAt: Date.now(),
 		});
 
@@ -1297,6 +1304,8 @@ export const backfillDateChunk = internalAction({
 	args: {
 		dates: v.array(v.string()),
 		offset: v.number(),
+		// Only store as-of-game records on games we already have
+		recordsOnly: v.optional(v.boolean()),
 		bootstrapRunId: v.optional(v.string()),
 	},
 	handler: async (ctx, args) => {
@@ -1344,6 +1353,7 @@ export const backfillDateChunk = internalAction({
 				await ctx.scheduler.runAfter(BACKFILL_DELAY_MS, internal.wnba.actions.backfillDateChunk, {
 					dates: args.dates,
 					offset: args.offset + 1,
+					recordsOnly: args.recordsOnly,
 					bootstrapRunId: args.bootstrapRunId,
 				});
 				return;
@@ -1355,6 +1365,12 @@ export const backfillDateChunk = internalAction({
 			console.log(`[WNBA Backfill] ${date}: ${events.length} games found`);
 
 			let processedGames = 0;
+			const recordUpdates: Array<{
+				espnGameId: string;
+				homeTeamRecord: string;
+				awayTeamRecord: string;
+				seasonType?: number;
+			}> = [];
 
 			for (const event of events) {
 				const competition = event.competitions[0];
@@ -1363,6 +1379,20 @@ export const backfillDateChunk = internalAction({
 				const homeComp = competition.competitors.find((c) => c.homeAway === "home");
 				const awayComp = competition.competitors.find((c) => c.homeAway === "away");
 				if (!homeComp || !awayComp) continue;
+
+				if (args.recordsOnly) {
+					const homeTeamRecord = getTotalRecord(homeComp);
+					const awayTeamRecord = getTotalRecord(awayComp);
+					if (homeTeamRecord && awayTeamRecord) {
+						recordUpdates.push({
+							espnGameId: event.id,
+							homeTeamRecord,
+							awayTeamRecord,
+							seasonType: event.season?.type,
+						});
+					}
+					continue;
+				}
 
 				const { season, seasonType } = await resolveEventSeason(event.season, fallbackSeason);
 
@@ -1390,6 +1420,8 @@ export const backfillDateChunk = internalAction({
 					venue: competition.venue?.fullName,
 					homeScore: parseApiScore(homeComp.score),
 					awayScore: parseApiScore(awayComp.score),
+					homeTeamRecord: getTotalRecord(homeComp),
+					awayTeamRecord: getTotalRecord(awayComp),
 				});
 
 				if (state === "post") {
@@ -1413,6 +1445,10 @@ export const backfillDateChunk = internalAction({
 				}
 			}
 
+			if (recordUpdates.length > 0) {
+				await ctx.runMutation(internal.wnba.mutations.setGameRecords, { games: recordUpdates });
+			}
+
 			console.log(`[WNBA Backfill] ${date}: processed ${processedGames} completed games`);
 		} catch (error) {
 			console.error(`[WNBA Backfill] Error processing date ${date}:`, error);
@@ -1421,26 +1457,43 @@ export const backfillDateChunk = internalAction({
 		await ctx.scheduler.runAfter(BACKFILL_DELAY_MS, internal.wnba.actions.backfillDateChunk, {
 			dates: args.dates,
 			offset: args.offset + 1,
+			recordsOnly: args.recordsOnly,
 			bootstrapRunId: args.bootstrapRunId,
 		});
 	},
 });
 
-// Standalone: backfill only upcoming scheduled games (today → season end)
-export const backfillUpcomingSchedule = internalAction({
+// Daily: store the schedule from yesterday through the season's end so the
+// scoreboard can page ahead, and give completed games their as-of-game records.
+// Also safe to run by hand.
+export const syncSchedule = internalAction({
 	args: {},
 	handler: async (ctx) => {
 		const season = await getCurrentSeasonName(ctx);
-		const startDate = getTodayDate();
-		const endDate = await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season));
+		const { startDate, endDate } = getScheduleSyncRange({
+			seasonEndDate: await getCurrentSeasonEventDate(ctx, "playoffEnd", getSeasonEndDate(season)),
+			calendarSeasonEndDate: getSeasonEndDate(getCurrentSeason()),
+		});
 		const dates = getDateRange(startDate, endDate);
 
-		console.log(`[WNBA Schedule] Backfilling upcoming schedule: ${startDate} to ${endDate} (${dates.length} dates)`);
+		console.log(`[WNBA Schedule] Syncing schedule: ${startDate} to ${endDate} (${dates.length} dates)`);
 
 		await ctx.scheduler.runAfter(100, internal.wnba.actions.backfillDateChunk, {
 			dates,
 			offset: 0,
 		});
+
+		const recordDates = (
+			await ctx.runQuery(internal.wnba.queries.getDatesMissingRecords, { season })
+		).filter((date) => date < startDate);
+		if (recordDates.length > 0) {
+			console.log(`[WNBA Schedule] Backfilling records for ${recordDates.length} past dates`);
+			await ctx.scheduler.runAfter(100, internal.wnba.actions.backfillDateChunk, {
+				dates: recordDates,
+				offset: 0,
+				recordsOnly: true,
+			});
+		}
 	},
 });
 

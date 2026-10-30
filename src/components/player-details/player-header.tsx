@@ -30,7 +30,7 @@ function StatusBadge({ status }: { status: PlayerProfileData["bio"]["status"] })
 }
 
 export function PlayerHeader({ player }: PlayerHeaderProps) {
-	const age = getPlayerAge(player.bio.birthDate);
+	const age = getPlayerAge(player.bio);
 	const initials = player.name
 		.split(" ")
 		.map((part) => part[0])
@@ -63,8 +63,12 @@ export function PlayerHeader({ player }: PlayerHeaderProps) {
 
 							<div className="flex flex-wrap items-center justify-center md:justify-start gap-x-3 gap-y-2">
 								<span className="text-muted-foreground">{player.position}</span>
-								<span className="text-muted-foreground/50">|</span>
-								<span className="text-muted-foreground">Age {age}</span>
+								{age !== undefined && (
+									<>
+										<span className="text-muted-foreground/50">|</span>
+										<span className="text-muted-foreground">Age {age}</span>
+									</>
+								)}
 								<span className="text-muted-foreground/50">|</span>
 								<StatusBadge status={player.bio.status} />
 							</div>

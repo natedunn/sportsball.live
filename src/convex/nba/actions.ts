@@ -3,7 +3,7 @@ import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
 import { getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, getScheduleSyncRange, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
-import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord } from "../shared/apiParser";
+import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord, parseRosterPlayer } from "../shared/apiParser";
 import type { Id } from "../_generated/dataModel";
 import type {
 	ApiScoreboardResponse,
@@ -11,6 +11,7 @@ import type {
 	ApiStandingsResponse,
 	ApiStandingsTeamEntry,
 	ApiRosterResponse,
+	ApiSiteRosterResponse,
 	ApiEventSeason,
 } from "../shared/apiParser";
 
@@ -773,17 +774,7 @@ export const checkGameStatusV2 = internalAction({
 			});
 
 			if (game) {
-				await ctx.runMutation(internal.nba.mutations.recalculateTeamAverages, {
-					teamId: game.homeTeamId,
-				});
-				await ctx.runMutation(internal.nba.mutations.recalculateTeamAverages, {
-					teamId: game.awayTeamId,
-				});
-
-				// Update league rankings
-				await ctx.runMutation(internal.nba.mutations.updateLeagueRankings, {
-					season: game.season,
-				});
+				await recalculateTeamsAndRankings(ctx, [game.homeTeamId, game.awayTeamId], game.season);
 			}
 
 			if (!wasCompleted) {
@@ -806,32 +797,41 @@ export const checkGameStatusV2 = internalAction({
 	},
 });
 
-// Helper: sync box score data from API summary response into Convex
+// Recompute season averages for the given teams, then the season's league rankings
+async function recalculateTeamsAndRankings(ctx: any, teamIds: Id<"nbaTeam">[], season: string) {
+	for (const teamId of new Set(teamIds)) {
+		await ctx.runMutation(internal.nba.mutations.recalculateTeamAverages, { teamId });
+	}
+	await ctx.runMutation(internal.nba.mutations.updateLeagueRankings, { season });
+}
+
+// Helper: sync box score data from API summary response into Convex.
+// Returns whether either team's box score was new or changed.
 async function syncBoxScoreData(
 	ctx: any,
 	gameEventId: string,
 	espnGameId: string,
 	summaryData: ApiGameSummaryResponse,
-) {
+): Promise<boolean> {
 	const boxscoreTeams = summaryData.boxscore?.teams;
 	const boxscorePlayers = summaryData.boxscore?.players;
 
-	if (!boxscoreTeams || boxscoreTeams.length < 2) return;
+	if (!boxscoreTeams || boxscoreTeams.length < 2) return false;
 
 	const competition = summaryData.header?.competitions?.[0];
 	const headerHome = competition?.competitors?.find((c) => c.homeAway === "home");
 	const headerAway = competition?.competitors?.find((c) => c.homeAway === "away");
 
-	if (!headerHome || !headerAway) return;
+	if (!headerHome || !headerAway) return false;
 
 	// Pre-game summaries have no scores or box score yet
-	if (competition?.status?.type?.state === "pre") return;
+	if (competition?.status?.type?.state === "pre") return false;
 
 	// Get team IDs from game event
 	const game = await ctx.runQuery(internal.nba.queries.getGameEventInternal, {
 		espnGameId,
 	});
-	if (!game) return;
+	if (!game) return false;
 
 	const season = game.season;
 
@@ -855,12 +855,13 @@ async function syncBoxScoreData(
 			rawHomeScore: headerHome.score,
 			rawAwayScore: headerAway.score,
 		});
-		return;
+		return false;
 	}
 
 	// Upsert team events
+	let boxScoreChanged = false;
 	if (homeBoxTeam) {
-		await ctx.runMutation(internal.nba.mutations.upsertTeamEvent, {
+		const { changed } = await ctx.runMutation(internal.nba.mutations.upsertTeamEvent, {
 			gameEventId: game._id,
 			teamId: game.homeTeamId,
 			isHome: true,
@@ -869,10 +870,11 @@ async function syncBoxScoreData(
 			winner: homeScore > awayScore,
 			...homeStats,
 		});
+		boxScoreChanged ||= changed;
 	}
 
 	if (awayBoxTeam) {
-		await ctx.runMutation(internal.nba.mutations.upsertTeamEvent, {
+		const { changed } = await ctx.runMutation(internal.nba.mutations.upsertTeamEvent, {
 			gameEventId: game._id,
 			teamId: game.awayTeamId,
 			isHome: false,
@@ -881,6 +883,7 @@ async function syncBoxScoreData(
 			winner: awayScore > homeScore,
 			...awayStats,
 		});
+		boxScoreChanged ||= changed;
 	}
 
 	// Parse and upsert player events
@@ -893,7 +896,7 @@ async function syncBoxScoreData(
 	) => {
 		for (const player of parsedPlayers) {
 			// Ensure player record exists
-			const playerId = await ctx.runMutation(internal.nba.mutations.upsertPlayer, {
+			const playerId = await ctx.runMutation(internal.nba.mutations.upsertPlayerFromBoxScore, {
 				espnPlayerId: player.espnPlayerId,
 				season,
 				teamId,
@@ -945,6 +948,8 @@ async function syncBoxScoreData(
 
 	await processPlayerBoxScores(homePlayerBoxScores, game.homeTeamId);
 	await processPlayerBoxScores(awayPlayerBoxScores, game.awayTeamId);
+
+	return boxScoreChanged;
 }
 
 // Sync a live game from API provider (triggered by page load server function)
@@ -1068,7 +1073,15 @@ export const syncLiveGameData = internalAction({
 
 			// Sync box score data
 			if (!isPreGame) {
-				await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+				const boxScoreChanged = await syncBoxScoreData(ctx, gameEventId, args.espnGameId, summaryData);
+				// Season averages count finished games only: recompute when a game
+				// goes final or ESPN revises a finished game's box score
+				if (
+					nextEventStatus === "completed" &&
+					(boxScoreChanged || existingGame?.eventStatus !== "completed")
+				) {
+					await recalculateTeamsAndRankings(ctx, [homeTeamId, awayTeamId], season);
+				}
 			}
 		} finally {
 			if (lockGameEventId) {
@@ -1111,6 +1124,95 @@ export const backfillPlayerStatsFromCoreInternal = internalAction({
 	},
 	handler: async (ctx, args) => {
 		return await runCorePlayerStatsBackfill(ctx, args);
+	},
+});
+
+// Fetch a team's roster from the site API (the common API roster has no birthdates)
+async function fetchSiteRoster(espnTeamId: string): Promise<ApiSiteRosterResponse | null> {
+	const response = await fetch(`${getSiteApi()}/teams/${espnTeamId}/roster`, {
+		headers: { "Content-Type": "application/json" },
+	});
+	if (!response.ok) {
+		console.error(`[NBA Rosters] Roster fetch failed for team ${espnTeamId}: ${response.status}`);
+		return null;
+	}
+	return (await response.json()) as ApiSiteRosterResponse;
+}
+
+// Refresh every team's roster from ESPN: bios (birthdates included), trades and
+// signings, and players who've left. Only while the current season runs, so a
+// finished season keeps its final rosters.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function runRosterSync(ctx: any) {
+	const season = await getCurrentSeasonName(ctx);
+	const seasonEnd = await getSeasonDate(ctx, "nba", "seasonEnd");
+	if (seasonEnd !== null && getTodayDate() > seasonEnd) {
+		console.log(`[NBA Rosters] Season ${season} ended ${seasonEnd}; keeping its final rosters`);
+		return { season, skipped: true, teams: 0, players: 0, flagged: 0 };
+	}
+
+	const teams = await ctx.runQuery(internal.nba.queries.getAllTeamsInternal, { season });
+	let syncedTeams = 0;
+	let players = 0;
+	let flagged = 0;
+
+	for (const team of teams) {
+		// Placeholder teams (TBD) have no roster
+		if (!/^\d+$/.test(team.espnTeamId)) continue;
+		try {
+			const roster = await fetchSiteRoster(team.espnTeamId);
+			const athletes = roster?.athletes ?? [];
+			const rosterYear = roster?.season?.year;
+			// Never empty a roster from a failed response or another season's roster
+			if (
+				athletes.length === 0 ||
+				rosterYear === undefined ||
+				seasonFromEspnYear("nba", rosterYear) !== season
+			) {
+				continue;
+			}
+
+			for (const athlete of athletes) {
+				await ctx.runMutation(internal.nba.mutations.upsertPlayer, {
+					...parseRosterPlayer(athlete),
+					season,
+					teamId: team._id,
+					onRoster: true,
+				});
+			}
+			flagged += await ctx.runMutation(internal.nba.mutations.markOffRoster, {
+				teamId: team._id,
+				rosterEspnPlayerIds: athletes.map((athlete) => athlete.id),
+			});
+			syncedTeams += 1;
+			players += athletes.length;
+		} catch (error) {
+			console.error(`[NBA Rosters] Roster sync failed for team ${team.espnTeamId}:`, error);
+		}
+	}
+
+	console.log(
+		`[NBA Rosters] Synced ${syncedTeams}/${teams.length} teams (${players} players), ${flagged} newly off-roster`,
+	);
+	return { season, skipped: false, teams: syncedTeams, players, flagged };
+}
+
+// Refresh rosters on their own (the daily player refresh runs this first)
+export const syncRosters = internalAction({
+	args: {},
+	handler: async (ctx) => {
+		return await runRosterSync(ctx);
+	},
+});
+
+// Daily: refresh rosters, then season stats from ESPN Core, so a newly signed
+// player has their stats the same day
+export const refreshPlayers = internalAction({
+	args: {},
+	handler: async (ctx) => {
+		const rosters = await runRosterSync(ctx);
+		const stats = await runCorePlayerStatsBackfill(ctx, {});
+		return { rosters, stats };
 	},
 });
 
@@ -1182,22 +1284,9 @@ async function fetchAndUpsertRoster(
 		);
 
 		await ctx.runMutation(internal.nba.mutations.upsertPlayer, {
-			espnPlayerId: athlete.id,
+			...parseRosterPlayer(athlete),
 			season,
 			teamId: convexTeamId,
-			name: athlete.displayName,
-			firstName: athlete.firstName,
-			lastName: athlete.lastName,
-			jersey: athlete.jersey,
-			position: athlete.position?.abbreviation,
-			headshot: athlete.headshot?.href,
-			height: athlete.displayHeight,
-			weight: athlete.displayWeight,
-			age: athlete.age,
-			experience: athlete.experience?.years !== undefined
-				? `${athlete.experience.years}`
-				: undefined,
-			college: athlete.college?.name,
 			...(coreStats ?? {}),
 		});
 	}
@@ -1462,6 +1551,8 @@ export const backfillDateChunk = internalAction({
 			console.log(`[NBA Backfill] ${date}: ${events.length} games found`);
 
 			let processedGames = 0;
+			// Teams whose finished games changed, by season, to recompute after the date
+			const changedTeams = new Map<string, Id<"nbaTeam">[]>();
 			const recordUpdates: Array<{
 				espnGameId: string;
 				homeTeamRecord: string;
@@ -1537,8 +1628,12 @@ export const backfillDateChunk = internalAction({
 
 						if (summaryRes.ok) {
 							const summaryData = (await summaryRes.json()) as ApiGameSummaryResponse;
-							await syncBoxScoreData(ctx, gameEventId, event.id, summaryData);
+							const boxScoreChanged = await syncBoxScoreData(ctx, gameEventId, event.id, summaryData);
 							processedGames++;
+							// Bootstrap recalculates everything once the backfill is done
+							if (boxScoreChanged && !args.bootstrapRunId) {
+								changedTeams.set(season, [...(changedTeams.get(season) ?? []), homeTeamId, awayTeamId]);
+							}
 						} else {
 							console.error(`[NBA Backfill] Summary fetch failed for game ${event.id}: ${summaryRes.status}`);
 						}
@@ -1550,6 +1645,10 @@ export const backfillDateChunk = internalAction({
 
 			if (recordUpdates.length > 0) {
 				await ctx.runMutation(internal.nba.mutations.setGameRecords, { games: recordUpdates });
+			}
+
+			for (const [season, teamIds] of changedTeams) {
+				await recalculateTeamsAndRankings(ctx, teamIds, season);
 			}
 
 			console.log(`[NBA Backfill] ${date}: processed ${processedGames} completed games`);
@@ -1568,8 +1667,9 @@ export const backfillDateChunk = internalAction({
 	},
 });
 
-// Daily: store the schedule from yesterday through the season's end so the
-// scoreboard can page ahead, and give completed games their as-of-game records.
+// Daily: store the schedule from three days back through the season's end so
+// the scoreboard can page ahead, give completed games their as-of-game records,
+// and pick up ESPN's box score corrections.
 // Also safe to run by hand.
 export const syncSchedule = internalAction({
 	args: {},

@@ -20,8 +20,7 @@ function comparisonRows(left: PlayerProfileData, right: PlayerProfileData) {
 		{ label: "RPG", left: left.basicStats.rebounds, right: right.basicStats.rebounds },
 		{ label: "APG", left: left.basicStats.assists, right: right.basicStats.assists },
 		{ label: "TS%", left: left.calculatedStats.trueShootingPct, right: right.calculatedStats.trueShootingPct },
-		{ label: "USG%", left: left.calculatedStats.usagePct, right: right.calculatedStats.usagePct },
-		{ label: "PER", left: left.calculatedStats.playerEfficiency, right: right.calculatedStats.playerEfficiency },
+		{ label: "EFF", left: left.calculatedStats.efficiency, right: right.calculatedStats.efficiency },
 		{ label: "AST/TO", left: left.calculatedStats.assistToTurnover, right: right.calculatedStats.assistToTurnover },
 	];
 }

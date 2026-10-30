@@ -32,7 +32,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 }
 
 export function OverviewTab({ player, teammates, league, onCompareTeammate }: OverviewTabProps) {
-	const age = getPlayerAge(player.bio.birthDate);
+	const age = getPlayerAge(player.bio);
 
 	return (
 		<div className="space-y-8">
@@ -68,11 +68,11 @@ export function OverviewTab({ player, teammates, league, onCompareTeammate }: Ov
 						delay={150}
 					/>
 					<StatCard
-						label="PER"
-						value={player.calculatedStats.playerEfficiency.toFixed(1)}
-						rawValue={player.calculatedStats.playerEfficiency}
+						label="EFF"
+						value={player.calculatedStats.efficiency.toFixed(1)}
+						rawValue={player.calculatedStats.efficiency}
 						formatValue={(v) => v.toFixed(1)}
-						subtitle="Calculated"
+						subtitle="Efficiency per game"
 						icon={Gauge}
 						delay={225}
 					/>
@@ -88,8 +88,10 @@ export function OverviewTab({ player, teammates, league, onCompareTeammate }: Ov
 						<Card>
 							<div className="p-4 w-full">
 								<div className="grid grid-cols-2 gap-4 text-sm">
-									<InfoField label="Birthdate" value={player.bio.birthDate} />
-									<InfoField label="Age" value={`${age}`} />
+									{player.bio.birthDate && (
+										<InfoField label="Birthdate" value={player.bio.birthDate} />
+									)}
+									{age !== undefined && <InfoField label="Age" value={`${age}`} />}
 									<InfoField label="College" value={player.bio.college} />
 									<InfoField label="Draft" value={player.bio.draftInfo} />
 									<InfoField label="Height" value={player.bio.height} />
@@ -108,10 +110,6 @@ export function OverviewTab({ player, teammates, league, onCompareTeammate }: Ov
 									<InfoField
 										label="TS%"
 										value={`${player.calculatedStats.trueShootingPct.toFixed(1)}%`}
-									/>
-									<InfoField
-										label="USG%"
-										value={`${player.calculatedStats.usagePct.toFixed(1)}%`}
 									/>
 									<InfoField
 										label="AST/TO"

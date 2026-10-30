@@ -171,26 +171,56 @@ export interface ApiStandingsResponse {
 	}>;
 }
 
+// ESPN sends null for missing roster fields
 export interface ApiRosterAthlete {
 	id: string;
-	firstName: string;
-	lastName: string;
+	firstName?: string | null;
+	lastName?: string | null;
 	displayName: string;
-	jersey?: string;
-	position?: { abbreviation?: string };
-	displayHeight?: string;
-	displayWeight?: string;
-	age?: number;
-	experience?: { years?: number };
-	college?: { name?: string };
-	headshot?: { href?: string };
+	jersey?: string | null;
+	position?: { abbreviation?: string | null } | null;
+	displayHeight?: string | null;
+	displayWeight?: string | null;
+	age?: number | null;
+	/** ISO timestamp, e.g. "1996-10-30T08:00Z" (site API only) */
+	dateOfBirth?: string | null;
+	experience?: { years?: number | null } | null;
+	college?: { name?: string | null } | null;
+	headshot?: { href?: string | null } | null;
 }
 
+/** Common API roster (`/teams/{id}/roster`): no birthdates */
 export interface ApiRosterResponse {
 	positionGroups?: Array<{
 		type: string;
 		athletes: ApiRosterAthlete[];
 	}>;
+}
+
+/** Site API roster (`/teams/{id}/roster`): flat, with birthdates */
+export interface ApiSiteRosterResponse {
+	season?: ApiEventSeason;
+	athletes?: ApiRosterAthlete[];
+}
+
+/** A roster athlete's bio, as stored on the player record (missing fields left out) */
+export function parseRosterPlayer(athlete: ApiRosterAthlete) {
+	const years = athlete.experience?.years;
+	return {
+		espnPlayerId: athlete.id,
+		name: athlete.displayName,
+		firstName: athlete.firstName ?? undefined,
+		lastName: athlete.lastName ?? undefined,
+		jersey: athlete.jersey ?? undefined,
+		position: athlete.position?.abbreviation ?? undefined,
+		headshot: athlete.headshot?.href ?? undefined,
+		height: athlete.displayHeight ?? undefined,
+		weight: athlete.displayWeight ?? undefined,
+		age: athlete.age ?? undefined,
+		birthDate: athlete.dateOfBirth?.slice(0, 10),
+		experience: years !== undefined && years !== null ? `${years}` : undefined,
+		college: athlete.college?.name ?? undefined,
+	};
 }
 
 export interface ApiTeamScheduleEvent {

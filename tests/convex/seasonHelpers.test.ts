@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	compareSeasons,
+	countsTowardSeasonAverages,
 	formatGameDate,
 	getScheduleSyncRange,
 	getTodayDate,
@@ -110,21 +111,48 @@ describe("getScheduleSyncRange", () => {
 	// Oct 29 2026, 9:30 AM UTC = 5:30 AM EDT, when the daily sync runs
 	const now = Date.UTC(2026, 9, 29, 9, 30, 0);
 
-	it("starts yesterday (ET) and runs to the current season's last day", () => {
+	it("starts three days back (ET) and runs to the current season's last day", () => {
 		expect(
 			getScheduleSyncRange({ seasonEndDate: "20270625", latestScheduledEndDate: "20270625" }, now),
-		).toEqual({ startDate: "20261028", endDate: "20270625" });
+		).toEqual({ startDate: "20261026", endDate: "20270625" });
 	});
 
 	it("runs through the next season once the current one is over", () => {
 		expect(
 			getScheduleSyncRange({ seasonEndDate: "20261025", latestScheduledEndDate: "20271130" }, now),
-		).toEqual({ startDate: "20261028", endDate: "20271130" });
+		).toEqual({ startDate: "20261026", endDate: "20271130" });
 	});
 
 	it("still covers the next week with no season dates at all", () => {
 		expect(
 			getScheduleSyncRange({ seasonEndDate: null, latestScheduledEndDate: null }, now),
-		).toEqual({ startDate: "20261028", endDate: "20261105" });
+		).toEqual({ startDate: "20261026", endDate: "20261105" });
+	});
+});
+
+describe("countsTowardSeasonAverages", () => {
+	it("counts finished regular season, play-in and playoff games", () => {
+		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 2 })).toBe(true);
+		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 3 })).toBe(true);
+		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 5 })).toBe(true);
+	});
+
+	it("counts finished games with no season type yet", () => {
+		expect(countsTowardSeasonAverages({ eventStatus: "completed" })).toBe(true);
+	});
+
+	it("skips preseason games", () => {
+		expect(countsTowardSeasonAverages({ eventStatus: "completed", seasonType: 1 })).toBe(false);
+	});
+
+	it("skips games that haven't finished", () => {
+		expect(countsTowardSeasonAverages({ eventStatus: "in_progress", seasonType: 2 })).toBe(false);
+		expect(countsTowardSeasonAverages({ eventStatus: "halftime", seasonType: 2 })).toBe(false);
+		expect(countsTowardSeasonAverages({ eventStatus: "scheduled", seasonType: 2 })).toBe(false);
+	});
+
+	it("skips missing games", () => {
+		expect(countsTowardSeasonAverages(null)).toBe(false);
+		expect(countsTowardSeasonAverages(undefined)).toBe(false);
 	});
 });

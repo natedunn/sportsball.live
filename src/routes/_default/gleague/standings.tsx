@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
+import { standingsSeo } from "@/lib/seo";
 import { convexStandingsToResponse } from "@/lib/shared/convex-adapters";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StandingsTable } from "@/components/standings/standings-table";
@@ -38,6 +39,9 @@ export const Route = createFileRoute("/_default/gleague/standings")({
 			await context.queryClient.ensureQueryData(standingsQuery(season));
 		}
 	},
+	head: ({ match }) => ({
+		meta: standingsSeo("gleague", match.search.conference),
+	}),
 	pendingComponent: () => (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
 			<div className="bg-gradient-to-b from-muted/70 to-transparent pt-12 dark:from-muted/30">

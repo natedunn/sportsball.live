@@ -13,6 +13,7 @@ import {
 	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
 import { syncGamesForView } from "@/lib/shared/sync.server";
+import { teamSeo } from "@/lib/seo";
 import { teamInjuriesQueryOptions } from "@/lib/nba/team.queries";
 import {
 	TEAM_TABS,
@@ -93,9 +94,14 @@ export const Route = createFileRoute("/_default/nba/team/$teamId")({
 						teamId: team._id as Id<"nbaTeam">,
 					}),
 				);
+
+				return { season };
 			}
 		}
 	},
+	head: ({ params, loaderData }) => ({
+		meta: teamSeo("nba", params.teamId, loaderData?.season),
+	}),
 	pendingComponent: TeamDetailsPending,
 	component: NbaTeamPage,
 });

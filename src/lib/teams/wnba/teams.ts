@@ -30,7 +30,7 @@ export const WNBA_TEAMS: TeamDefinition[] = [
 		city: "Connecticut",
 		fullName: "Connecticut Sun",
 		abbreviation: "CON",
-		logoSlug: "conn",
+		logoSlug: "con",
 		colors: {
 			brand: { primary: "F05023", secondary: "0A2240" },
 			display: { dark: "F05023", light: "0A2240" },

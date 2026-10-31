@@ -4,6 +4,7 @@
  * without modifying downstream components.
  */
 import { getTeamStaticData } from "@/lib/teams";
+import { ESPN_SEASON_TYPE } from "@convex/shared/seasonHelpers";
 import type { League } from "@/lib/shared/league";
 import type { FunctionReturnType } from "convex/server";
 import type { Doc } from "@convex/_generated/dataModel";
@@ -577,6 +578,7 @@ export function convexScheduleToGames(
 			state,
 			statusDetail: game.statusDetail ?? "",
 			venue: game.venue,
+			isPreseason: game.seasonType === ESPN_SEASON_TYPE.preseason,
 		};
 	});
 }

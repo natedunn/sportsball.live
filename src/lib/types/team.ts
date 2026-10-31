@@ -106,6 +106,8 @@ export interface ScheduleGame {
   state: "pre" | "in" | "post";
   statusDetail: string;
   venue: string | undefined;
+  // Preseason games are listed but never count toward records
+  isPreseason?: boolean;
 }
 
 export interface TeamStats {

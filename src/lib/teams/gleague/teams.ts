@@ -8,7 +8,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "AUS",
 		logoSlug: "aus",
 		colors: {
-			brand: { primary: "C4CED4", secondary: "000000" },
+			brand: { primary: "000000", secondary: "C4CED4" },
 			display: { dark: "C4CED4", light: "000000" },
 		},
 		social: { twitter: "austinspurs", instagram: "austinspurs" },
@@ -50,8 +50,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "CLC",
 		logoSlug: "clc",
 		colors: {
-			brand: { primary: "061642", secondary: "FDBB30" },
-			display: { dark: "FDBB30", light: "061642" },
+			brand: { primary: "880039", secondary: "FDBB30" },
+			display: { dark: "A72B51", light: "880039" },
 		},
 		social: { twitter: "clevelandcharge", instagram: "clevelandcharge" },
 		api: { id: "3", slug: "clc" },
@@ -64,8 +64,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "CPS",
 		logoSlug: "cps",
 		colors: {
-			brand: { primary: "000000", secondary: "B3042A" },
-			display: { dark: "B3042A", light: "000000" },
+			brand: { primary: "CB0E2D", secondary: "B3042A" },
+			display: { dark: "CB0E2D", light: "CB0E2D" },
 		},
 		social: { twitter: "cpskyhawks", instagram: "cpskyhawks" },
 		api: { id: "28", slug: "cps" },
@@ -78,8 +78,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "DEL",
 		logoSlug: "del",
 		colors: {
-			brand: { primary: "003DA6", secondary: "DD0031" },
-			display: { dark: "DD0031", light: "003DA6" },
+			brand: { primary: "036AB6", secondary: "F1DAB2" },
+			display: { dark: "036AB6", light: "036AB6" },
 		},
 		social: { twitter: "delowarebluecoats", instagram: "bluecoats" },
 		api: { id: "5", slug: "del" },
@@ -92,8 +92,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "GRD",
 		logoSlug: "grd",
 		colors: {
-			brand: { primary: "C8102E", secondary: "1D428A" },
-			display: { dark: "C8102E", light: "1D428A" },
+			brand: { primary: "FDC923", secondary: "102341" },
+			display: { dark: "FDC923", light: "102341" },
 		},
 		social: { twitter: "gaborngold", instagram: "grandrapidsgold" },
 		api: { id: "8", slug: "grd" },
@@ -107,7 +107,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "gbo",
 		colors: {
 			brand: { primary: "007BBC", secondary: "1D1160" },
-			display: { dark: "007BBC", light: "1D1160" },
+			display: { dark: "007BBC", light: "007BBC" },
 		},
 		social: { twitter: "gabornoswarm", instagram: "greensboroswarm" },
 		api: { id: "9", slug: "gbo" },
@@ -135,7 +135,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "lin",
 		colors: {
 			brand: { primary: "006BB6", secondary: "ED174C" },
-			display: { dark: "ED174C", light: "006BB6" },
+			display: { dark: "006BB6", light: "006BB6" },
 		},
 		social: { twitter: "longislandnets", instagram: "longislandnets" },
 		api: { id: "12", slug: "lin" },
@@ -149,7 +149,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "mne",
 		colors: {
 			brand: { primary: "006532", secondary: "F1F2F3" },
-			display: { dark: "F1F2F3", light: "006532" },
+			display: { dark: "066835", light: "006532" },
 		},
 		social: { twitter: "maineceltics", instagram: "maineceltics" },
 		api: { id: "13", slug: "mne" },
@@ -163,7 +163,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "mhu",
 		colors: {
 			brand: { primary: "E2231A", secondary: "717271" },
-			display: { dark: "E2231A", light: "717271" },
+			display: { dark: "E2231A", light: "E2231A" },
 		},
 		social: { twitter: "memphishustle", instagram: "memphishustle" },
 		api: { id: "14", slug: "mhu" },
@@ -176,8 +176,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "MXC",
 		logoSlug: "mxc",
 		colors: {
-			brand: { primary: "3A4C98", secondary: "FFFFFF" },
-			display: { dark: "FFFFFF", light: "3A4C98" },
+			brand: { primary: "3A4C98", secondary: "FDE915" },
+			display: { dark: "4255A2", light: "3A4C98" },
 		},
 		social: { twitter: "cabornoitanes", instagram: "capitanesmx" },
 		api: { id: "124612", slug: "mxc" },
@@ -190,8 +190,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "MCC",
 		logoSlug: "mcc",
 		colors: {
-			brand: { primary: "FA002C", secondary: "006BB6" },
-			display: { dark: "FA002C", light: "006BB6" },
+			brand: { primary: "C80F2D", secondary: "1D42BA" },
+			display: { dark: "C80F2D", light: "C80F2D" },
 		},
 		social: { twitter: "motorcitycruise", instagram: "motorcitycruise" },
 		api: { id: "15", slug: "mcc" },
@@ -204,8 +204,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "NOB",
 		logoSlug: "nob",
 		colors: {
-			brand: { primary: "002D62", secondary: "FDBB30" },
-			display: { dark: "FDBB30", light: "002D62" },
+			brand: { primary: "002D62", secondary: "00B0ED" },
+			display: { dark: "00B0ED", light: "002D62" },
 		},
 		social: { twitter: "noblesvilleboom", instagram: "noblesvilleboom" },
 		api: { id: "7", slug: "nob" },
@@ -219,7 +219,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "okl",
 		colors: {
 			brand: { primary: "007AC1", secondary: "EF3B24" },
-			display: { dark: "EF3B24", light: "007AC1" },
+			display: { dark: "007AC1", light: "007AC1" },
 		},
 		social: { twitter: "oabornokcblue", instagram: "okcblue" },
 		api: { id: "16", slug: "okl" },
@@ -232,8 +232,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "OSC",
 		logoSlug: "osc",
 		colors: {
-			brand: { primary: "0077C0", secondary: "000000" },
-			display: { dark: "0077C0", light: "0077C0" },
+			brand: { primary: "0050B5", secondary: "FFFFFF" },
+			display: { dark: "0A56BC", light: "0050B5" },
 		},
 		social: { twitter: "osceolamagic", instagram: "osceolamagic" },
 		api: { id: "11", slug: "osc" },
@@ -246,8 +246,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "RAP",
 		logoSlug: "rap",
 		colors: {
-			brand: { primary: "CE1141", secondary: "000000" },
-			display: { dark: "CE1141", light: "000000" },
+			brand: { primary: "CE1141", secondary: "071A23" },
+			display: { dark: "CE1141", light: "CE1141" },
 		},
 		social: { twitter: "rabornotors905", instagram: "raptors905" },
 		api: { id: "17", slug: "rap" },
@@ -261,7 +261,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "rgv",
 		colors: {
 			brand: { primary: "CE1141", secondary: "BEC0C2" },
-			display: { dark: "CE1141", light: "BEC0C2" },
+			display: { dark: "CE1141", light: "CE1141" },
 		},
 		social: { twitter: "rgvipers", instagram: "rgvipers" },
 		api: { id: "18", slug: "rgv" },
@@ -274,8 +274,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "RCY",
 		logoSlug: "rcity",
 		colors: {
-			brand: { primary: "E03A3E", secondary: "000000" },
-			display: { dark: "E03A3E", light: "000000" },
+			brand: { primary: "EDDAB1", secondary: "8B2834" },
+			display: { dark: "EDDAB1", light: "8B2834" },
 		},
 		social: { twitter: "ripcityremix", instagram: "ripcityremix" },
 		api: { id: "128019", slug: "rcity" },
@@ -288,8 +288,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "SLC",
 		logoSlug: "slc",
 		colors: {
-			brand: { primary: "002B5C", secondary: "F9A01B" },
-			display: { dark: "F9A01B", light: "002B5C" },
+			brand: { primary: "4E028E", secondary: "000000" },
+			display: { dark: "713AB9", light: "4E028E" },
 		},
 		social: { twitter: "slcstars", instagram: "slcstars" },
 		api: { id: "19", slug: "slc" },
@@ -302,8 +302,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "SAN",
 		logoSlug: "san",
 		colors: {
-			brand: { primary: "C8102E", secondary: "1D428A" },
-			display: { dark: "C8102E", light: "1D428A" },
+			brand: { primary: "C8102E", secondary: "12173E" },
+			display: { dark: "C8102E", light: "C8102E" },
 		},
 		social: { twitter: "saborondiegoclippers", instagram: "sandiegoclippers" },
 		api: { id: "1", slug: "san" },
@@ -316,8 +316,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "SCW",
 		logoSlug: "scw",
 		colors: {
-			brand: { primary: "006BB6", secondary: "FDB927" },
-			display: { dark: "FDB927", light: "006BB6" },
+			brand: { primary: "1D428B", secondary: "FDB927" },
+			display: { dark: "FDB927", light: "1D428B" },
 		},
 		social: { twitter: "saboroncruzwarriors", instagram: "santacruzwarriors" },
 		api: { id: "20", slug: "scw" },
@@ -330,8 +330,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "SXF",
 		logoSlug: "sxf",
 		colors: {
-			brand: { primary: "98002E", secondary: "000000" },
-			display: { dark: "98002E", light: "98002E" },
+			brand: { primary: "000000", secondary: "98002E" },
+			display: { dark: "AD223E", light: "000000" },
 		},
 		social: { twitter: "sfskabornoforce", instagram: "sabornokyforce" },
 		api: { id: "21", slug: "sxf" },
@@ -359,7 +359,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "sto",
 		colors: {
 			brand: { primary: "5A2D81", secondary: "000000" },
-			display: { dark: "5A2D81", light: "000000" },
+			display: { dark: "74479D", light: "5A2D81" },
 		},
 		social: { twitter: "stocktonkings", instagram: "stocktonkings" },
 		api: { id: "23", slug: "sto" },
@@ -373,7 +373,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "tex",
 		colors: {
 			brand: { primary: "0053BC", secondary: "00285E" },
-			display: { dark: "0053BC", light: "00285E" },
+			display: { dark: "0556BF", light: "0053BC" },
 		},
 		social: { twitter: "texlegends", instagram: "texlegends" },
 		api: { id: "24", slug: "tex" },
@@ -386,8 +386,8 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		abbreviation: "VAL",
 		logoSlug: "valley",
 		colors: {
-			brand: { primary: "E56020", secondary: "1D1160" },
-			display: { dark: "E56020", light: "1D1160" },
+			brand: { primary: "3B286F", secondary: "F94C09" },
+			display: { dark: "F94C09", light: "3B286F" },
 		},
 		social: { twitter: "valleysuns", instagram: "valleyphxsuns" },
 		api: { id: "129713", slug: "valley" },
@@ -401,7 +401,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "wes",
 		colors: {
 			brand: { primary: "006BB6", secondary: "F58426" },
-			display: { dark: "F58426", light: "006BB6" },
+			display: { dark: "006BB6", light: "006BB6" },
 		},
 		social: { twitter: "westaboronicks", instagram: "westchesterknicks" },
 		api: { id: "25", slug: "wes" },
@@ -415,7 +415,7 @@ export const GLEAGUE_TEAMS: TeamDefinition[] = [
 		logoSlug: "wcb",
 		colors: {
 			brand: { primary: "CE1141", secondary: "000000" },
-			display: { dark: "CE1141", light: "000000" },
+			display: { dark: "CE1141", light: "CE1141" },
 		},
 		social: { twitter: "windycitybulls", instagram: "windycitybulls" },
 		api: { id: "26", slug: "wcb" },

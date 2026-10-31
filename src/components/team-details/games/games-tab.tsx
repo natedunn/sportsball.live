@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { MarginBar } from "./margin-bar";
 import { StatCard } from "../stat-card";
+import { PreseasonTag } from "../preseason-tag";
 import { useHasTabAnimated } from "../animation-context";
 import { Home, Plane, TrendingUp, Trophy, ChevronDown } from "lucide-react";
 import type { ScheduleGame } from "@/lib/types/team";
@@ -60,9 +61,9 @@ export function GamesTab({ games, league }: GamesTabProps) {
   const [contentVisible, setContentVisible] = useState(!animate);
   const [visibleRows, setVisibleRows] = useState(!animate ? Infinity : 0);
 
-  // Compute records with safe defaults
+  // Compute records with safe defaults (preseason games never count)
   const records = useMemo(() => {
-    const completed = games.filter((g) => g.result && g.state === "post");
+    const completed = games.filter((g) => g.result && g.state === "post" && !g.isPreseason);
 
     const overall = {
       wins: completed.filter((g) => g.result?.isWin === true).length,
@@ -310,6 +311,7 @@ export function GamesTab({ games, league }: GamesTabProps) {
                             </span>
                             {game.opponent.name}
                           </span>
+                          {game.isPreseason && <PreseasonTag />}
                         </Link>
                       </td>
 

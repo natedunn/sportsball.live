@@ -6,6 +6,7 @@ import { formatGameDate } from "@/lib/date";
 import type { ScheduleGame } from "@/lib/types/team";
 import type { League } from "@/lib/shared/league";
 import { leagueGameRoutes } from "@/lib/league-routes";
+import { PreseasonTag } from "../preseason-tag";
 
 interface GamesTableProps {
 	recentGames: ScheduleGame[];
@@ -84,6 +85,7 @@ export function GamesTable({ recentGames, upcomingGames, league }: GamesTablePro
 												</span>
 												{game.opponent.name}
 											</span>
+											{game.isPreseason && <PreseasonTag />}
 										</Link>
 									</td>
 

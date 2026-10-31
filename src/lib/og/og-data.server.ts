@@ -148,7 +148,6 @@ export async function getGameCardData(
 		stage: gameStageLabel(league, meta.seasonType),
 		date: formatGameDate(meta.scheduledStart),
 		time: formatGameTime(meta.scheduledStart),
-		venue: meta.venue,
 		away,
 		home,
 	};

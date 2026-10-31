@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 import basketballStill from "./basketball-still.png?inline";
 import {
 	Activity,
-	ArrowLeftRight,
 	BarChart3,
 	Calendar,
 	Clock,
@@ -14,8 +13,6 @@ import {
 	History,
 	House,
 	ListOrdered,
-	MapPin,
-	Table2,
 	TrendingUp,
 	Trophy,
 	Users,
@@ -409,16 +406,9 @@ export interface GameCardData {
 	date: string;
 	/** "7:30 PM ET" */
 	time: string;
-	venue?: string;
 	away: GameCardTeam;
 	home: GameCardTeam;
 }
-
-const GAME_FEATURES: CardFeature[] = [
-	{ label: "Box score", icon: Table2 },
-	{ label: "Team stats", icon: BarChart3 },
-	{ label: "Matchups", icon: ArrowLeftRight },
-];
 
 const GAME_SIDE_WIDTH = 460;
 
@@ -489,7 +479,7 @@ function GameSide({ team, nameSize }: { team: GameCardTeam; nameSize: number }) 
 				width: GAME_SIDE_WIDTH,
 			}}
 		>
-			<img src={team.logoUrl} width={164} height={164} style={{ objectFit: "contain" }} />
+			<img src={team.logoUrl} width={200} height={200} style={{ objectFit: "contain" }} />
 			<span
 				style={{
 					marginTop: 16,
@@ -509,6 +499,42 @@ function GameSide({ team, nameSize }: { team: GameCardTeam; nameSize: number }) 
 	);
 }
 
+/** The "at" between the teams, on a faint line through the middle */
+function GameDivider() {
+	const line = (direction: string) => (
+		<div
+			style={{
+				width: 2,
+				height: 110,
+				backgroundImage: `linear-gradient(${direction}, rgba(64,64,64,0) 0%, #404040 100%)`,
+			}}
+		/>
+	);
+	return (
+		<div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+			{line("180deg")}
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					width: 84,
+					height: 84,
+					borderRadius: 999,
+					border: `2px solid ${colors.border}`,
+					backgroundColor: colors.card,
+					fontSize: 34,
+					fontWeight: 600,
+					color: colors.muted,
+				}}
+			>
+				at
+			</div>
+			{line("0deg")}
+		</div>
+	);
+}
+
 export function GameCard({ data }: { data: GameCardData }) {
 	const label = [
 		data.stage ? `${data.leagueLabel} ${data.stage}` : data.leagueLabel,
@@ -517,7 +543,7 @@ export function GameCard({ data }: { data: GameCardData }) {
 		.filter(Boolean)
 		.join(" · ");
 	// One size for both, so the names share a baseline
-	const nameSize = Math.max(data.away.name.length, data.home.name.length) > 11 ? 52 : 64;
+	const nameSize = Math.max(data.away.name.length, data.home.name.length) > 11 ? 56 : 68;
 	return (
 		<Frame
 			background={
@@ -535,36 +561,25 @@ export function GameCard({ data }: { data: GameCardData }) {
 					alignItems: "center",
 					justifyContent: "space-between",
 					flex: 1,
-					paddingBottom: 24,
 				}}
 			>
 				<GameSide team={data.away} nameSize={nameSize} />
-				<span style={{ fontSize: 40, fontWeight: 600, color: colors.muted }}>at</span>
+				<GameDivider />
 				<GameSide team={data.home} nameSize={nameSize} />
 			</div>
 
-			<div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-					<div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 30, fontWeight: 600 }}>
-						<Clock size={28} color={colors.muted} strokeWidth={2} />
-						{`${data.date} · ${data.time}`}
-					</div>
-					{data.venue && (
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: 12,
-								fontSize: 24,
-								color: colors.muted,
-							}}
-						>
-							<MapPin size={24} color={colors.muted} strokeWidth={2} />
-							{data.venue}
-					</div>
-				)}
-			</div>
-			<div style={{ display: "flex", marginTop: 24 }}>
-				<FeatureChips features={GAME_FEATURES} />
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: 14,
+					fontSize: 34,
+					fontWeight: 600,
+				}}
+			>
+				<Clock size={30} color={colors.muted} strokeWidth={2} />
+				{`${data.date} · ${data.time}`}
 			</div>
 		</Frame>
 	);

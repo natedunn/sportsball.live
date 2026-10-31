@@ -6,12 +6,16 @@ import type { ReactNode } from "react";
 import basketballStill from "./basketball-still.png?inline";
 import {
 	Activity,
+	ArrowLeftRight,
 	BarChart3,
 	Calendar,
+	Clock,
 	Flame,
 	History,
 	House,
 	ListOrdered,
+	MapPin,
+	Table2,
 	TrendingUp,
 	Trophy,
 	Users,
@@ -380,6 +384,188 @@ export function StandingsCard({ data }: { data: StandingsCardData }) {
 				<LogoWall logoUrls={data.logoUrls} />
 			</div>
 			<FeatureChips features={STANDINGS_FEATURES} />
+		</Frame>
+	);
+}
+
+// ============================================================
+// Game: who and when, never the score
+// ============================================================
+
+export interface GameCardTeam {
+	city: string;
+	name: string;
+	logoUrl: string;
+	/** Hex without `#` */
+	color: string;
+}
+
+export interface GameCardData {
+	leagueLabel: string;
+	season?: string;
+	/** "Playoffs", "Preseason"...; unset for the regular season */
+	stage?: string;
+	/** "Friday, October 30, 2026" */
+	date: string;
+	/** "7:30 PM ET" */
+	time: string;
+	venue?: string;
+	away: GameCardTeam;
+	home: GameCardTeam;
+}
+
+const GAME_FEATURES: CardFeature[] = [
+	{ label: "Box score", icon: Table2 },
+	{ label: "Team stats", icon: BarChart3 },
+	{ label: "Matchups", icon: ArrowLeftRight },
+];
+
+const GAME_SIDE_WIDTH = 460;
+
+/** One half of the background: the team's grid and a glow behind its logo */
+function GameSideBackground({ team, side }: { team: GameCardTeam; side: "left" | "right" }) {
+	const color = `#${team.color}`;
+	const half = OG_WIDTH / 2;
+	const towardCentre = side === "left" ? "90deg" : "270deg";
+	return (
+		<div
+			style={{
+				position: "absolute",
+				top: 0,
+				left: side === "left" ? 0 : half,
+				width: half,
+				height: OG_HEIGHT,
+				display: "flex",
+				overflow: "hidden",
+			}}
+		>
+			<img
+				src={dotGridUri(color, team.name)}
+				width={OG_WIDTH}
+				height={OG_HEIGHT}
+				style={{ position: "absolute", top: 0, left: side === "left" ? 0 : -half }}
+			/>
+			<div
+				style={{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					width: half,
+					height: OG_HEIGHT,
+					backgroundImage: `linear-gradient(${towardCentre}, rgba(0,0,0,0.55) 0%, ${colors.background} 85%)`,
+				}}
+			/>
+			<div
+				style={{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					width: half,
+					height: OG_HEIGHT,
+					backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0) 40%, ${colors.background} 85%)`,
+				}}
+			/>
+			<div
+				style={{
+					position: "absolute",
+					left: side === "left" ? -120 : -20,
+					top: -60,
+					width: 740,
+					height: 740,
+					backgroundImage: `radial-gradient(circle at 50% 50%, ${color}2e 0%, ${color}00 60%)`,
+				}}
+			/>
+		</div>
+	);
+}
+
+function GameSide({ team, nameSize }: { team: GameCardTeam; nameSize: number }) {
+	return (
+		<div
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				width: GAME_SIDE_WIDTH,
+			}}
+		>
+			<img src={team.logoUrl} width={164} height={164} style={{ objectFit: "contain" }} />
+			<span
+				style={{
+					marginTop: 16,
+					fontSize: 24,
+					fontWeight: 600,
+					color: colors.muted,
+					textTransform: "uppercase",
+					letterSpacing: 3,
+				}}
+			>
+				{team.city}
+			</span>
+			<span style={{ fontSize: nameSize, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05 }}>
+				{team.name}
+			</span>
+		</div>
+	);
+}
+
+export function GameCard({ data }: { data: GameCardData }) {
+	const label = [
+		data.stage ? `${data.leagueLabel} ${data.stage}` : data.leagueLabel,
+		data.season,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	// One size for both, so the names share a baseline
+	const nameSize = Math.max(data.away.name.length, data.home.name.length) > 11 ? 52 : 64;
+	return (
+		<Frame
+			background={
+				<>
+					<GameSideBackground team={data.away} side="left" />
+					<GameSideBackground team={data.home} side="right" />
+				</>
+			}
+		>
+			<TopBar label={label} />
+
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "space-between",
+					flex: 1,
+					paddingBottom: 24,
+				}}
+			>
+				<GameSide team={data.away} nameSize={nameSize} />
+				<span style={{ fontSize: 40, fontWeight: 600, color: colors.muted }}>at</span>
+				<GameSide team={data.home} nameSize={nameSize} />
+			</div>
+
+			<div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+					<div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 30, fontWeight: 600 }}>
+						<Clock size={28} color={colors.muted} strokeWidth={2} />
+						{`${data.date} · ${data.time}`}
+					</div>
+					{data.venue && (
+						<div
+							style={{
+								display: "flex",
+								alignItems: "center",
+								gap: 12,
+								fontSize: 24,
+								color: colors.muted,
+							}}
+						>
+							<MapPin size={24} color={colors.muted} strokeWidth={2} />
+							{data.venue}
+					</div>
+				)}
+			</div>
+			<div style={{ display: "flex", marginTop: 24 }}>
+				<FeatureChips features={GAME_FEATURES} />
+			</div>
 		</Frame>
 	);
 }

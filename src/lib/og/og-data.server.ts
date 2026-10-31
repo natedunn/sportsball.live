@@ -5,7 +5,13 @@ import type { League } from "@/lib/shared/league";
 import { NBA_TEAM_LOGOS } from "@/lib/nba/team-logos";
 import { WNBA_TEAM_LOGOS } from "@/lib/wnba/team-logos";
 import { GLEAGUE_TEAM_LOGOS } from "@/lib/gleague/team-logos";
-import type { StandingsCardData, TeamCardData } from "./og-cards";
+import type { GameCardData, GameCardTeam, StandingsCardData, TeamCardData } from "./og-cards";
+import {
+	formatGameDate,
+	formatGameTime,
+	gameStageLabel,
+	toGameMeta,
+} from "./game-meta";
 
 // Data for the social cards, read straight from Convex: the cards are
 // rendered in API routes, outside the router and its query cache.
@@ -45,6 +51,17 @@ function getStandingsQuery(league: League) {
 			return api.wnba.queries.getStandings;
 		case "gleague":
 			return api.gleague.queries.getStandings;
+	}
+}
+
+function getGameDetailsQuery(league: League) {
+	switch (league) {
+		case "nba":
+			return api.nba.queries.getGameDetails;
+		case "wnba":
+			return api.wnba.queries.getGameDetails;
+		case "gleague":
+			return api.gleague.queries.getGameDetails;
 	}
 }
 
@@ -104,5 +121,35 @@ export async function getStandingsCardData(
 		season,
 		conference: conference && CONFERENCES[conference],
 		logoUrls,
+	};
+}
+
+function gameCardTeam(league: League, espnTeamId: string): GameCardTeam | undefined {
+	const team = getTeamStaticData(league, espnTeamId);
+	const logo = team && logoUrl(league, team.logoSlug, 400);
+	if (!team || !logo) return undefined;
+	return { city: team.city, name: team.name, logoUrl: logo, color: team.colors.display.dark };
+}
+
+/** Who and when; never the score */
+export async function getGameCardData(
+	league: League,
+	gameId: string,
+): Promise<GameCardData | null> {
+	const details = await convex().query(getGameDetailsQuery(league), { espnGameId: gameId });
+	const meta = toGameMeta(details);
+	if (!meta) return null;
+	const away = gameCardTeam(league, meta.awayTeamId);
+	const home = gameCardTeam(league, meta.homeTeamId);
+	if (!away || !home) return null;
+	return {
+		leagueLabel: leagueLabels[league],
+		season: meta.season,
+		stage: gameStageLabel(league, meta.seasonType),
+		date: formatGameDate(meta.scheduledStart),
+		time: formatGameTime(meta.scheduledStart),
+		venue: meta.venue,
+		away,
+		home,
 	};
 }

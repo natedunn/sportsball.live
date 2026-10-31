@@ -12,6 +12,8 @@ import {
 	GameDetailsPending,
 } from "@/components/game-details/game-details-layout";
 import { useRouteTab } from "@/lib/route-tabs";
+import { toGameMeta } from "@/lib/og/game-meta";
+import { gameSeo } from "@/lib/seo";
 
 interface GameSearchParams {
 	fromDate?: string;
@@ -26,12 +28,16 @@ export const Route = createFileRoute("/_default/wnba/game/$gameId")({
 	},
 	loader: async ({ context, params }) => {
 		// Pre-populate Convex data for SSR
-		await context.queryClient.ensureQueryData(
+		const details = await context.queryClient.ensureQueryData(
 			convexQuery(api.wnba.queries.getGameDetails, { espnGameId: params.gameId }),
 		);
 		// Trigger ESPN→Convex sync (throttled to 15s)
 		await syncLiveGame({ data: { espnGameId: params.gameId, league: "wnba" } });
+		return { gameMeta: toGameMeta(details) };
 	},
+	head: ({ params, loaderData }) => ({
+		meta: gameSeo("wnba", params.gameId, loaderData?.gameMeta),
+	}),
 	pendingComponent: GameDetailsPending,
 	component: WnbaGameDetailsPage,
 });

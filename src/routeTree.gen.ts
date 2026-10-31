@@ -55,6 +55,7 @@ import { Route as DefaultGleagueTeamTeamIdIndexRouteImport } from './routes/_def
 import { Route as DefaultGleaguePlayerIdIndexRouteImport } from './routes/_default/gleague/player/$id/index'
 import { Route as DefaultGleagueGameGameIdIndexRouteImport } from './routes/_default/gleague/game/$gameId/index'
 import { Route as ApiOgLeagueTeamTeamIdRouteImport } from './routes/api/og/$league/team/$teamId'
+import { Route as ApiOgLeagueGameGameIdRouteImport } from './routes/api/og/$league/game/$gameId'
 import { Route as DefaultWnbaTeamTeamIdTrendsRouteImport } from './routes/_default/wnba/team/$teamId/trends'
 import { Route as DefaultWnbaTeamTeamIdStatsRouteImport } from './routes/_default/wnba/team/$teamId/stats'
 import { Route as DefaultWnbaTeamTeamIdRosterRouteImport } from './routes/_default/wnba/team/$teamId/roster'
@@ -328,6 +329,11 @@ const ApiOgLeagueTeamTeamIdRoute = ApiOgLeagueTeamTeamIdRouteImport.update({
   path: '/api/og/$league/team/$teamId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiOgLeagueGameGameIdRoute = ApiOgLeagueGameGameIdRouteImport.update({
+  id: '/api/og/$league/game/$gameId',
+  path: '/api/og/$league/game/$gameId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DefaultWnbaTeamTeamIdTrendsRoute =
   DefaultWnbaTeamTeamIdTrendsRouteImport.update({
     id: '/trends',
@@ -554,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/wnba/team/$teamId/roster': typeof DefaultWnbaTeamTeamIdRosterRoute
   '/wnba/team/$teamId/stats': typeof DefaultWnbaTeamTeamIdStatsRoute
   '/wnba/team/$teamId/trends': typeof DefaultWnbaTeamTeamIdTrendsRoute
+  '/api/og/$league/game/$gameId': typeof ApiOgLeagueGameGameIdRoute
   '/api/og/$league/team/$teamId': typeof ApiOgLeagueTeamTeamIdRoute
   '/gleague/game/$gameId/': typeof DefaultGleagueGameGameIdIndexRoute
   '/gleague/player/$id/': typeof DefaultGleaguePlayerIdIndexRoute
@@ -619,6 +626,7 @@ export interface FileRoutesByTo {
   '/wnba/team/$teamId/roster': typeof DefaultWnbaTeamTeamIdRosterRoute
   '/wnba/team/$teamId/stats': typeof DefaultWnbaTeamTeamIdStatsRoute
   '/wnba/team/$teamId/trends': typeof DefaultWnbaTeamTeamIdTrendsRoute
+  '/api/og/$league/game/$gameId': typeof ApiOgLeagueGameGameIdRoute
   '/api/og/$league/team/$teamId': typeof ApiOgLeagueTeamTeamIdRoute
   '/gleague/game/$gameId': typeof DefaultGleagueGameGameIdIndexRoute
   '/gleague/player/$id': typeof DefaultGleaguePlayerIdIndexRoute
@@ -695,6 +703,7 @@ export interface FileRoutesById {
   '/_default/wnba/team/$teamId/roster': typeof DefaultWnbaTeamTeamIdRosterRoute
   '/_default/wnba/team/$teamId/stats': typeof DefaultWnbaTeamTeamIdStatsRoute
   '/_default/wnba/team/$teamId/trends': typeof DefaultWnbaTeamTeamIdTrendsRoute
+  '/api/og/$league/game/$gameId': typeof ApiOgLeagueGameGameIdRoute
   '/api/og/$league/team/$teamId': typeof ApiOgLeagueTeamTeamIdRoute
   '/_default/gleague/game/$gameId/': typeof DefaultGleagueGameGameIdIndexRoute
   '/_default/gleague/player/$id/': typeof DefaultGleaguePlayerIdIndexRoute
@@ -771,6 +780,7 @@ export interface FileRouteTypes {
     | '/wnba/team/$teamId/roster'
     | '/wnba/team/$teamId/stats'
     | '/wnba/team/$teamId/trends'
+    | '/api/og/$league/game/$gameId'
     | '/api/og/$league/team/$teamId'
     | '/gleague/game/$gameId/'
     | '/gleague/player/$id/'
@@ -836,6 +846,7 @@ export interface FileRouteTypes {
     | '/wnba/team/$teamId/roster'
     | '/wnba/team/$teamId/stats'
     | '/wnba/team/$teamId/trends'
+    | '/api/og/$league/game/$gameId'
     | '/api/og/$league/team/$teamId'
     | '/gleague/game/$gameId'
     | '/gleague/player/$id'
@@ -911,6 +922,7 @@ export interface FileRouteTypes {
     | '/_default/wnba/team/$teamId/roster'
     | '/_default/wnba/team/$teamId/stats'
     | '/_default/wnba/team/$teamId/trends'
+    | '/api/og/$league/game/$gameId'
     | '/api/og/$league/team/$teamId'
     | '/_default/gleague/game/$gameId/'
     | '/_default/gleague/player/$id/'
@@ -931,6 +943,7 @@ export interface RootRouteChildren {
   ApiNbaLogoIdRoute: typeof ApiNbaLogoIdRoute
   ApiOgLeagueStandingsRoute: typeof ApiOgLeagueStandingsRoute
   ApiWnbaLogoIdRoute: typeof ApiWnbaLogoIdRoute
+  ApiOgLeagueGameGameIdRoute: typeof ApiOgLeagueGameGameIdRoute
   ApiOgLeagueTeamTeamIdRoute: typeof ApiOgLeagueTeamTeamIdRoute
 }
 
@@ -1256,6 +1269,13 @@ declare module '@tanstack/react-router' {
       path: '/api/og/$league/team/$teamId'
       fullPath: '/api/og/$league/team/$teamId'
       preLoaderRoute: typeof ApiOgLeagueTeamTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/og/$league/game/$gameId': {
+      id: '/api/og/$league/game/$gameId'
+      path: '/api/og/$league/game/$gameId'
+      fullPath: '/api/og/$league/game/$gameId'
+      preLoaderRoute: typeof ApiOgLeagueGameGameIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_default/wnba/team/$teamId/trends': {
@@ -1711,6 +1731,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiNbaLogoIdRoute: ApiNbaLogoIdRoute,
   ApiOgLeagueStandingsRoute: ApiOgLeagueStandingsRoute,
   ApiWnbaLogoIdRoute: ApiWnbaLogoIdRoute,
+  ApiOgLeagueGameGameIdRoute: ApiOgLeagueGameGameIdRoute,
   ApiOgLeagueTeamTeamIdRoute: ApiOgLeagueTeamTeamIdRoute,
 }
 export const routeTree = rootRouteImport

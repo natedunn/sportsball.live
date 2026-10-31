@@ -8,6 +8,7 @@ import {
 	Activity,
 	BarChart3,
 	Calendar,
+	Clock,
 	Flame,
 	History,
 	House,
@@ -380,6 +381,206 @@ export function StandingsCard({ data }: { data: StandingsCardData }) {
 				<LogoWall logoUrls={data.logoUrls} />
 			</div>
 			<FeatureChips features={STANDINGS_FEATURES} />
+		</Frame>
+	);
+}
+
+// ============================================================
+// Game: who and when, never the score
+// ============================================================
+
+export interface GameCardTeam {
+	city: string;
+	name: string;
+	logoUrl: string;
+	/** Hex without `#` */
+	color: string;
+}
+
+export interface GameCardData {
+	leagueLabel: string;
+	season?: string;
+	/** "Playoffs", "Preseason"...; unset for the regular season */
+	stage?: string;
+	/** "Friday, October 30, 2026" */
+	date: string;
+	/** "7:30 PM ET" */
+	time: string;
+	away: GameCardTeam;
+	home: GameCardTeam;
+}
+
+const GAME_SIDE_WIDTH = 460;
+
+/** One half of the background: the team's grid and a glow behind its logo */
+function GameSideBackground({ team, side }: { team: GameCardTeam; side: "left" | "right" }) {
+	const color = `#${team.color}`;
+	const half = OG_WIDTH / 2;
+	const towardCentre = side === "left" ? "90deg" : "270deg";
+	return (
+		<div
+			style={{
+				position: "absolute",
+				top: 0,
+				left: side === "left" ? 0 : half,
+				width: half,
+				height: OG_HEIGHT,
+				display: "flex",
+				overflow: "hidden",
+			}}
+		>
+			<img
+				src={dotGridUri(color, team.name)}
+				width={OG_WIDTH}
+				height={OG_HEIGHT}
+				style={{ position: "absolute", top: 0, left: side === "left" ? 0 : -half }}
+			/>
+			<div
+				style={{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					width: half,
+					height: OG_HEIGHT,
+					backgroundImage: `linear-gradient(${towardCentre}, rgba(0,0,0,0.55) 0%, ${colors.background} 85%)`,
+				}}
+			/>
+			<div
+				style={{
+					position: "absolute",
+					top: 0,
+					left: 0,
+					width: half,
+					height: OG_HEIGHT,
+					backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0) 40%, ${colors.background} 85%)`,
+				}}
+			/>
+			<div
+				style={{
+					position: "absolute",
+					left: side === "left" ? -120 : -20,
+					top: -60,
+					width: 740,
+					height: 740,
+					backgroundImage: `radial-gradient(circle at 50% 50%, ${color}2e 0%, ${color}00 60%)`,
+				}}
+			/>
+		</div>
+	);
+}
+
+function GameSide({ team, nameSize }: { team: GameCardTeam; nameSize: number }) {
+	return (
+		<div
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				width: GAME_SIDE_WIDTH,
+			}}
+		>
+			<img src={team.logoUrl} width={200} height={200} style={{ objectFit: "contain" }} />
+			<span
+				style={{
+					marginTop: 16,
+					fontSize: 24,
+					fontWeight: 600,
+					color: colors.muted,
+					textTransform: "uppercase",
+					letterSpacing: 3,
+				}}
+			>
+				{team.city}
+			</span>
+			<span style={{ fontSize: nameSize, fontWeight: 800, letterSpacing: -2, lineHeight: 1.05 }}>
+				{team.name}
+			</span>
+		</div>
+	);
+}
+
+/** The "at" between the teams, on a faint line through the middle */
+function GameDivider() {
+	const line = (direction: string) => (
+		<div
+			style={{
+				width: 2,
+				height: 110,
+				backgroundImage: `linear-gradient(${direction}, rgba(64,64,64,0) 0%, #404040 100%)`,
+			}}
+		/>
+	);
+	return (
+		<div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+			{line("180deg")}
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					width: 84,
+					height: 84,
+					borderRadius: 999,
+					border: `2px solid ${colors.border}`,
+					backgroundColor: colors.card,
+					fontSize: 34,
+					fontWeight: 600,
+					color: colors.muted,
+				}}
+			>
+				at
+			</div>
+			{line("0deg")}
+		</div>
+	);
+}
+
+export function GameCard({ data }: { data: GameCardData }) {
+	const label = [
+		data.stage ? `${data.leagueLabel} ${data.stage}` : data.leagueLabel,
+		data.season,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	// One size for both, so the names share a baseline
+	const nameSize = Math.max(data.away.name.length, data.home.name.length) > 11 ? 56 : 68;
+	return (
+		<Frame
+			background={
+				<>
+					<GameSideBackground team={data.away} side="left" />
+					<GameSideBackground team={data.home} side="right" />
+				</>
+			}
+		>
+			<TopBar label={label} />
+
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "space-between",
+					flex: 1,
+				}}
+			>
+				<GameSide team={data.away} nameSize={nameSize} />
+				<GameDivider />
+				<GameSide team={data.home} nameSize={nameSize} />
+			</div>
+
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: 14,
+					fontSize: 34,
+					fontWeight: 600,
+				}}
+			>
+				<Clock size={30} color={colors.muted} strokeWidth={2} />
+				{`${data.date} · ${data.time}`}
+			</div>
 		</Frame>
 	);
 }

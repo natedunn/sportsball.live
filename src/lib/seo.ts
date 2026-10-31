@@ -2,6 +2,12 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { getTeamStaticData, leagueLabels } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
+import {
+	formatGameDate,
+	formatShortGameDate,
+	gameStageLabel,
+	type GameMeta,
+} from "@/lib/og/game-meta";
 
 export const SITE_NAME = "Sportsball";
 export const SITE_TITLE = import.meta.env.DEV ? "🚧 Sportsball" : "Sportsball";
@@ -90,5 +96,21 @@ export function standingsSeo(league: League, conference?: string) {
 		title: `${name} Standings`,
 		description: `${name} standings: records, games back, home and away, last 10 and streaks.`,
 		image: `/api/og/${league}/standings${conferenceName ? `?conference=${conference}` : ""}`,
+	});
+}
+
+/** `meta` is undefined when the loader didn't find the game */
+export function gameSeo(league: League, gameId: string, meta?: GameMeta) {
+	const away = meta && getTeamStaticData(league, meta.awayTeamId);
+	const home = meta && getTeamStaticData(league, meta.homeTeamId);
+	if (!meta || !away || !home) return seo({ title: `${leagueLabels[league]} Game` });
+	const stage = gameStageLabel(league, meta.seasonType);
+	const when = [formatGameDate(meta.scheduledStart), meta.venue && `at ${meta.venue}`]
+		.filter(Boolean)
+		.join(" ");
+	return seo({
+		title: `${away.name} at ${home.name} · ${formatShortGameDate(meta.scheduledStart)}`,
+		description: `${away.fullName} at ${home.fullName}, ${when}${stage ? ` (${leagueLabels[league]} ${stage})` : ""}: box score, team stats and matchups.`,
+		image: `/api/og/${league}/game/${gameId}`,
 	});
 }

@@ -13,6 +13,7 @@ import {
 	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
 import { syncGamesForView } from "@/lib/shared/sync.server";
+import { teamSeo } from "@/lib/seo";
 import { teamInjuriesQueryOptions } from "@/lib/wnba/team.queries";
 import {
 	TEAM_TABS,
@@ -87,9 +88,14 @@ export const Route = createFileRoute("/_default/wnba/team/$teamId")({
 				await context.queryClient.ensureQueryData(
 					convexQuery(api.wnba.queries.getTeamSchedule, { teamId: team._id as Id<"wnbaTeam"> }),
 				);
+
+				return { season };
 			}
 		}
 	},
+	head: ({ params, loaderData }) => ({
+		meta: teamSeo("wnba", params.teamId, loaderData?.season),
+	}),
 	pendingComponent: TeamDetailsPending,
 	component: WnbaTeamPage,
 });

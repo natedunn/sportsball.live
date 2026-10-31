@@ -15,11 +15,10 @@ import {
 import { DefaultCatchBoundary } from "@/components/_default-catch-boundary";
 import { api } from "~api";
 import { initThemeObserver } from "@/lib/store";
+import { seo } from "@/lib/seo";
 
 import appCss from "../styles/app.css?url";
 import { Footer } from "@/components/layout/footer";
-
-const SITE_TITLE = import.meta.env.DEV ? "🚧 Sportsball" : "Sportsball";
 
 export const Route = createRootRouteWithContext<{
 	queryClient: QueryClient;
@@ -34,9 +33,8 @@ export const Route = createRootRouteWithContext<{
 				name: "viewport",
 				content: "width=device-width, initial-scale=1",
 			},
-			{
-				title: SITE_TITLE,
-			},
+			// Defaults, including the fallback social card; routes override them
+			...seo({ image: "/api/og/home" }),
 		],
 		links: [
 			{

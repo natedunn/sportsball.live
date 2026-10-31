@@ -11,7 +11,9 @@ export const WNBA_TEAM_LOGOS: Record<string, string> = {
   "min": "https://a.espncdn.com/i/teamlogos/wnba/500/min.png",
   "ny": "https://a.espncdn.com/i/teamlogos/wnba/500/ny.png",
   "phx": "https://a.espncdn.com/i/teamlogos/wnba/500/phx.png",
+  "por": "https://a.espncdn.com/i/teamlogos/wnba/500/por.png",
   "sea": "https://a.espncdn.com/i/teamlogos/wnba/500/sea.png",
+  "tor": "https://a.espncdn.com/i/teamlogos/wnba/500/tor.png",
   "wsh": "https://a.espncdn.com/i/teamlogos/wnba/500/wsh.png",
   "gs": "https://a.espncdn.com/i/teamlogos/wnba/500/gs.png",
 };

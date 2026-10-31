@@ -218,23 +218,23 @@ export interface CardFeature {
 
 function FeatureChips({ features }: { features: CardFeature[] }) {
 	return (
-		<div style={{ display: "flex", gap: 14 }}>
+		<div style={{ display: "flex", gap: 10 }}>
 			{features.map(({ label, icon: Icon }) => (
 				<div
 					key={label}
 					style={{
 						display: "flex",
 						alignItems: "center",
-						gap: 12,
-						padding: "14px 24px",
+						gap: 10,
+						padding: "10px 20px",
 						borderRadius: 999,
 						border: `2px solid ${colors.border}`,
 						backgroundColor: "rgba(10,10,10,0.85)",
-						fontSize: 26,
+						fontSize: 22,
 						fontWeight: 600,
 					}}
 				>
-					<Icon size={26} color={colors.muted} strokeWidth={2} />
+					<Icon size={22} color={colors.muted} strokeWidth={2} />
 					{label}
 				</div>
 			))}

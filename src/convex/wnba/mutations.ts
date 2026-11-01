@@ -416,11 +416,14 @@ export const recalculateTeamAverages = internalMutation({
 
 		// Only finished games count, and preseason games don't count at all
 		const games = await Promise.all(allEvents.map((e) => ctx.db.get(e.gameEventId)));
-		const events = allEvents.filter((_, i) => countsTowardSeasonAverages(games[i]));
+		const counted = allEvents.flatMap((event, i) => {
+			const game = games[i];
+			return countsTowardSeasonAverages(game) ? [{ event, game }] : [];
+		});
 
-		if (events.length === 0) return false;
+		if (counted.length === 0) return false;
 
-		const gamesPlayed = events.length;
+		const gamesPlayed = counted.length;
 
 		// Sum totals
 		let totalFgMade = 0, totalFgAttempted = 0;
@@ -432,7 +435,7 @@ export const recalculateTeamAverages = internalMutation({
 		let totalPoints = 0, totalOppPoints = 0;
 		let totalPace = 0;
 
-		for (const e of events) {
+		for (const { event: e, game } of counted) {
 			totalFgMade += e.fieldGoalsMade;
 			totalFgAttempted += e.fieldGoalsAttempted;
 			totalThreeMade += e.threePointMade;
@@ -449,52 +452,50 @@ export const recalculateTeamAverages = internalMutation({
 			totalPoints += e.score;
 			totalPace += e.pace ?? 0;
 
-			// Get opponent score from game event
-			// We need the game to get opponent score for computing team-level defensive stats
-			// Since oppScore isn't stored on TeamEvent, we derive from ORtg/DRtg
-			if (e.offensiveRating && e.defensiveRating && e.pace) {
-				totalOppPoints += (e.defensiveRating / 100) * e.pace;
-			}
+			// Opponent points come from the final score; oppScore isn't stored on TeamEvent
+			totalOppPoints += (game.homeTeamId === e.teamId ? game.awayScore : game.homeScore) ?? 0;
 		}
 
-		const ppg = round(totalPoints / gamesPlayed, 1);
-		const oppPpg = round(totalOppPoints / gamesPlayed, 1);
-		const avgPace = round(totalPace / gamesPlayed, 1);
+		// Averages are stored unrounded so rankings can separate teams that round to
+		// the same value (14.25 vs 14.29 TOV). Pages round them for display.
+		const ppg = totalPoints / gamesPlayed;
+		const oppPpg = totalOppPoints / gamesPlayed;
+		const avgPace = totalPace / gamesPlayed;
 
 		// Compute average ratings from totals
-		const ortg = avgPace > 0 ? round((ppg / avgPace) * 100, 1) : 0;
-		const drtg = avgPace > 0 ? round((oppPpg / avgPace) * 100, 1) : 0;
+		const ortg = avgPace > 0 ? (ppg / avgPace) * 100 : 0;
+		const drtg = avgPace > 0 ? (oppPpg / avgPace) * 100 : 0;
 
-		const fgPct = totalFgAttempted > 0 ? round((totalFgMade / totalFgAttempted) * 100, 1) : 0;
-		const threePct = totalThreeAttempted > 0 ? round((totalThreeMade / totalThreeAttempted) * 100, 1) : 0;
-		const ftPct = totalFtAttempted > 0 ? round((totalFtMade / totalFtAttempted) * 100, 1) : 0;
-		const efgPct = totalFgAttempted > 0 ? round(((totalFgMade + 0.5 * totalThreeMade) / totalFgAttempted) * 100, 1) : 0;
+		const fgPct = totalFgAttempted > 0 ? (totalFgMade / totalFgAttempted) * 100 : 0;
+		const threePct = totalThreeAttempted > 0 ? (totalThreeMade / totalThreeAttempted) * 100 : 0;
+		const ftPct = totalFtAttempted > 0 ? (totalFtMade / totalFtAttempted) * 100 : 0;
+		const efgPct = totalFgAttempted > 0 ? ((totalFgMade + 0.5 * totalThreeMade) / totalFgAttempted) * 100 : 0;
 		const tsTsa = 2 * (totalFgAttempted + 0.44 * totalFtAttempted);
-		const tsPct = tsTsa > 0 ? round((totalPoints / tsTsa) * 100, 1) : 0;
+		const tsPct = tsTsa > 0 ? (totalPoints / tsTsa) * 100 : 0;
 
-		const astToRatio = totalTov > 0 ? round((totalAssists / gamesPlayed) / (totalTov / gamesPlayed), 2) : 0;
+		const astToRatio = totalTov > 0 ? totalAssists / totalTov : 0;
 
 		const averages = {
 			pointsFor: ppg,
 			pointsAgainst: oppPpg,
-			margin: round(ppg - oppPpg, 1),
+			margin: ppg - oppPpg,
 			pace: avgPace,
 			offensiveRating: ortg,
 			defensiveRating: drtg,
-			netRating: round(ortg - drtg, 1),
+			netRating: ortg - drtg,
 			fgPct,
 			threePct,
 			ftPct,
 			efgPct,
 			tsPct,
-			rpg: round(totalRebounds / gamesPlayed, 1),
-			orpg: round(totalOreb / gamesPlayed, 1),
-			drpg: round(totalDreb / gamesPlayed, 1),
-			apg: round(totalAssists / gamesPlayed, 1),
-			tovPg: round(totalTov / gamesPlayed, 1),
+			rpg: totalRebounds / gamesPlayed,
+			orpg: totalOreb / gamesPlayed,
+			drpg: totalDreb / gamesPlayed,
+			apg: totalAssists / gamesPlayed,
+			tovPg: totalTov / gamesPlayed,
 			astToRatio,
-			spg: round(totalSteals / gamesPlayed, 1),
-			bpg: round(totalBlocks / gamesPlayed, 1),
+			spg: totalSteals / gamesPlayed,
+			bpg: totalBlocks / gamesPlayed,
 			totalFgMade,
 			totalFgAttempted,
 			totalThreeMade,
@@ -504,8 +505,8 @@ export const recalculateTeamAverages = internalMutation({
 		};
 
 		// Report whether anything moved, so the daily health check can tell when a
-		// recalculation was missed. The standings refresh stores ESPN's unrounded
-		// points per game, so values within rounding count as unchanged.
+		// recalculation was missed. Values within display rounding count as
+		// unchanged, so rows stored before averages were unrounded don't trip it.
 		const team = await ctx.db.get(args.teamId);
 		const changed =
 			!team ||

@@ -21,10 +21,11 @@ export function AnimatedValue({
 	// Lock in animation decision at mount time so context changes don't interrupt
 	const shouldAnimate = useRef(!hasTabAnimated).current;
 
-	const startValue = shouldAnimate ? Math.max(0, value - 20) : value;
-	const [display, setDisplay] = useState(startValue);
+	// Render the real value first so the server HTML (and hydration) is accurate.
+	// The lower count-up start is only applied in the browser, while still hidden.
+	const [display, setDisplay] = useState(value);
 	const [entered, setEntered] = useState(!shouldAnimate);
-	const fromRef = useRef(startValue);
+	const fromRef = useRef<number | null>(null);
 	const frameRef = useRef<number>(0);
 
 	useEffect(() => {
@@ -34,9 +35,14 @@ export function AnimatedValue({
 			return;
 		}
 
+		if (fromRef.current === null) {
+			fromRef.current = Math.max(0, value - 20);
+			setDisplay(fromRef.current);
+		}
+
 		const timeout = setTimeout(() => {
 			setEntered(true);
-			const from = fromRef.current;
+			const from = fromRef.current ?? value;
 			const start = performance.now();
 
 			if (frameRef.current) cancelAnimationFrame(frameRef.current);

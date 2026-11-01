@@ -102,7 +102,7 @@ export function StatsTab({ stats }: StatsTabProps) {
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   <StatCard label="PPG" value={fmt(stats.scoring.ppg)} rawValue={stats.scoring.ppg} formatValue={fmt} icon={Zap} description="Points Per Game" rank={stats.ranks?.rankPpg} teamCount={stats.rankedTeamCount} delay={0} />
                   <StatCard label="Margin" value={fmtPlusMinus(margin)} rawValue={margin} formatValue={fmtPlusMinus} icon={Target} description="Average Point Differential" rank={stats.ranks?.rankMargin} teamCount={stats.rankedTeamCount} delay={50} />
-                  <StatCard label="Pace" value={fmt(stats.scoring.pace)} rawValue={stats.scoring.pace} formatValue={fmt} icon={Gauge} description="Possessions Per 48 Minutes" rank={stats.ranks?.rankPace} teamCount={stats.rankedTeamCount} delay={100} />
+                  <StatCard label="Pace" value={fmt(stats.scoring.pace)} rawValue={stats.scoring.pace} formatValue={fmt} icon={Gauge} description="Possessions Per 48 Minutes" rank={stats.ranks?.rankPace} teamCount={stats.rankedTeamCount} neutral delay={100} />
                   <StatCard label="OFF RTG" value={fmt(stats.scoring.ortg)} rawValue={stats.scoring.ortg} formatValue={fmt} icon={TrendingUp} description="Points Per 100 Possessions" rank={stats.ranks?.rankOrtg} teamCount={stats.rankedTeamCount} delay={150} />
                   <StatCard label="NET RTG" value={fmtPlusMinus(netRtg)} rawValue={netRtg} formatValue={fmtPlusMinus} icon={Target} description="OFF RTG - DEF RTG" rank={stats.ranks?.rankNetRtg} teamCount={stats.rankedTeamCount} delay={200} />
                 </div>

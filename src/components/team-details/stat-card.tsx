@@ -13,6 +13,7 @@ interface StatCardProps {
 	icon?: React.ComponentType<{ className?: string }>;
 	rank?: number; // If provided, generates subtitle like "3rd in league"
 	teamCount?: number; // Teams in the league rankings; sizes the green/red tiers
+	neutral?: boolean; // Show the rank without green/red (pace: neither end is good or bad)
 	rawValue?: number; // If provided with formatValue, animates counting
 	formatValue?: (v: number) => string;
 	delay?: number; // Stagger delay for animation (ms)
@@ -27,11 +28,12 @@ export function StatCard({
 	icon: Icon,
 	rank,
 	teamCount,
+	neutral,
 	rawValue,
 	formatValue,
 	delay,
 }: StatCardProps) {
-	const tier = getRankTier(rank, teamCount);
+	const tier = neutral ? undefined : getRankTier(rank, teamCount);
 	const isTop = tier === "top";
 	const isBottom = tier === "bottom";
 	const hasTabAnimated = useHasTabAnimated();

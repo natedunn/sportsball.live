@@ -15,6 +15,7 @@ interface StatRow {
   value: string;
   rank?: number;
   category: string;
+  neutral?: boolean; // Ranked, but neither end is good or bad (pace)
 }
 
 type SortDirection = "none" | "asc" | "desc";
@@ -26,7 +27,7 @@ function buildAllRows(stats: TeamStats): StatRow[] {
   return [
     { category: "Scoring", label: "Points Per Game", abbr: "PPG", value: fmt(stats.scoring.ppg), rank: stats.ranks?.rankPpg },
     { category: "Scoring", label: "Average Point Differential", abbr: "Margin", value: fmtPlusMinus(margin), rank: stats.ranks?.rankMargin },
-    { category: "Scoring", label: "Possessions Per 48 Minutes", abbr: "Pace", value: fmt(stats.scoring.pace), rank: stats.ranks?.rankPace },
+    { category: "Scoring", label: "Possessions Per 48 Minutes", abbr: "Pace", value: fmt(stats.scoring.pace), rank: stats.ranks?.rankPace, neutral: true },
     { category: "Scoring", label: "Points Per 100 Possessions", abbr: "OFF RTG", value: fmt(stats.scoring.ortg), rank: stats.ranks?.rankOrtg },
     { category: "Scoring", label: "Net Rating", abbr: "NET RTG", value: fmtPlusMinus(netRtg), rank: stats.ranks?.rankNetRtg },
     { category: "Shooting", label: "Field Goal Percentage", abbr: "FG%", value: fmtPct(stats.shooting.fgPct), rank: stats.ranks?.rankFgPct },
@@ -126,7 +127,7 @@ export function StatsTable({ stats }: StatsTableProps) {
 }
 
 function StatRowTr({ row, teamCount }: { row: StatRow; teamCount?: number }) {
-  const tier = getRankTier(row.rank, teamCount);
+  const tier = row.neutral ? undefined : getRankTier(row.rank, teamCount);
   const isTop = tier === "top";
   const isBottom = tier === "bottom";
   return (

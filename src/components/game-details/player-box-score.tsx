@@ -31,8 +31,8 @@ type SortColumn =
 type SortDirection = "asc" | "desc";
 type GroupBy = "none" | "starter" | "active";
 
-const GROUP_BY_STORAGE_KEY = "nba-boxscore-group-by";
-const GROUP_BY_CHANGE_EVENT = "nba-boxscore-group-by-change";
+const GROUP_BY_STORAGE_KEY = "boxscore-group-by";
+const GROUP_BY_CHANGE_EVENT = "boxscore-group-by-change";
 
 function useGroupBy(isLive?: boolean): [GroupBy, (value: GroupBy) => void] {
 	const [groupBy, setGroupByState] = useState<GroupBy>(() => {

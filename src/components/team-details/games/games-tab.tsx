@@ -12,6 +12,9 @@ import { Home, Plane, TrendingUp, Trophy, ChevronDown } from "lucide-react";
 import type { ScheduleGame } from "@/lib/types/team";
 import type { League } from "@/lib/shared/league";
 import { leagueGameRoutes } from "@/lib/league-routes";
+import { formatInTimeZone } from "date-fns-tz";
+import { timeZoneAbbreviation } from "@/lib/date";
+import { getUserTimeZone } from "@/lib/timezone";
 type Filter = "all" | "home" | "away";
 type TimeFilter = "all" | "upcoming";
 
@@ -24,28 +27,15 @@ interface GamesTabProps {
 
 function formatScheduleDate(dateStr: string, isCompleted: boolean): { date: string; time?: string } {
   const date = new Date(dateStr);
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const formatOptions = { timeZone };
-
-  const weekday = date.toLocaleString("en-US", { ...formatOptions, weekday: "short" });
-  const month = date.toLocaleString("en-US", { ...formatOptions, month: "short" });
-  const day = date.toLocaleString("en-US", { ...formatOptions, day: "numeric" });
-
-  const dateFormatted = `${weekday}, ${month} ${day}`;
+  const timeZone = getUserTimeZone();
+  const dateFormatted = formatInTimeZone(date, timeZone, "EEE, MMM d");
 
   if (isCompleted) {
     return { date: dateFormatted };
   }
 
-  const time = date.toLocaleString("en-US", {
-    ...formatOptions,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-  const tz = date
-    .toLocaleTimeString("en-us", { timeZoneName: "short" })
-    .split(" ")[2];
+  const time = formatInTimeZone(date, timeZone, "h:mm a");
+  const tz = timeZoneAbbreviation(date, timeZone);
 
   return { date: dateFormatted, time: `${time} ${tz}` };
 }

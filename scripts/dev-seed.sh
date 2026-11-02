@@ -57,6 +57,20 @@ if [ ! -f "$marker" ]; then
 	echo "dev-seed: imported league data"
 fi
 
+# The Worker reads the ESPN endpoints from process.env too (src/lib/shared/
+# league.ts and friends). Worktrees have no .env (it is gitignored), so copy
+# them from this backend into .env.local. Vite has not started yet, so the
+# write does not restart it.
+espn='^((NBA|WNBA|GLEAGUE)_(SITE|CORE|COMMON)_API|NBA_PLAYER_API|NBA_HEADSHOT_CDN|GLEAGUE_STATS_API)='
+npx convex env list --include-values | grep -E "$espn" > "$dir/espn" || true
+[ -s "$dir/espn" ] || { echo "dev-seed: this backend has no ESPN endpoints; see docs/local-dev.md" >&2; exit 1; }
+grep -vE "$espn" .env.local > "$dir/env.local" || true
+cat "$dir/espn" >> "$dir/env.local"
+if ! cmp -s "$dir/env.local" .env.local; then
+	cat "$dir/env.local" > .env.local
+	echo "dev-seed: wrote ESPN endpoints to .env.local"
+fi
+
 if [ "$(npx convex env get SITE_URL 2>/dev/null)" != "$url" ]; then
 	npx convex env set SITE_URL "$url" > /dev/null
 	echo "dev-seed: SITE_URL=$url"

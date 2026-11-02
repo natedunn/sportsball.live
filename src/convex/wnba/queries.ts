@@ -3,7 +3,7 @@ import { query, internalQuery } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
 import { getSeriesRecordForGame, isPlayoffGame } from "../shared/scoreboardSeries";
-import { countsTowardGameLog } from "../shared/seasonHelpers";
+import { countsTowardGameLog, getPreviousSeason } from "../shared/seasonHelpers";
 import { computePlayerSeasonRatings, playedInGame } from "../shared/statsCalculations";
 
 // Get all games for a specific date (scoreboard)
@@ -650,6 +650,81 @@ export const getAllTeamStats = query({
 			.query("wnbaTeam")
 			.withIndex("by_season", (q) => q.eq("season", args.season))
 			.collect();
+	},
+});
+
+// Get all playoff data for bracket display: the season's playoffs, or the
+// previous season's until this season's begin. The WNBA seeds its playoffs
+// league-wide, so each team comes with its league rank.
+export const getPlayoffBracket = query({
+	args: { season: v.string() },
+	handler: async (ctx, args) => {
+		const playoffGames = async (season: string) =>
+			(
+				await ctx.db
+					.query("wnbaGameEvent")
+					.withIndex("by_season", (q) => q.eq("season", season))
+					.collect()
+			)
+				// The season type decides which games count: no regular season
+				// games, and no Commissioner's Cup final, which counts as regular
+				// season
+				.filter(isPlayoffGame)
+				.sort((a, b) => a.scheduledStart - b.scheduledStart);
+
+		let season = args.season;
+		let games = await playoffGames(season);
+		if (games.length === 0) {
+			const previous = getPreviousSeason("wnba", season);
+			const previousGames = await playoffGames(previous);
+			if (previousGames.length > 0) {
+				season = previous;
+				games = previousGames;
+			}
+		}
+
+		const teams = await ctx.db
+			.query("wnbaTeam")
+			.withIndex("by_season", (q) => q.eq("season", season))
+			.collect();
+		const teamMap = new Map(teams.map((t) => [t._id, t]));
+
+		const teamInfo = (team: Doc<"wnbaTeam"> | undefined) =>
+			team
+				? {
+						espnTeamId: team.espnTeamId,
+						name: team.name,
+						abbreviation: team.abbreviation,
+						location: team.location,
+						conference: team.conference,
+						conferenceRank: team.conferenceRank,
+					}
+				: null;
+
+		return {
+			season,
+			games: games.map((game) => ({
+				espnGameId: game.espnGameId,
+				gameDate: game.gameDate,
+				scheduledStart: game.scheduledStart,
+				eventStatus: game.eventStatus,
+				homeScore: game.homeScore,
+				awayScore: game.awayScore,
+				homeTeam: teamInfo(teamMap.get(game.homeTeamId)),
+				awayTeam: teamInfo(teamMap.get(game.awayTeamId)),
+			})),
+			teams: teams.map((t) => ({
+				espnTeamId: t.espnTeamId,
+				name: t.name,
+				abbreviation: t.abbreviation,
+				location: t.location,
+				conference: t.conference,
+				conferenceRank: t.conferenceRank,
+				leagueRank: t.leagueRank,
+				wins: t.wins,
+				losses: t.losses,
+			})),
+		};
 	},
 });
 

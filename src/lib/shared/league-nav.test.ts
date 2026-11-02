@@ -31,9 +31,9 @@ describe("getActiveSection", () => {
 		expect(getActiveSection("/gleague/standings/league/")?.label).toBe("Standings");
 	});
 
-	it("is null on entity pages and sections a league lacks", () => {
+	it("is null on entity pages and unknown sections", () => {
 		expect(getActiveSection("/nba/team/1")).toBeNull();
-		expect(getActiveSection("/wnba/playoffs")).toBeNull();
+		expect(getActiveSection("/gleague/brackets")).toBeNull();
 	});
 });
 
@@ -43,10 +43,8 @@ describe("switchLeagueHref", () => {
 		expect(switchLeagueHref("/gleague/players", "nba")).toBe("/nba/players");
 		expect(switchLeagueHref("/wnba", "gleague")).toBe("/gleague");
 		expect(switchLeagueHref("/nba/standings/west", "wnba")).toBe("/wnba/standings");
-	});
-
-	it("falls back to the overview when the section is missing", () => {
-		expect(switchLeagueHref("/nba/playoffs", "wnba")).toBe("/wnba");
+		expect(switchLeagueHref("/nba/playoffs", "wnba")).toBe("/wnba/playoffs");
+		expect(switchLeagueHref("/wnba/playoffs", "gleague")).toBe("/gleague/playoffs");
 	});
 
 	it("goes to the overview from team, game and player pages", () => {

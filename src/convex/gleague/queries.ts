@@ -3,7 +3,7 @@ import { query, internalQuery } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
 import { getSeriesRecordForGame, isPlayoffGame } from "../shared/scoreboardSeries";
-import { countsTowardGameLog } from "../shared/seasonHelpers";
+import { countsTowardGameLog, getPreviousSeason } from "../shared/seasonHelpers";
 import { computePlayerSeasonRatings, playedInGame } from "../shared/statsCalculations";
 
 // Get all games for a specific date (scoreboard)
@@ -663,6 +663,80 @@ export const getAllTeamStats = query({
 			.query("gleagueTeam")
 			.withIndex("by_season", (q) => q.eq("season", args.season))
 			.collect();
+	},
+});
+
+// Get all playoff data for bracket display: the season's playoffs, or the
+// previous season's until this season's begin. Playoff seeds aren't in ESPN's
+// data (the playoffs split the league East and West, not by ESPN's divisions);
+// the page reads them from the stats API (src/lib/gleague/playoffs.server.ts).
+export const getPlayoffBracket = query({
+	args: { season: v.string() },
+	handler: async (ctx, args) => {
+		const playoffGames = async (season: string) =>
+			(
+				await ctx.db
+					.query("gleagueGameEvent")
+					.withIndex("by_season", (q) => q.eq("season", season))
+					.collect()
+			)
+				// The season type decides which games count: no Tip-Off
+				// Tournament or regular season games
+				.filter(isPlayoffGame)
+				.sort((a, b) => a.scheduledStart - b.scheduledStart);
+
+		let season = args.season;
+		let games = await playoffGames(season);
+		if (games.length === 0) {
+			const previous = getPreviousSeason("gleague", season);
+			const previousGames = await playoffGames(previous);
+			if (previousGames.length > 0) {
+				season = previous;
+				games = previousGames;
+			}
+		}
+
+		const teams = await ctx.db
+			.query("gleagueTeam")
+			.withIndex("by_season", (q) => q.eq("season", season))
+			.collect();
+		const teamMap = new Map(teams.map((t) => [t._id, t]));
+
+		const teamInfo = (team: Doc<"gleagueTeam"> | undefined) =>
+			team
+				? {
+						espnTeamId: team.espnTeamId,
+						name: team.name,
+						abbreviation: team.abbreviation,
+						location: team.location,
+						conference: team.conference,
+						conferenceRank: team.conferenceRank,
+					}
+				: null;
+
+		return {
+			season,
+			games: games.map((game) => ({
+				espnGameId: game.espnGameId,
+				gameDate: game.gameDate,
+				scheduledStart: game.scheduledStart,
+				eventStatus: game.eventStatus,
+				homeScore: game.homeScore,
+				awayScore: game.awayScore,
+				homeTeam: teamInfo(teamMap.get(game.homeTeamId)),
+				awayTeam: teamInfo(teamMap.get(game.awayTeamId)),
+			})),
+			teams: teams.map((t) => ({
+				espnTeamId: t.espnTeamId,
+				name: t.name,
+				abbreviation: t.abbreviation,
+				location: t.location,
+				conference: t.conference,
+				conferenceRank: t.conferenceRank,
+				wins: t.wins,
+				losses: t.losses,
+			})),
+		};
 	},
 });
 

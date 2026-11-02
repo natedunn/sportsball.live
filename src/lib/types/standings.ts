@@ -18,6 +18,8 @@ export interface StandingTeam {
 	pointsFor: number;
 	pointsAgainst: number;
 	differential: number;
+	/** ESPN's league-wide seed, where the league has one (WNBA) */
+	leagueRank?: number;
 }
 
 export interface ConferenceStandings {

@@ -37,18 +37,26 @@ export function getLeagueFromPathname(pathname: string): League | null {
 	return parseLeaguePath(pathname)?.league ?? null;
 }
 
-/** The section the pathname is on, or null on team, game and player pages. */
+/**
+ * The section the pathname is on, including its sub-pages (`/nba/standings/west`),
+ * or null on team, game and player pages.
+ */
 export function getActiveSection(pathname: string): LeagueSection | null {
 	const parsed = parseLeaguePath(pathname);
 	if (!parsed) return null;
 	return (
-		LEAGUE_SECTIONS[parsed.league].find((s) => s.path === parsed.rest) ?? null
+		LEAGUE_SECTIONS[parsed.league].find(
+			(s) =>
+				s.path === parsed.rest ||
+				(s.path !== "" && parsed.rest.startsWith(`${s.path}/`)),
+		) ?? null
 	);
 }
 
 /**
  * Where switching to `target` should go from `pathname`: the same section when
- * the target league has it, otherwise the target league's overview. Team, game
+ * the target league has it, otherwise the target league's overview. Sub-pages
+ * land on the section (standings then opens the page last viewed). Team, game
  * and player IDs belong to one league, so those pages also land on the overview.
  */
 export function switchLeagueHref(pathname: string, target: League): string {

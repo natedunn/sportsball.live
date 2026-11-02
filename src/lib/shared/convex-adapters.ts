@@ -194,6 +194,7 @@ function convexTeamToStandingTeam(
 		pointsFor: team.pointsFor ?? 0,
 		pointsAgainst: team.pointsAgainst ?? 0,
 		differential: (team.pointsFor ?? 0) - (team.pointsAgainst ?? 0),
+		leagueRank: team.leagueRank,
 	};
 }
 

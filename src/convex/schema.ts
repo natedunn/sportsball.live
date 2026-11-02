@@ -305,6 +305,8 @@ export default defineSchema({
 		conference: v.optional(v.string()),
 		division: v.optional(v.string()),
 		conferenceRank: v.optional(v.number()),
+		// ESPN's league-wide seed (its one-table standings), for the League tab
+		leagueRank: v.optional(v.number()),
 		divisionRank: v.optional(v.number()),
 		wins: v.number(),
 		losses: v.number(),

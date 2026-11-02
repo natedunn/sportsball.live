@@ -29,3 +29,15 @@ export function WesternConferenceIcon({ className }: ConferenceIconProps) {
 		</svg>
 	);
 }
+
+export function LeagueIcon({ className }: ConferenceIconProps) {
+	return (
+		<svg
+			viewBox="0 0 20 20"
+			aria-hidden="true"
+			className={cn("h-4 w-4 text-muted-foreground", className)}
+		>
+			<circle cx="10" cy="10" r="7.25" fill="currentColor" stroke="currentColor" />
+		</svg>
+	);
+}

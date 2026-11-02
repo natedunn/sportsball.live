@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { seo } from "@/lib/seo";
 import { TIME_ZONE_COOKIE } from "@/lib/timezone";
+import { STANDINGS_VIEW_COOKIE } from "@/lib/standings-view";
 import { LegalPage, LegalSection } from "./-components/legal-page";
 
 export const Route = createFileRoute("/_default/cookies")({
@@ -24,6 +25,12 @@ const COOKIES: StorageItem[] = [
 		name: TIME_ZONE_COOKIE,
 		purpose:
 			"Your time zone, so pages show today's games and game times in your local time from the first load.",
+		duration: "1 year",
+	},
+	{
+		name: STANDINGS_VIEW_COOKIE,
+		purpose:
+			"The standings page you last viewed (a conference or the whole league), so Standings opens on it in every league.",
 		duration: "1 year",
 	},
 ];

@@ -159,6 +159,13 @@ export interface ApiStandingsTeamEntry {
 	}>;
 }
 
+interface ApiStandingsTable {
+	season?: number;
+	seasonType?: number;
+	seasonDisplayName?: string;
+	entries?: ApiStandingsTeamEntry[];
+}
+
 export interface ApiStandingsResponse {
 	season?: {
 		year?: number;
@@ -166,13 +173,10 @@ export interface ApiStandingsResponse {
 	};
 	children?: Array<{
 		name?: string;
-		standings?: {
-			season?: number;
-			seasonType?: number;
-			seasonDisplayName?: string;
-			entries?: ApiStandingsTeamEntry[];
-		};
+		standings?: ApiStandingsTable;
 	}>;
+	// Only with `level=1`: the whole league in one table, and no children
+	standings?: ApiStandingsTable;
 }
 
 // ESPN sends null for missing roster fields

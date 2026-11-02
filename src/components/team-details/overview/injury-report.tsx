@@ -14,7 +14,7 @@ function formatPlayerName(name: string): string {
 }
 
 interface InjuryReportProps {
-  injuries: InjuredPlayer[];
+  injuries: InjuredPlayer[] | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -31,14 +31,18 @@ export function InjuryReport({ injuries }: InjuryReportProps) {
       <SectionHeader
         icon={HeartPulse}
         title="Injury Report"
-        badge={injuries.length > 0 && (
+        badge={injuries && injuries.length > 0 && (
           <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {injuries.length}
           </span>
         )}
       />
       <Card classNames={{ inner: "flex-col p-0" }}>
-        {injuries.length === 0 ? (
+        {injuries === null ? (
+          <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+            Injury report unavailable right now
+          </div>
+        ) : injuries.length === 0 ? (
           <div className="px-4 py-6 text-center text-sm text-muted-foreground">
             No injuries to report
           </div>

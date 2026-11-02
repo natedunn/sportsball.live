@@ -205,6 +205,8 @@ export interface TeamLeader {
 
 export interface InjuredPlayer {
   id: string;
+  // ESPN athlete id, to mark the player on the roster
+  playerId?: string;
   name: string;
   position: string;
   status: string;

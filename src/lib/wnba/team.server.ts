@@ -6,7 +6,6 @@ export {
 	fetchWnbaTeamSchedule as fetchTeamSchedule,
 	fetchWnbaTeamStats as fetchTeamStats,
 	fetchWnbaTeamLeaders as fetchTeamLeaders,
-	fetchWnbaTeamInjuries as fetchTeamInjuries,
 } from "@/lib/shared/team.server";
 
 export type {

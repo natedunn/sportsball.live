@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+	INJURY_REPORT_MAX_AGE_MS,
 	convexGameDetailsToGameDetails,
+	convexInjuriesToPlayers,
+	convexRosterToPlayers,
 	convexScoreboardToGameData,
 } from "@/lib/shared/convex-adapters";
 
@@ -79,5 +82,59 @@ describe("convexGameDetailsToGameDetails records", () => {
 		);
 		expect(details?.home.record).toBe("2-0");
 		expect(details?.away.record).toBe("1-1");
+	});
+});
+
+describe("convexInjuriesToPlayers", () => {
+	const now = Date.UTC(2026, 10, 2, 0, 0);
+	const players = [
+		{
+			espnTeamId: "21",
+			espnInjuryId: "532554",
+			espnPlayerId: "4701232",
+			name: "Mark Williams",
+			position: "C",
+			status: "Out",
+			description: "Left Shoulder Surgery",
+		},
+	];
+
+	it("lists the team's injured players from a current report", () => {
+		expect(convexInjuriesToPlayers({ updatedAt: now - 60_000, players }, now)).toEqual([
+			{
+				id: "532554",
+				playerId: "4701232",
+				name: "Mark Williams",
+				position: "C",
+				status: "Out",
+				description: "Left Shoulder Surgery",
+				shortComment: undefined,
+				headshot: undefined,
+			},
+		]);
+	});
+
+	it("tells a healthy team from a missing or out-of-date report", () => {
+		expect(convexInjuriesToPlayers({ updatedAt: now, players: [] }, now)).toEqual([]);
+		expect(convexInjuriesToPlayers({ updatedAt: null, players: [] }, now)).toBeNull();
+		expect(convexInjuriesToPlayers(undefined, now)).toBeNull();
+		expect(
+			convexInjuriesToPlayers({ updatedAt: now - INJURY_REPORT_MAX_AGE_MS - 1, players }, now),
+		).toBeNull();
+	});
+
+	it("marks injured players on the roster", () => {
+		const injuries = convexInjuriesToPlayers({ updatedAt: now, players }, now);
+		const roster = convexRosterToPlayers(
+			[
+				{ espnPlayerId: "4701232", name: "Mark Williams" },
+				{ espnPlayerId: "3136193", name: "Devin Booker" },
+			] as Parameters<typeof convexRosterToPlayers>[0],
+			injuries,
+		);
+		expect(roster.map((p) => [p.name, p.injured, p.injuryStatus])).toEqual([
+			["Mark Williams", true, "Out"],
+			["Devin Booker", false, undefined],
+		]);
 	});
 });

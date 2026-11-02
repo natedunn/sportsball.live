@@ -109,6 +109,23 @@ crons.daily(
 	{},
 );
 
+// Refresh every league's injury report twice a day (about 10 AM and 6 PM EDT). On
+// game days, discovery also schedules refreshes 50 and 25 minutes before each
+// tip-off and at tip (see injuries.ts).
+crons.daily(
+	"refresh-injuries-morning",
+	{ hourUTC: 14, minuteUTC: 7 },
+	internal.injuries.refreshAll,
+	{},
+);
+
+crons.daily(
+	"refresh-injuries-evening",
+	{ hourUTC: 22, minuteUTC: 7 },
+	internal.injuries.refreshAll,
+	{},
+);
+
 // Check stored data against ESPN, repair what can be fixed, and save the results
 // (19:30 UTC, after every daily job). The "Data health" GitHub Action reads them.
 crons.daily(

@@ -4,7 +4,7 @@ Stats come from ESPN and are kept current by daily Convex jobs (`src/convex/cron
 
 ## How it works
 
-1. **Daily jobs record a heartbeat.** Game discovery, standings, the schedule sync, the player refresh (rosters, then stats) and the season sync each call `health.recordJobRun` when they finish (table `jobRuns`).
+1. **Daily jobs record a heartbeat.** Game discovery, standings, the schedule sync, the player refresh (rosters, then stats), the injury report refresh and the season sync each call `health.recordJobRun` when they finish (table `jobRuns`).
 2. **The health check runs at 19:30 UTC** (`health:runHealthCheck`, after every daily job).
    - For each league whose current season is running, it checks:
      - **games:** every game ESPN has as final is stored as final with box scores, and no game ESPN lists as unfinished (postponed, say) is stored as final. Repair: sync the game.

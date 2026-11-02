@@ -8,13 +8,13 @@ import {
 	convexTeamToOverview,
 	convexTeamToStats,
 	convexRosterToPlayers,
+	convexInjuriesToPlayers,
 	convexScheduleToGames,
 	deriveTeamLeaders,
 	convexGameLogToTrendData,
 } from "@/lib/shared/convex-adapters";
 import { syncGamesForView } from "@/lib/shared/sync.server";
 import { teamSeo } from "@/lib/seo";
-import { teamInjuriesQueryOptions } from "@/lib/nba/team.queries";
 import {
 	TEAM_TABS,
 	TeamDetailsLayout,
@@ -44,8 +44,11 @@ export const Route = createFileRoute("/_default/nba/team/$teamId")({
 
 			if (team) {
 				const nowMs = Date.now();
-				// Fetch roster and schedule in parallel
-				const [, rawSchedule] = await Promise.all([
+				// Fetch injuries, roster and schedule in parallel
+				const [, , rawSchedule] = await Promise.all([
+					context.queryClient.ensureQueryData(
+						convexQuery(api.injuries.getTeamInjuries, { league: "nba", espnTeamId }),
+					),
 					context.queryClient.ensureQueryData(
 						convexQuery(api.nba.queries.getTeamRoster, {
 							teamId: team._id as Id<"nbaTeam">,
@@ -141,8 +144,10 @@ function NbaTeamPage() {
 		enabled: !!teamId,
 	});
 
-	// Injuries still from ESPN
-	const { data: injuries } = useQuery(teamInjuriesQueryOptions(teamSlug));
+	const { data: injuryReport } = useQuery({
+		...convexQuery(api.injuries.getTeamInjuries, { league: "nba", espnTeamId }),
+		enabled: !!espnTeamId,
+	});
 
 	// Transform Convex data to component types
 	const overview = useMemo(
@@ -155,9 +160,14 @@ function NbaTeamPage() {
 		[rawTeam],
 	);
 
+	const injuries = useMemo(
+		() => convexInjuriesToPlayers(injuryReport),
+		[injuryReport],
+	);
+
 	const roster = useMemo(
-		() => convexRosterToPlayers(rawRoster ?? []),
-		[rawRoster],
+		() => convexRosterToPlayers(rawRoster ?? [], injuries),
+		[rawRoster, injuries],
 	);
 
 	const schedule = useMemo(
@@ -251,7 +261,7 @@ function NbaTeamPage() {
 			schedule={schedule}
 			stats={stats}
 			leaders={leaders}
-			injuries={injuries ?? []}
+			injuries={injuries}
 			gameLog={gameLog}
 			league="nba"
 			teamSlug={teamSlug}

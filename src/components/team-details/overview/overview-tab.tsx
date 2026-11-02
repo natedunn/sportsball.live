@@ -24,7 +24,7 @@ interface OverviewTabProps {
   overview: TeamOverview;
   stats: TeamStats | undefined;
   leaders: TeamLeader[];
-  injuries: InjuredPlayer[];
+  injuries: InjuredPlayer[] | null;
   recentGames: ScheduleGame[];
   upcomingGames: ScheduleGame[];
   league: League;

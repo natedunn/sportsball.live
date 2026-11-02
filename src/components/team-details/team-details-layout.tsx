@@ -52,7 +52,7 @@ export interface TeamDetailsData {
 	schedule: ScheduleGame[];
 	stats: TeamStats | undefined;
 	leaders: TeamLeader[];
-	injuries: InjuredPlayer[];
+	injuries: InjuredPlayer[] | null;
 	gameLog: TeamGameData[];
 	league: League;
 	teamSlug: string;

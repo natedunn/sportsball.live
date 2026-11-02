@@ -27,10 +27,3 @@ export type {
 
 // News exports
 export * from "./news.server";
-
-// Team injury server functions (still ESPN-direct)
-export {
-	fetchNbaTeamInjuries,
-	fetchWnbaTeamInjuries,
-	fetchGLeagueTeamInjuries,
-} from "./team.server";

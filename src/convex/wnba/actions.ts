@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { scheduleGameDayRefreshes } from "../injuries";
 import type { Id } from "../_generated/dataModel";
 import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
 import {
@@ -467,6 +468,9 @@ export const discoverTodaysGames = internalAction({
 			(standings?.teams ?? []).map(({ team, record }) => [team.id, record]),
 		);
 
+		// Tip-offs of games still to start, for the pre-game injury refreshes
+		const tipOffs: number[] = [];
+
 		// Process each game
 		for (const event of events) {
 			const competition = event.competitions[0];
@@ -522,6 +526,7 @@ export const discoverTodaysGames = internalAction({
 
 			// Schedule status check: scheduledStart + 2h15m
 			if (eventStatus === "scheduled") {
+				tipOffs.push(scheduledStart);
 				const checkTime = scheduledStart + 2 * 60 * 60 * 1000 + 15 * 60 * 1000;
 				await ctx.scheduler.runAt(
 					checkTime,
@@ -531,6 +536,8 @@ export const discoverTodaysGames = internalAction({
 				console.log(`[WNBA] Scheduled check for game ${event.id} at ${new Date(checkTime).toISOString()}`);
 			}
 		}
+
+		await scheduleGameDayRefreshes(ctx, "wnba", tipOffs);
 
 		console.log(`[WNBA] Discovery complete: ${events.length} games processed`);
 		await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "wnba", ok: true, summary: `${events.length} games` });

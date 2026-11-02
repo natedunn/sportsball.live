@@ -34,6 +34,7 @@ export const upsertTeam = internalMutation({
 		conference: v.optional(v.string()),
 		division: v.optional(v.string()),
 		conferenceRank: v.optional(v.number()),
+		leagueRank: v.optional(v.number()),
 		divisionRank: v.optional(v.number()),
 		// Optional so callers without standings never overwrite a known record
 		wins: v.optional(v.number()),

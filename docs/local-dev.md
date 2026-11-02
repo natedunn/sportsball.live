@@ -28,6 +28,8 @@ backend. Then `scripts/dev-seed.sh` copies from cloud dev (`brilliant-wren-578`)
 - **League data:** teams, players, games, box scores and seasons (about 10 MB).
   Users, favorites and cached images are not copied.
 
+Every run also copies the backend's ESPN endpoints into `.env.local`, since
+the Worker reads them from `process.env` too and worktrees have no `.env`.
 Every run sets the backend's `SITE_URL` to the checkout's URL. The first push
 waits for the settings and goes through by itself a few seconds later.
 

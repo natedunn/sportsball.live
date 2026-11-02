@@ -2,6 +2,7 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import { getTeamStaticData, leagueLabels } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
+import type { StandingsView } from "@/lib/standings-view";
 import {
 	formatGameDate,
 	formatShortGameDate,
@@ -84,18 +85,19 @@ export function teamSeo(league: League, teamSlug: string, season?: string) {
 	});
 }
 
-const CONFERENCE_NAMES: Record<string, string> = {
-	eastern: "Eastern Conference",
-	western: "Western Conference",
+// Standings pages by conference; `?conference=` is the social card's own parameter
+const CONFERENCES: Partial<Record<StandingsView, { name: string; param: string }>> = {
+	east: { name: "Eastern Conference", param: "eastern" },
+	west: { name: "Western Conference", param: "western" },
 };
 
-export function standingsSeo(league: League, conference?: string) {
-	const conferenceName = conference ? CONFERENCE_NAMES[conference] : undefined;
-	const name = [leagueLabels[league], conferenceName].filter(Boolean).join(" ");
+export function standingsSeo(league: League, view: StandingsView) {
+	const conference = CONFERENCES[view];
+	const name = [leagueLabels[league], conference?.name].filter(Boolean).join(" ");
 	return seo({
 		title: `${name} Standings`,
 		description: `${name} standings: records, games back, home and away, last 10 and streaks.`,
-		image: `/api/og/${league}/standings${conferenceName ? `?conference=${conference}` : ""}`,
+		image: `/api/og/${league}/standings${conference ? `?conference=${conference.param}` : ""}`,
 	});
 }
 

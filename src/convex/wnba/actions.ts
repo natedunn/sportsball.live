@@ -325,6 +325,8 @@ async function ensureTeam(ctx: any, team: ApiTeamInfo, season: string) {
 type StandingsRecord = {
 	conference: string;
 	conferenceRank: number;
+	// Undefined when the league-wide table didn't load; the stored seed stays
+	leagueRank?: number;
 	wins: number;
 	losses: number;
 	winPct: number;
@@ -384,6 +386,40 @@ function parseStandings(data: ApiStandingsResponse): StandingsSnapshot {
 	return { season: getStandingsSeason(data), teams };
 }
 
+// ESPN's one-table standings (`level=1`): each team's league-wide seed, with
+// the league's tiebreakers applied. Null when the request fails.
+async function fetchLeagueSeeds(standingsUrl: string, season?: string): Promise<Map<string, number> | null> {
+	try {
+		const url = new URL(standingsUrl);
+		url.searchParams.set("level", "1");
+		const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+		if (!res.ok) {
+			console.error(`[WNBA] League-wide standings fetch failed: ${res.status}`);
+			return null;
+		}
+		const data = (await res.json()) as ApiStandingsResponse;
+		const table = data.standings;
+		if (!table?.entries?.length || data.children?.length) {
+			console.error("[WNBA] League-wide standings had no single table; skipping seeds");
+			return null;
+		}
+		const tableYear = table.season;
+		if (season && typeof tableYear === "number" && seasonFromEspnYear("wnba", tableYear) !== season) {
+			console.error("[WNBA] League-wide standings are for another season; skipping seeds");
+			return null;
+		}
+		const seeds = new Map<string, number>();
+		for (const entry of table.entries) {
+			const seed = entry.stats.find((s) => s.name === "playoffSeed")?.value;
+			if (typeof seed === "number" && seed > 0) seeds.set(entry.team.id, seed);
+		}
+		return seeds;
+	} catch (error) {
+		console.error("[WNBA] League-wide standings fetch failed:", error);
+		return null;
+	}
+}
+
 // Fetch and parse league standings; null when the request fails.
 // `seasonYear` (e.g. 2025) fetches a past season's final standings.
 async function fetchStandings(seasonYear?: number): Promise<StandingsSnapshot | null> {
@@ -397,7 +433,12 @@ async function fetchStandings(seasonYear?: number): Promise<StandingsSnapshot | 
 			console.error(`[WNBA] Standings fetch failed: ${standingsRes.status}`);
 			return null;
 		}
-		return parseStandings((await standingsRes.json()) as ApiStandingsResponse);
+		const standings = parseStandings((await standingsRes.json()) as ApiStandingsResponse);
+		const seeds = await fetchLeagueSeeds(standingsUrl, standings.season);
+		for (const { team, record } of standings.teams) {
+			record.leagueRank = seeds?.get(team.id);
+		}
+		return standings;
 	} catch (error) {
 		console.error("[WNBA] Standings fetch failed:", error);
 		return null;

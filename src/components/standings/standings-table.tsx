@@ -12,6 +12,8 @@ interface StandingsTableProps {
 	teams: StandingTeam[];
 	league?: League;
 	showSections?: boolean;
+	/** Rank per team; a rank shared by several teams shows as "T-11". Defaults to 1, 2, 3… */
+	ranks?: number[];
 }
 
 function SectionHeader({
@@ -49,11 +51,14 @@ function TeamRow({
 	rank,
 	league,
 	isFavorited,
+	alignRankRight,
 }: {
 	team: StandingTeam;
-	rank: number;
+	rank: number | string;
 	league: League;
 	isFavorited: boolean;
+	/** Right-aligns the rank, so "T-11" and "9" line up on their last digit. */
+	alignRankRight?: boolean;
 }) {
 	// Look up the team slug from the static registry
 	const teamData = getTeamStaticData(league, team.id);
@@ -61,7 +66,12 @@ function TeamRow({
 
 	return (
 		<tr className="border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors">
-			<td className="px-3 py-2 text-center text-muted-foreground tabular-nums">
+			<td
+				className={cn(
+					"whitespace-nowrap px-3 py-2 text-muted-foreground tabular-nums",
+					alignRankRight ? "text-right" : "text-center",
+				)}
+			>
 				{rank}
 			</td>
 			<td className="px-3 py-2">
@@ -139,6 +149,7 @@ export function StandingsTable({
 	teams,
 	league = "nba",
 	showSections = true,
+	ranks,
 }: StandingsTableProps) {
 	const { isFavorited } = useFavorites();
 
@@ -227,9 +238,15 @@ export function StandingsTable({
 		);
 	};
 
+	const rankLabel = (index: number) => {
+		if (!ranks) return index + 1;
+		const rank = ranks[index];
+		return ranks[index - 1] === rank || ranks[index + 1] === rank ? `T-${rank}` : rank;
+	};
+
 	const renderSimpleList = () =>
 		teams.map((team, index) => (
-			<TeamRow key={team.id} team={team} rank={index + 1} league={league} isFavorited={isFavorited(league, team.id)} />
+			<TeamRow key={team.id} team={team} rank={rankLabel(index)} league={league} isFavorited={isFavorited(league, team.id)} alignRankRight={!!ranks} />
 		));
 
 	const renderBody = () => {
@@ -259,7 +276,12 @@ export function StandingsTable({
 				<table className="w-full text-sm table-fixed">
 					<thead>
 						<tr className="border-b border-border bg-muted/50">
-							<th className="w-10 px-3 py-2 text-center font-medium text-muted-foreground">
+							<th
+								className={cn(
+									"px-3 py-2 font-medium text-muted-foreground",
+									ranks ? "w-16 text-right" : "w-10 text-center",
+								)}
+							>
 								#
 							</th>
 							<th className="w-[140px] px-3 py-2 text-left font-medium text-muted-foreground lg:w-auto">

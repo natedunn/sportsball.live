@@ -36,13 +36,12 @@ function LeagueSwitcher({
 						value={league}
 						className="rounded-full max-sm:px-2"
 						render={
-							<Link
-								to={
-									league === activeLeague
-										? `/${league}`
-										: switchLeagueHref(pathname, league)
-								}
-							/>
+							league === activeLeague ? (
+								// Already in this league: stay on the page
+								<Link to={pathname} onClick={(e) => e.preventDefault()} />
+							) : (
+								<Link to={switchLeagueHref(pathname, league)} />
+							)
 						}
 					>
 						{label}

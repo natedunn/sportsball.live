@@ -4,11 +4,34 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 
-// Context to pass value/onValueChange from Tabs down to the responsive TabsMenu
+export type TabsSize = "default" | "sm";
+
+const tabsVariants = {
+	list: {
+		default: "h-11 p-1.5",
+		sm: "h-9 p-1",
+	},
+	trigger: {
+		default: "px-3 py-1.5",
+		sm: "px-2.5 py-1",
+	},
+	menuTrigger: {
+		default: "h-11",
+		sm: "h-9",
+	},
+};
+
+// Context to pass value/onValueChange and size from Tabs down to the list,
+// triggers and the responsive TabsMenu
 const TabsContext = React.createContext<{
 	value?: string;
 	onValueChange?: (value: string) => void;
+	size: TabsSize;
 } | null>(null);
+
+function useTabsSize(): TabsSize {
+	return React.useContext(TabsContext)?.size ?? "default";
+}
 
 interface TabsProps {
 	children: React.ReactNode;
@@ -16,6 +39,7 @@ interface TabsProps {
 	value?: string;
 	onValueChange?: (value: string) => void;
 	className?: string;
+	size?: TabsSize;
 }
 
 export function Tabs({
@@ -24,9 +48,10 @@ export function Tabs({
 	value,
 	onValueChange,
 	className,
+	size = "default",
 }: TabsProps) {
 	return (
-		<TabsContext.Provider value={{ value, onValueChange }}>
+		<TabsContext.Provider value={{ value, onValueChange, size }}>
 			<BaseTabs.Root
 				defaultValue={defaultValue}
 				value={value}
@@ -44,23 +69,29 @@ interface TabsListProps {
 	className?: string;
 	/** When true, collapses to a dropdown menu on small screens. Default: true */
 	responsive?: boolean;
+	/** Classes for the active-tab indicator, such as rounding to match `className` */
+	indicatorClassName?: string;
 }
 
 export function TabsList({
 	children,
 	className,
 	responsive = true,
+	indicatorClassName,
 }: TabsListProps) {
+	const size = useTabsSize();
+
 	if (!responsive) {
 		return (
 			<BaseTabs.List
 				className={cn(
-					"relative inline-flex h-11 items-center justify-center rounded-lg bg-muted p-1.5 text-muted-foreground border",
+					"relative inline-flex items-center justify-center rounded-lg bg-muted text-muted-foreground border",
+					tabsVariants.list[size],
 					className,
 				)}
 			>
 				{children}
-				<TabsIndicator />
+				<TabsIndicator className={indicatorClassName} />
 			</BaseTabs.List>
 		);
 	}
@@ -70,12 +101,13 @@ export function TabsList({
 			{/* Desktop: normal tabs */}
 			<BaseTabs.List
 				className={cn(
-					"relative hidden sm:inline-flex h-11 items-center justify-center rounded-lg bg-muted p-1.5 text-muted-foreground border",
+					"relative hidden sm:inline-flex items-center justify-center rounded-lg bg-muted text-muted-foreground border",
+					tabsVariants.list[size],
 					className,
 				)}
 			>
 				{children}
-				<TabsIndicator />
+				<TabsIndicator className={indicatorClassName} />
 			</BaseTabs.List>
 
 			{/* Mobile: menu dropdown */}
@@ -102,6 +134,8 @@ export function TabsTrigger({
 	disabled,
 	render,
 }: TabsTriggerProps) {
+	const size = useTabsSize();
+
 	return (
 		<BaseTabs.Tab
 			value={value}
@@ -109,7 +143,8 @@ export function TabsTrigger({
 			render={render}
 			nativeButton={!render}
 			className={cn(
-				"relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all",
+				"relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all",
+				tabsVariants.trigger[size],
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 				"disabled:pointer-events-none disabled:opacity-50",
 				"hover:text-foreground data-active:text-amber-50 data-active:[&_svg]:text-amber-500",
@@ -121,13 +156,14 @@ export function TabsTrigger({
 	);
 }
 
-function TabsIndicator() {
+function TabsIndicator({ className }: { className?: string }) {
 	return (
 		<BaseTabs.Indicator
 			className={cn(
 				"absolute rounded-md border border-border bg-linear-to-b from-foreground/9 to-foreground/7 shadow-sm transition-all duration-200",
 				"top-(--active-tab-top) left-(--active-tab-left)",
 				"h-(--active-tab-height) w-(--active-tab-width)",
+				className,
 			)}
 		/>
 	);
@@ -185,7 +221,8 @@ function TabsMenu({ children }: { children: React.ReactNode }) {
 		<BaseMenu.Root>
 			<BaseMenu.Trigger
 				className={cn(
-					"inline-flex h-11 items-center justify-between gap-2 rounded-lg bg-muted px-4 py-1.5 text-sm font-medium text-amber-50 border min-w-40",
+					"inline-flex items-center justify-between gap-2 rounded-lg bg-muted px-4 py-1.5 text-sm font-medium text-amber-50 border min-w-40",
+					tabsVariants.menuTrigger[context?.size ?? "default"],
 					"hover:bg-foreground/5 transition-colors cursor-pointer",
 				)}
 			>

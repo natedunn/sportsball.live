@@ -146,7 +146,9 @@ function BasketballBackground({
 	const basketballColor = isDarkMode ? "#f97316" : "#7b3306";
 
 	return (
-		<div className="pointer-events-none absolute -top-96 left-1/2 -translate-x-1/2 opacity-30 dark:opacity-40">
+		// Spans the container and clips sideways, so the 800px ball can't widen
+		// the page on phones. clip (not hidden) leaves the parallax unclipped.
+		<div className="pointer-events-none absolute inset-x-0 -top-96 flex justify-center overflow-x-clip opacity-30 dark:opacity-40">
 			<div ref={ballRef} className="will-change-transform">
 				<Suspense fallback={null}>
 					<DitheredBasketball
@@ -333,7 +335,8 @@ function HomePage() {
 							inner: "px-3 py-2 rounded-full items-center gap-5",
 						}}
 					>
-						<div className="ml-2 flex shrink-0 items-center gap-2 whitespace-nowrap text-muted-foreground">
+						{/* The buttons say enough on narrow phones, where the label would overflow */}
+						<div className="ml-2 hidden shrink-0 items-center gap-2 whitespace-nowrap text-muted-foreground min-[480px]:flex">
 							Choose a league <ArrowRight size={18} />
 						</div>
 						<div className="flex items-center gap-2">

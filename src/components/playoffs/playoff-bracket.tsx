@@ -4,7 +4,7 @@ import { Trophy } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import { useIsDarkMode } from "@/lib/use-is-dark-mode";
 import { useHasTabAnimated } from "@/components/team-details/animation-context";
-import { getTeamStaticData } from "@/lib/teams";
+import { getTeamStaticData, leagueLabels } from "@/lib/teams";
 import { cn } from "@/lib/utils";
 import type { League } from "@/lib/shared/league";
 
@@ -45,6 +45,8 @@ interface PlayoffTeamSeed {
 	location: string;
 	conference: string | undefined;
 	conferenceRank: number | undefined;
+	/** Seed for leagues that seed the playoffs league-wide (WNBA) */
+	leagueRank?: number;
 	wins: number;
 	losses: number;
 }
@@ -74,7 +76,7 @@ interface BracketTeam {
 interface BracketSeries {
 	id: string;
 	round: number;
-	conference: "east" | "west" | "finals";
+	conference: "east" | "west" | "finals" | "league";
 	topTeam: BracketTeam | null;
 	bottomTeam: BracketTeam | null;
 	topWins: number;
@@ -82,6 +84,8 @@ interface BracketSeries {
 	status: "upcoming" | "active" | "completed";
 	winner: "top" | "bottom" | null;
 	gameIds: string[];
+	/** A one-game round's final score, shown in place of series wins */
+	score?: { top: number; bottom: number };
 }
 
 export interface BracketData {
@@ -101,7 +105,23 @@ const FIRST_ROUND_MATCHUPS = [
 	[2, 7],
 ] as const;
 
-function buildTeamInfo(teamData: PlayoffTeamSeed, league: League): BracketTeam {
+// Wins that take a series, per conference round and in the Finals. NBA: best
+// of seven throughout. G League: single games, then a best-of-three Finals.
+const CONFERENCE_FORMAT: Partial<
+	Record<League, { winsByRound: number[]; finalsWins: number }>
+> = {
+	nba: { winsByRound: [4, 4, 4], finalsWins: 4 },
+	gleague: { winsByRound: [1, 1, 1], finalsWins: 2 },
+};
+// WNBA (since 2025): best-of-three first round, best-of-five semifinals,
+// best-of-seven Finals
+const WNBA_WINS_BY_ROUND = [2, 3, 4];
+
+function buildTeamInfo(
+	teamData: PlayoffTeamSeed,
+	league: League,
+	seed: number,
+): BracketTeam {
 	const staticData = getTeamStaticData(league, [
 		teamData.espnTeamId,
 		teamData.abbreviation,
@@ -119,7 +139,7 @@ function buildTeamInfo(teamData: PlayoffTeamSeed, league: League): BracketTeam {
 		name: teamData.name,
 		fullName: staticData?.fullName ?? `${teamData.location} ${teamData.name}`,
 		slug: staticData?.api.slug,
-		seed: teamData.conferenceRank ?? 0,
+		seed,
 		logoUrl,
 		darkColor,
 		lightColor,
@@ -127,224 +147,241 @@ function buildTeamInfo(teamData: PlayoffTeamSeed, league: League): BracketTeam {
 	};
 }
 
+/** Games grouped by the pair of teams playing, keyed by their sorted IDs */
+function groupSeries(games: PlayoffGame[]) {
+	const seriesMap = new Map<string, PlayoffGame[]>();
+	for (const game of games) {
+		if (!game.homeTeam || !game.awayTeam) continue;
+		const key = [game.homeTeam.espnTeamId, game.awayTeam.espnTeamId]
+			.sort()
+			.join("-");
+		const seriesGames = seriesMap.get(key) ?? [];
+		seriesGames.push(game);
+		seriesMap.set(key, seriesGames);
+	}
+	return seriesMap;
+}
+
+function getSeriesResult(
+	teamIds: [string, string],
+	seriesGames: PlayoffGame[],
+	winsNeeded: number,
+) {
+	let team1Wins = 0;
+	let team2Wins = 0;
+	const gameIds: string[] = [];
+
+	for (const game of seriesGames) {
+		if (!game.homeTeam || !game.awayTeam) continue;
+		gameIds.push(game.espnGameId);
+		if (game.eventStatus !== "completed") continue;
+		if (
+			game.homeScore === undefined ||
+			game.awayScore === undefined ||
+			!Number.isFinite(game.homeScore) ||
+			!Number.isFinite(game.awayScore) ||
+			game.homeScore === game.awayScore
+		) {
+			continue;
+		}
+		const homeWon = game.homeScore > game.awayScore;
+		const winnerId = homeWon
+			? game.homeTeam.espnTeamId
+			: game.awayTeam.espnTeamId;
+		if (winnerId === teamIds[0]) team1Wins++;
+		else team2Wins++;
+	}
+
+	const hasActiveGame = seriesGames.some(
+		(g) =>
+			g.eventStatus === "in_progress" ||
+			g.eventStatus === "halftime" ||
+			g.eventStatus === "overtime" ||
+			g.eventStatus === "end_of_period",
+	);
+
+	const isCompleted = team1Wins >= winsNeeded || team2Wins >= winsNeeded;
+	const status: BracketSeries["status"] = isCompleted
+		? "completed"
+		: team1Wins + team2Wins > 0 || hasActiveGame
+			? "active"
+			: "upcoming";
+
+	return { team1Wins, team2Wins, status, gameIds };
+}
+
+function getWinner(series: BracketSeries): BracketTeam | null {
+	if (series.winner === "top") return series.topTeam;
+	if (series.winner === "bottom") return series.bottomTeam;
+	return null;
+}
+
+/** One series between two teams (or TBD), with its wins counted from the games */
+function makeSeries(
+	id: string,
+	round: number,
+	conference: BracketSeries["conference"],
+	topTeam: BracketTeam | null,
+	bottomTeam: BracketTeam | null,
+	seriesMap: Map<string, PlayoffGame[]>,
+	winsNeeded: number,
+): BracketSeries {
+	const series: BracketSeries = {
+		id,
+		round,
+		conference,
+		topTeam,
+		bottomTeam,
+		topWins: 0,
+		bottomWins: 0,
+		status: "upcoming",
+		winner: null,
+		gameIds: [],
+	};
+	if (!topTeam || !bottomTeam) return series;
+
+	const ids = [topTeam.espnTeamId, bottomTeam.espnTeamId].sort() as [
+		string,
+		string,
+	];
+	const seriesGames = seriesMap.get(ids.join("-"));
+	if (!seriesGames) return series;
+
+	const result = getSeriesResult(ids, seriesGames, winsNeeded);
+	const topIsFirst = ids[0] === topTeam.espnTeamId;
+	series.topWins = topIsFirst ? result.team1Wins : result.team2Wins;
+	series.bottomWins = topIsFirst ? result.team2Wins : result.team1Wins;
+	series.status = result.status;
+	series.gameIds = result.gameIds;
+	if (result.status === "completed") {
+		series.winner = series.topWins > series.bottomWins ? "top" : "bottom";
+	}
+	if (winsNeeded === 1 && result.status === "completed") {
+		const final = seriesGames.find((g) => g.eventStatus === "completed");
+		if (final?.homeTeam && final.homeScore !== undefined && final.awayScore !== undefined) {
+			const topIsHome = final.homeTeam.espnTeamId === topTeam.espnTeamId;
+			series.score = {
+				top: topIsHome ? final.homeScore : final.awayScore,
+				bottom: topIsHome ? final.awayScore : final.homeScore,
+			};
+		}
+	}
+	return series;
+}
+
+/**
+ * The rounds of an eight-team bracket (1v8, 4v5, 3v6, 2v7, no reseeding), from
+ * the first round to the single series at the end. `seededTeams` are the
+ * playoff teams with their seeds, and `winsByRound` how many wins take a
+ * series in each round.
+ */
+function buildRounds(
+	seededTeams: { team: PlayoffTeamSeed; seed: number }[],
+	seriesMap: Map<string, PlayoffGame[]>,
+	league: League,
+	conference: BracketSeries["conference"],
+	winsByRound: number[],
+): BracketSeries[][] {
+	const teamWithSeed = (seed: number) => {
+		const entry = seededTeams.find((t) => t.seed === seed);
+		return entry ? buildTeamInfo(entry.team, league, seed) : null;
+	};
+
+	const rounds: BracketSeries[][] = [
+		FIRST_ROUND_MATCHUPS.map(([topSeed, bottomSeed], idx) =>
+			makeSeries(
+				`${conference}-r1-${idx}`,
+				1,
+				conference,
+				teamWithSeed(topSeed),
+				teamWithSeed(bottomSeed),
+				seriesMap,
+				winsByRound[0],
+			),
+		),
+	];
+
+	while (rounds[rounds.length - 1].length > 1) {
+		const previous = rounds[rounds.length - 1];
+		const round = rounds.length + 1;
+		const next: BracketSeries[] = [];
+		for (let i = 0; i < previous.length; i += 2) {
+			next.push(
+				makeSeries(
+					`${conference}-r${round}-${i / 2}`,
+					round,
+					conference,
+					getWinner(previous[i]),
+					getWinner(previous[i + 1]),
+					seriesMap,
+					winsByRound[round - 1],
+				),
+			);
+		}
+		rounds.push(next);
+	}
+
+	return rounds;
+}
+
+/**
+ * A bracket per conference, seeded by `conferenceRank`, then the Finals (NBA,
+ * G League)
+ */
 export function buildBracket(
 	data: PlayoffBracketData,
 	league: League,
 ): BracketData {
-	const { games, teams } = data;
+	const seriesMap = groupSeries(data.games);
+	const format = CONFERENCE_FORMAT[league] ?? CONFERENCE_FORMAT.nba!;
 
-	const eastTeams = teams
-		.filter((t) => t.conference?.toLowerCase().includes("east"))
-		.sort((a, b) => (a.conferenceRank ?? 99) - (b.conferenceRank ?? 99));
-	const westTeams = teams
-		.filter((t) => t.conference?.toLowerCase().includes("west"))
-		.sort((a, b) => (a.conferenceRank ?? 99) - (b.conferenceRank ?? 99));
-
-	// Group games by matchup
-	const seriesMap = new Map<
-		string,
-		{ games: PlayoffGame[]; teamIds: [string, string] }
-	>();
-
-	for (const game of games) {
-		if (!game.homeTeam || !game.awayTeam) continue;
-		const ids = [game.homeTeam.espnTeamId, game.awayTeam.espnTeamId].sort();
-		const key = ids.join("-");
-		if (!seriesMap.has(key)) {
-			seriesMap.set(key, { games: [], teamIds: ids as [string, string] });
-		}
-		seriesMap.get(key)!.games.push(game);
-	}
-
-	function getSeriesResult(
-		teamIds: [string, string],
-		seriesGames: PlayoffGame[],
-	) {
-		let team1Wins = 0;
-		let team2Wins = 0;
-		const gameIds: string[] = [];
-
-		for (const game of seriesGames) {
-			if (!game.homeTeam || !game.awayTeam) continue;
-			gameIds.push(game.espnGameId);
-			if (game.eventStatus !== "completed") continue;
-			if (
-				game.homeScore === undefined ||
-				game.awayScore === undefined ||
-				!Number.isFinite(game.homeScore) ||
-				!Number.isFinite(game.awayScore) ||
-				game.homeScore === game.awayScore
-			) {
-				continue;
-			}
-			const homeWon = game.homeScore > game.awayScore;
-			const winnerId = homeWon
-				? game.homeTeam.espnTeamId
-				: game.awayTeam.espnTeamId;
-			if (winnerId === teamIds[0]) team1Wins++;
-			else team2Wins++;
-		}
-
-		const hasActiveGame = seriesGames.some(
-			(g) =>
-				g.eventStatus === "in_progress" ||
-				g.eventStatus === "halftime" ||
-				g.eventStatus === "overtime" ||
-				g.eventStatus === "end_of_period",
+	const conferenceRounds = (conf: "east" | "west") =>
+		buildRounds(
+			data.teams
+				.filter(
+					(t) =>
+						t.conference?.toLowerCase().includes(conf) &&
+						t.conferenceRank !== undefined,
+				)
+				.map((team) => ({ team, seed: team.conferenceRank! })),
+			seriesMap,
+			league,
+			conf,
+			format.winsByRound,
 		);
 
-		const isCompleted = team1Wins === 4 || team2Wins === 4;
-		const status: BracketSeries["status"] = isCompleted
-			? "completed"
-			: team1Wins + team2Wins > 0 || hasActiveGame
-				? "active"
-				: "upcoming";
+	const west = conferenceRounds("west");
+	const east = conferenceRounds("east");
+	const finals = makeSeries(
+		"finals",
+		4,
+		"finals",
+		getWinner(west[2][0]),
+		getWinner(east[2][0]),
+		seriesMap,
+		format.finalsWins,
+	);
 
-		return { team1Wins, team2Wins, status, gameIds };
-	}
+	return { west, east, finals };
+}
 
-	function findAndCalcSeries(
-		topTeam: BracketTeam | null,
-		bottomTeam: BracketTeam | null,
-	) {
-		let topWins = 0;
-		let bottomWins = 0;
-		let status: BracketSeries["status"] = "upcoming";
-		let winner: BracketSeries["winner"] = null;
-		let gameIds: string[] = [];
-
-		if (topTeam && bottomTeam) {
-			const ids = [topTeam.espnTeamId, bottomTeam.espnTeamId].sort();
-			const key = ids.join("-");
-			const seriesData = seriesMap.get(key);
-			if (seriesData) {
-				const result = getSeriesResult(
-					ids as [string, string],
-					seriesData.games,
-				);
-				const topIsFirst = ids[0] === topTeam.espnTeamId;
-				topWins = topIsFirst ? result.team1Wins : result.team2Wins;
-				bottomWins = topIsFirst ? result.team2Wins : result.team1Wins;
-				status = result.status;
-				gameIds = result.gameIds;
-				if (status === "completed") {
-					winner = topWins > bottomWins ? "top" : "bottom";
-				}
-			}
-		}
-
-		return { topWins, bottomWins, status, winner, gameIds };
-	}
-
-	function getWinner(series: BracketSeries): BracketTeam | null {
-		if (series.winner === "top") return series.topTeam;
-		if (series.winner === "bottom") return series.bottomTeam;
-		return null;
-	}
-
-	function buildConference(
-		confTeams: PlayoffTeamSeed[],
-		conf: "east" | "west",
-	): BracketSeries[][] {
-		// Round 1
-		const round1 = FIRST_ROUND_MATCHUPS.map(([topSeed, bottomSeed], idx) => {
-			const topTeamData = confTeams.find(
-				(t) => (t.conferenceRank ?? 99) === topSeed,
-			);
-			const bottomTeamData = confTeams.find(
-				(t) => (t.conferenceRank ?? 99) === bottomSeed,
-			);
-			const topTeam = topTeamData ? buildTeamInfo(topTeamData, league) : null;
-			const bottomTeam = bottomTeamData
-				? buildTeamInfo(bottomTeamData, league)
-				: null;
-
-			let topWins = 0;
-			let bottomWins = 0;
-			let status: BracketSeries["status"] = "upcoming";
-			let winner: BracketSeries["winner"] = null;
-			let gameIds: string[] = [];
-
-			if (topTeamData && bottomTeamData) {
-				const ids = [topTeamData.espnTeamId, bottomTeamData.espnTeamId].sort();
-				const key = ids.join("-");
-				const sd = seriesMap.get(key);
-				if (sd) {
-					const r = getSeriesResult(ids as [string, string], sd.games);
-					const topIsFirst = ids[0] === topTeamData.espnTeamId;
-					topWins = topIsFirst ? r.team1Wins : r.team2Wins;
-					bottomWins = topIsFirst ? r.team2Wins : r.team1Wins;
-					status = r.status;
-					gameIds = r.gameIds;
-					if (status === "completed") {
-						winner = topWins > bottomWins ? "top" : "bottom";
-					}
-				}
-			}
-
-			return {
-				id: `${conf}-r1-${idx}`,
-				round: 1,
-				conference: conf,
-				topTeam,
-				bottomTeam,
-				topWins,
-				bottomWins,
-				status,
-				winner,
-				gameIds,
-			} as BracketSeries;
-		});
-
-		// Round 2
-		const round2: BracketSeries[] = [];
-		for (let i = 0; i < round1.length; i += 2) {
-			const topTeam = getWinner(round1[i]);
-			const bottomTeam = getWinner(round1[i + 1]);
-			const calc = findAndCalcSeries(topTeam, bottomTeam);
-			round2.push({
-				id: `${conf}-r2-${i / 2}`,
-				round: 2,
-				conference: conf,
-				topTeam,
-				bottomTeam,
-				...calc,
-			});
-		}
-
-		// Conference Finals
-		const cfTop = getWinner(round2[0]);
-		const cfBottom = getWinner(round2[1]);
-		const cfCalc = findAndCalcSeries(cfTop, cfBottom);
-		const cf: BracketSeries = {
-			id: `${conf}-cf`,
-			round: 3,
-			conference: conf,
-			topTeam: cfTop,
-			bottomTeam: cfBottom,
-			...cfCalc,
-		};
-
-		return [round1, round2, [cf]];
-	}
-
-	const westRounds = buildConference(westTeams, "west");
-	const eastRounds = buildConference(eastTeams, "east");
-
-	const westChamp = getWinner(westRounds[2][0]);
-	const eastChamp = getWinner(eastRounds[2][0]);
-	const finalsCalc = findAndCalcSeries(westChamp, eastChamp);
-
-	const finals: BracketSeries = {
-		id: "finals",
-		round: 4,
-		conference: "finals",
-		topTeam: westChamp,
-		bottomTeam: eastChamp,
-		...finalsCalc,
-	};
-
-	return { west: westRounds, east: eastRounds, finals };
+/**
+ * The WNBA bracket: the top eight teams in the league table, seeded 1 to 8
+ * whatever their conference, through to the Finals.
+ */
+export function buildLeagueBracket(
+	data: PlayoffBracketData,
+	league: League,
+): BracketSeries[][] {
+	return buildRounds(
+		data.teams
+			.filter((t) => t.leagueRank !== undefined)
+			.map((team) => ({ team, seed: team.leagueRank! })),
+		groupSeries(data.games),
+		league,
+		"league",
+		WNBA_WINS_BY_ROUND,
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -363,6 +400,14 @@ function SeriesLabel({ series }: { series: BracketSeries }) {
 			: series.bottomWins > series.topWins
 				? series.bottomTeam
 				: null;
+
+	if (series.score && leader) {
+		return (
+			<span className="text-[10px] text-muted-foreground">
+				{leader.abbreviation} wins
+			</span>
+		);
+	}
 
 	if (series.status === "completed" && leader) {
 		return (
@@ -514,7 +559,7 @@ function SeriesCard({
 				)}
 				<TeamRow
 					team={series.topTeam}
-					wins={series.topWins}
+					wins={series.score?.top ?? series.topWins}
 					isWinner={series.winner === "top"}
 					isLoser={series.winner === "bottom"}
 					isTop={true}
@@ -524,7 +569,7 @@ function SeriesCard({
 				<div className="h-px bg-border/40" />
 				<TeamRow
 					team={series.bottomTeam}
-					wins={series.bottomWins}
+					wins={series.score?.bottom ?? series.bottomWins}
 					isWinner={series.winner === "bottom"}
 					isLoser={series.winner === "top"}
 					isTop={false}
@@ -676,6 +721,67 @@ function ConferenceView({
 	);
 }
 
+function ChampionBanner({
+	champion,
+	league,
+}: {
+	champion: BracketTeam;
+	league: League;
+}) {
+	return (
+		<div className="flex flex-col items-center gap-2">
+			<Trophy className="size-10 text-primary" />
+			<span className="text-sm font-bold uppercase tracking-widest text-primary">
+				{leagueLabels[league]} Champion
+			</span>
+			<div className="flex items-center gap-3">
+				<Image
+					src={champion.logoUrl}
+					alt={champion.name}
+					width={40}
+					height={40}
+					className="size-10 object-contain"
+					proxy={false}
+				/>
+				<span className="text-xl font-bold">{champion.fullName}</span>
+			</div>
+		</div>
+	);
+}
+
+// ---------------------------------------------------------------------------
+// League View — the WNBA's single bracket, Finals on top
+// ---------------------------------------------------------------------------
+
+function LeagueView({
+	rounds,
+	isDark,
+	league,
+}: {
+	rounds: BracketSeries[][];
+	isDark: boolean;
+	league: League;
+}) {
+	const champion = getWinner(rounds[rounds.length - 1][0]);
+	const labels = ["First Round", "Semifinals", `${leagueLabels[league]} Finals`];
+
+	return (
+		<div className="flex flex-col gap-12">
+			{champion && <ChampionBanner champion={champion} league={league} />}
+			{[...rounds].reverse().map((roundSeries, idx) => (
+				<RoundRow
+					key={idx}
+					series={roundSeries}
+					label={labels[rounds.length - 1 - idx]}
+					isDark={isDark}
+					league={league}
+					delay={idx * 100}
+				/>
+			))}
+		</div>
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Finals Tab View — same pyramid layout, just different rounds
 // ---------------------------------------------------------------------------
@@ -713,31 +819,12 @@ function FinalsView({
 
 	return (
 		<div className="flex flex-col gap-12">
-			{/* Champion banner */}
-			{champion && (
-				<div className="flex flex-col items-center gap-2">
-					<Trophy className="size-10 text-primary" />
-					<span className="text-sm font-bold uppercase tracking-widest text-primary">
-						NBA Champion
-					</span>
-					<div className="flex items-center gap-3">
-						<Image
-							src={champion.logoUrl}
-							alt={champion.name}
-							width={40}
-							height={40}
-							className="size-10 object-contain"
-							proxy={false}
-						/>
-						<span className="text-xl font-bold">{champion.fullName}</span>
-					</div>
-				</div>
-			)}
+			{champion && <ChampionBanner champion={champion} league={league} />}
 
-			{/* NBA Finals — 1 card */}
+			{/* Finals — 1 card */}
 			<RoundRow
 				series={[finalsWithHeader]}
-				label="NBA Finals"
+				label={`${leagueLabels[league]} Finals`}
 				isDark={isDark}
 				league={league}
 				delay={0}
@@ -762,7 +849,8 @@ function FinalsView({
 // Main Component
 // ---------------------------------------------------------------------------
 
-export type PlayoffView = "western" | "eastern" | "finals";
+/** Conference brackets and the Finals (NBA), or one league-wide bracket (WNBA) */
+export type PlayoffView = "western" | "eastern" | "finals" | "league";
 
 interface PlayoffBracketProps {
 	data: PlayoffBracketData;
@@ -772,7 +860,14 @@ interface PlayoffBracketProps {
 
 export function PlayoffBracket({ data, league, view }: PlayoffBracketProps) {
 	const isDark = useIsDarkMode();
-	const bracket = useMemo(() => buildBracket(data, league), [data, league]);
+	const bracket = useMemo(
+		() => (view === "league" ? null : buildBracket(data, league)),
+		[data, league, view],
+	);
+	const leagueRounds = useMemo(
+		() => (view === "league" ? buildLeagueBracket(data, league) : null),
+		[data, league, view],
+	);
 
 	if (!data.teams.length) {
 		return (
@@ -784,6 +879,12 @@ export function PlayoffBracket({ data, league, view }: PlayoffBracketProps) {
 			</div>
 		);
 	}
+
+	if (leagueRounds) {
+		return <LeagueView rounds={leagueRounds} isDark={isDark} league={league} />;
+	}
+
+	if (!bracket) return null;
 
 	if (view === "western") {
 		return (

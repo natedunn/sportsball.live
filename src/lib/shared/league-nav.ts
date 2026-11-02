@@ -21,8 +21,8 @@ const playoffs: LeagueSection = { label: "Playoffs", path: "/playoffs" };
 /** The sections each league's nav shows, in order. */
 export const LEAGUE_SECTIONS: Record<League, LeagueSection[]> = {
 	nba: [overview, scores, standings, playoffs, players],
-	wnba: [overview, scores, standings, players],
-	gleague: [overview, scores, standings, players],
+	wnba: [overview, scores, standings, playoffs, players],
+	gleague: [overview, scores, standings, playoffs, players],
 };
 
 const leaguePathPattern = /^\/(nba|wnba|gleague)(\/.*)?$/;

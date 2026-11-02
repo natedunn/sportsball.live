@@ -22,12 +22,14 @@ import { Route as DefaultAboutIndexRouteImport } from './routes/_default/about/i
 import { Route as ApiOgHomeRouteImport } from './routes/api/og/home'
 import { Route as ApiHeadshotPlayerIdRouteImport } from './routes/api/headshot/$playerId'
 import { Route as DefaultWnbaScoresRouteImport } from './routes/_default/wnba/scores'
+import { Route as DefaultWnbaPlayoffsRouteImport } from './routes/_default/wnba/playoffs'
 import { Route as DefaultWnbaPlayersRouteImport } from './routes/_default/wnba/players'
 import { Route as DefaultProfileUsernameRouteImport } from './routes/_default/profile/$username'
 import { Route as DefaultNbaScoresRouteImport } from './routes/_default/nba/scores'
 import { Route as DefaultNbaPlayoffsRouteImport } from './routes/_default/nba/playoffs'
 import { Route as DefaultNbaPlayersRouteImport } from './routes/_default/nba/players'
 import { Route as DefaultGleagueScoresRouteImport } from './routes/_default/gleague/scores'
+import { Route as DefaultGleaguePlayoffsRouteImport } from './routes/_default/gleague/playoffs'
 import { Route as DefaultGleaguePlayersRouteImport } from './routes/_default/gleague/players'
 import { Route as DefaultAuthSignInRouteImport } from './routes/_default/auth/sign-in'
 import { Route as DefaultAdminSchedulesRouteImport } from './routes/_default/admin/schedules'
@@ -153,6 +155,11 @@ const DefaultWnbaScoresRoute = DefaultWnbaScoresRouteImport.update({
   path: '/wnba/scores',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
+const DefaultWnbaPlayoffsRoute = DefaultWnbaPlayoffsRouteImport.update({
+  id: '/wnba/playoffs',
+  path: '/wnba/playoffs',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
 const DefaultWnbaPlayersRoute = DefaultWnbaPlayersRouteImport.update({
   id: '/wnba/players',
   path: '/wnba/players',
@@ -181,6 +188,11 @@ const DefaultNbaPlayersRoute = DefaultNbaPlayersRouteImport.update({
 const DefaultGleagueScoresRoute = DefaultGleagueScoresRouteImport.update({
   id: '/gleague/scores',
   path: '/gleague/scores',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultGleaguePlayoffsRoute = DefaultGleaguePlayoffsRouteImport.update({
+  id: '/gleague/playoffs',
+  path: '/gleague/playoffs',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultGleaguePlayersRoute = DefaultGleaguePlayersRouteImport.update({
@@ -540,12 +552,14 @@ export interface FileRoutesByFullPath {
   '/admin/schedules': typeof DefaultAdminSchedulesRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
   '/gleague/players': typeof DefaultGleaguePlayersRoute
+  '/gleague/playoffs': typeof DefaultGleaguePlayoffsRoute
   '/gleague/scores': typeof DefaultGleagueScoresRoute
   '/nba/players': typeof DefaultNbaPlayersRoute
   '/nba/playoffs': typeof DefaultNbaPlayoffsRoute
   '/nba/scores': typeof DefaultNbaScoresRoute
   '/profile/$username': typeof DefaultProfileUsernameRoute
   '/wnba/players': typeof DefaultWnbaPlayersRoute
+  '/wnba/playoffs': typeof DefaultWnbaPlayoffsRoute
   '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/headshot/$playerId': typeof ApiHeadshotPlayerIdRoute
   '/api/og/home': typeof ApiOgHomeRoute
@@ -620,12 +634,14 @@ export interface FileRoutesByTo {
   '/admin/schedules': typeof DefaultAdminSchedulesRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
   '/gleague/players': typeof DefaultGleaguePlayersRoute
+  '/gleague/playoffs': typeof DefaultGleaguePlayoffsRoute
   '/gleague/scores': typeof DefaultGleagueScoresRoute
   '/nba/players': typeof DefaultNbaPlayersRoute
   '/nba/playoffs': typeof DefaultNbaPlayoffsRoute
   '/nba/scores': typeof DefaultNbaScoresRoute
   '/profile/$username': typeof DefaultProfileUsernameRoute
   '/wnba/players': typeof DefaultWnbaPlayersRoute
+  '/wnba/playoffs': typeof DefaultWnbaPlayoffsRoute
   '/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/headshot/$playerId': typeof ApiHeadshotPlayerIdRoute
   '/api/og/home': typeof ApiOgHomeRoute
@@ -693,12 +709,14 @@ export interface FileRoutesById {
   '/_default/admin/schedules': typeof DefaultAdminSchedulesRoute
   '/_default/auth/sign-in': typeof DefaultAuthSignInRoute
   '/_default/gleague/players': typeof DefaultGleaguePlayersRoute
+  '/_default/gleague/playoffs': typeof DefaultGleaguePlayoffsRoute
   '/_default/gleague/scores': typeof DefaultGleagueScoresRoute
   '/_default/nba/players': typeof DefaultNbaPlayersRoute
   '/_default/nba/playoffs': typeof DefaultNbaPlayoffsRoute
   '/_default/nba/scores': typeof DefaultNbaScoresRoute
   '/_default/profile/$username': typeof DefaultProfileUsernameRoute
   '/_default/wnba/players': typeof DefaultWnbaPlayersRoute
+  '/_default/wnba/playoffs': typeof DefaultWnbaPlayoffsRoute
   '/_default/wnba/scores': typeof DefaultWnbaScoresRoute
   '/api/headshot/$playerId': typeof ApiHeadshotPlayerIdRoute
   '/api/og/home': typeof ApiOgHomeRoute
@@ -775,12 +793,14 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/auth/sign-in'
     | '/gleague/players'
+    | '/gleague/playoffs'
     | '/gleague/scores'
     | '/nba/players'
     | '/nba/playoffs'
     | '/nba/scores'
     | '/profile/$username'
     | '/wnba/players'
+    | '/wnba/playoffs'
     | '/wnba/scores'
     | '/api/headshot/$playerId'
     | '/api/og/home'
@@ -855,12 +875,14 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/auth/sign-in'
     | '/gleague/players'
+    | '/gleague/playoffs'
     | '/gleague/scores'
     | '/nba/players'
     | '/nba/playoffs'
     | '/nba/scores'
     | '/profile/$username'
     | '/wnba/players'
+    | '/wnba/playoffs'
     | '/wnba/scores'
     | '/api/headshot/$playerId'
     | '/api/og/home'
@@ -927,12 +949,14 @@ export interface FileRouteTypes {
     | '/_default/admin/schedules'
     | '/_default/auth/sign-in'
     | '/_default/gleague/players'
+    | '/_default/gleague/playoffs'
     | '/_default/gleague/scores'
     | '/_default/nba/players'
     | '/_default/nba/playoffs'
     | '/_default/nba/scores'
     | '/_default/profile/$username'
     | '/_default/wnba/players'
+    | '/_default/wnba/playoffs'
     | '/_default/wnba/scores'
     | '/api/headshot/$playerId'
     | '/api/og/home'
@@ -1105,6 +1129,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultWnbaScoresRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
+    '/_default/wnba/playoffs': {
+      id: '/_default/wnba/playoffs'
+      path: '/wnba/playoffs'
+      fullPath: '/wnba/playoffs'
+      preLoaderRoute: typeof DefaultWnbaPlayoffsRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
     '/_default/wnba/players': {
       id: '/_default/wnba/players'
       path: '/wnba/players'
@@ -1145,6 +1176,13 @@ declare module '@tanstack/react-router' {
       path: '/gleague/scores'
       fullPath: '/gleague/scores'
       preLoaderRoute: typeof DefaultGleagueScoresRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/gleague/playoffs': {
+      id: '/_default/gleague/playoffs'
+      path: '/gleague/playoffs'
+      fullPath: '/gleague/playoffs'
+      preLoaderRoute: typeof DefaultGleaguePlayoffsRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
     '/_default/gleague/players': {
@@ -1760,12 +1798,14 @@ interface DefaultRouteRouteChildren {
   DefaultAdminSchedulesRoute: typeof DefaultAdminSchedulesRoute
   DefaultAuthSignInRoute: typeof DefaultAuthSignInRoute
   DefaultGleaguePlayersRoute: typeof DefaultGleaguePlayersRoute
+  DefaultGleaguePlayoffsRoute: typeof DefaultGleaguePlayoffsRoute
   DefaultGleagueScoresRoute: typeof DefaultGleagueScoresRoute
   DefaultNbaPlayersRoute: typeof DefaultNbaPlayersRoute
   DefaultNbaPlayoffsRoute: typeof DefaultNbaPlayoffsRoute
   DefaultNbaScoresRoute: typeof DefaultNbaScoresRoute
   DefaultProfileUsernameRoute: typeof DefaultProfileUsernameRoute
   DefaultWnbaPlayersRoute: typeof DefaultWnbaPlayersRoute
+  DefaultWnbaPlayoffsRoute: typeof DefaultWnbaPlayoffsRoute
   DefaultWnbaScoresRoute: typeof DefaultWnbaScoresRoute
   DefaultAboutIndexRoute: typeof DefaultAboutIndexRoute
   DefaultAdminIndexRoute: typeof DefaultAdminIndexRoute
@@ -1797,12 +1837,14 @@ const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
   DefaultAdminSchedulesRoute: DefaultAdminSchedulesRoute,
   DefaultAuthSignInRoute: DefaultAuthSignInRoute,
   DefaultGleaguePlayersRoute: DefaultGleaguePlayersRoute,
+  DefaultGleaguePlayoffsRoute: DefaultGleaguePlayoffsRoute,
   DefaultGleagueScoresRoute: DefaultGleagueScoresRoute,
   DefaultNbaPlayersRoute: DefaultNbaPlayersRoute,
   DefaultNbaPlayoffsRoute: DefaultNbaPlayoffsRoute,
   DefaultNbaScoresRoute: DefaultNbaScoresRoute,
   DefaultProfileUsernameRoute: DefaultProfileUsernameRoute,
   DefaultWnbaPlayersRoute: DefaultWnbaPlayersRoute,
+  DefaultWnbaPlayoffsRoute: DefaultWnbaPlayoffsRoute,
   DefaultWnbaScoresRoute: DefaultWnbaScoresRoute,
   DefaultAboutIndexRoute: DefaultAboutIndexRoute,
   DefaultAdminIndexRoute: DefaultAdminIndexRoute,

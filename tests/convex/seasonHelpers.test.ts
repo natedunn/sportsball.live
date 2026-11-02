@@ -5,6 +5,7 @@ import {
 	countsTowardSeasonAverages,
 	formatGameDate,
 	getNextSeason,
+	getPreviousSeason,
 	getScheduleSyncRange,
 	getTodayDate,
 	mapApiStateToEventStatus,
@@ -209,5 +210,16 @@ describe("getNextSeason", () => {
 
 	it("steps WNBA seasons a calendar year forward", () => {
 		expect(getNextSeason("wnba", "2026")).toBe("2027");
+	});
+});
+
+describe("getPreviousSeason", () => {
+	it("steps two-year seasons back", () => {
+		expect(getPreviousSeason("gleague", "2026-27")).toBe("2025-26");
+		expect(getPreviousSeason("nba", "2000-01")).toBe("1999-00");
+	});
+
+	it("steps WNBA seasons a calendar year back", () => {
+		expect(getPreviousSeason("wnba", "2026")).toBe("2025");
 	});
 });

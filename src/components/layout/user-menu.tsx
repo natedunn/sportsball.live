@@ -31,23 +31,15 @@ export function UserMenu({ user }: UserMenuProps) {
 	return (
 		<Menu>
 			<MenuTrigger
-				className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 transition-colors hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label="User menu"
 			>
-				{user.image ? (
-					<img
-						src={user.image}
-						alt=""
-						className="size-7 rounded-full"
-						aria-hidden="true"
-					/>
-				) : (
-					<div className="flex size-7 items-center justify-center rounded-full bg-muted">
-						<User className="size-4 text-muted-foreground" />
-					</div>
-				)}
-				<span className="hidden max-w-25 truncate text-sm sm:inline">
-					{user.name || "Account"}
+				{/* Phones get an icon; the username is too wide next to the league toggle */}
+				<User className="size-4 sm:hidden" aria-hidden="true" />
+				<span className="hidden max-w-30 truncate text-sm sm:inline">
+					{user.username
+						? `@${user.displayUsername || user.username}`
+						: "Account"}
 				</span>
 				<ChevronDown
 					className="size-4 text-muted-foreground"

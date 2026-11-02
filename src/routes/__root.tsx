@@ -16,6 +16,7 @@ import { DefaultCatchBoundary } from "@/components/_default-catch-boundary";
 import { api } from "~api";
 import { initThemeObserver } from "@/lib/store";
 import { seo } from "@/lib/seo";
+import { syncTimeZoneCookie } from "@/lib/timezone";
 
 import appCss from "../styles/app.css?url";
 import { Footer } from "@/components/layout/footer";
@@ -97,6 +98,7 @@ function RootComponent() {
 function RootDocument({ children }: { children: React.ReactNode }) {
 	useEffect(() => {
 		initThemeObserver();
+		syncTimeZoneCookie();
 	}, []);
 
 	return (

@@ -6,7 +6,7 @@ import { api } from "~api";
 import { ArrowRight } from "lucide-react";
 import { wnbaNewsQueryOptions } from "@/lib/wnba/news.queries";
 import { wnbaLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
-import { formatDate } from "@/lib/date";
+import { getGameDay } from "@/lib/date";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
 import {
 	syncLeagueGamesForView,
@@ -20,7 +20,7 @@ import { SmartTeamRankings } from "@/components/leaders/smart-team-rankings";
 
 export const Route = createFileRoute("/_default/wnba/")({
 	loader: async ({ context }) => {
-		const today = formatDate(new Date(), "YYYYMMDD");
+		const today = getGameDay("YYYYMMDD");
 		const scoreboardQuery = convexQuery(api.wnba.queries.getScoreboard, {
 			gameDate: today,
 		});
@@ -38,7 +38,7 @@ export const Route = createFileRoute("/_default/wnba/")({
 });
 
 function WnbaHomePage() {
-	const today = formatDate(new Date(), "YYYYMMDD");
+	const today = getGameDay("YYYYMMDD");
 	const { data: rawGames, refetch } = useQuery(
 		convexQuery(api.wnba.queries.getScoreboard, { gameDate: today }),
 	);

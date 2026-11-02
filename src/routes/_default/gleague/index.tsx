@@ -6,7 +6,7 @@ import { api } from "~api";
 import { ArrowRight } from "lucide-react";
 import { gleagueNewsQueryOptions } from "@/lib/gleague/news.queries";
 import { gleagueLeadersQueryOptions } from "@/lib/leaders/leaders.queries";
-import { formatDate } from "@/lib/date";
+import { getGameDay } from "@/lib/date";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
 import {
 	syncLeagueGamesForView,
@@ -20,7 +20,7 @@ import { SmartTeamRankings } from "@/components/leaders/smart-team-rankings";
 
 export const Route = createFileRoute("/_default/gleague/")({
 	loader: async ({ context }) => {
-		const today = formatDate(new Date(), "YYYYMMDD");
+		const today = getGameDay("YYYYMMDD");
 		const scoreboardQuery = convexQuery(api.gleague.queries.getScoreboard, {
 			gameDate: today,
 		});
@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_default/gleague/")({
 });
 
 function GLeagueHomePage() {
-	const today = formatDate(new Date(), "YYYYMMDD");
+	const today = getGameDay("YYYYMMDD");
 	const { data: rawGames, refetch } = useQuery(
 		convexQuery(api.gleague.queries.getScoreboard, { gameDate: today }),
 	);

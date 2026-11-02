@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as DefaultRouteRouteImport } from './routes/_default/route'
 import { Route as DefaultIndexRouteImport } from './routes/_default/index'
 import { Route as DefaultSettingsRouteImport } from './routes/_default/settings'
+import { Route as DefaultPrivacyRouteImport } from './routes/_default/privacy'
+import { Route as DefaultCookiesRouteImport } from './routes/_default/cookies'
 import { Route as DefaultWnbaIndexRouteImport } from './routes/_default/wnba/index'
 import { Route as DefaultNbaIndexRouteImport } from './routes/_default/nba/index'
 import { Route as DefaultGleagueIndexRouteImport } from './routes/_default/gleague/index'
@@ -96,6 +98,16 @@ const DefaultIndexRoute = DefaultIndexRouteImport.update({
 const DefaultSettingsRoute = DefaultSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultPrivacyRoute = DefaultPrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => DefaultRouteRoute,
+} as any)
+const DefaultCookiesRoute = DefaultCookiesRouteImport.update({
+  id: '/cookies',
+  path: '/cookies',
   getParentRoute: () => DefaultRouteRoute,
 } as any)
 const DefaultWnbaIndexRoute = DefaultWnbaIndexRouteImport.update({
@@ -499,6 +511,8 @@ const DefaultGleagueGameGameIdMatchupsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof DefaultIndexRoute
+  '/cookies': typeof DefaultCookiesRoute
+  '/privacy': typeof DefaultPrivacyRoute
   '/settings': typeof DefaultSettingsRoute
   '/admin/schedules': typeof DefaultAdminSchedulesRoute
   '/auth/sign-in': typeof DefaultAuthSignInRoute
@@ -573,6 +587,8 @@ export interface FileRoutesByFullPath {
   '/wnba/team/$teamId/': typeof DefaultWnbaTeamTeamIdIndexRoute
 }
 export interface FileRoutesByTo {
+  '/cookies': typeof DefaultCookiesRoute
+  '/privacy': typeof DefaultPrivacyRoute
   '/settings': typeof DefaultSettingsRoute
   '/': typeof DefaultIndexRoute
   '/admin/schedules': typeof DefaultAdminSchedulesRoute
@@ -641,6 +657,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_default': typeof DefaultRouteRouteWithChildren
+  '/_default/cookies': typeof DefaultCookiesRoute
+  '/_default/privacy': typeof DefaultPrivacyRoute
   '/_default/settings': typeof DefaultSettingsRoute
   '/_default/': typeof DefaultIndexRoute
   '/_default/admin/schedules': typeof DefaultAdminSchedulesRoute
@@ -719,6 +737,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/cookies'
+    | '/privacy'
     | '/settings'
     | '/admin/schedules'
     | '/auth/sign-in'
@@ -793,6 +813,8 @@ export interface FileRouteTypes {
     | '/wnba/team/$teamId/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/cookies'
+    | '/privacy'
     | '/settings'
     | '/'
     | '/admin/schedules'
@@ -860,6 +882,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_default'
+    | '/_default/cookies'
+    | '/_default/privacy'
     | '/_default/settings'
     | '/_default/'
     | '/_default/admin/schedules'
@@ -968,6 +992,20 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof DefaultSettingsRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/privacy': {
+      id: '/_default/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof DefaultPrivacyRouteImport
+      parentRoute: typeof DefaultRouteRoute
+    }
+    '/_default/cookies': {
+      id: '/_default/cookies'
+      path: '/cookies'
+      fullPath: '/cookies'
+      preLoaderRoute: typeof DefaultCookiesRouteImport
       parentRoute: typeof DefaultRouteRoute
     }
     '/_default/wnba/': {
@@ -1653,6 +1691,8 @@ const DefaultWnbaTeamTeamIdRouteRouteWithChildren =
   )
 
 interface DefaultRouteRouteChildren {
+  DefaultCookiesRoute: typeof DefaultCookiesRoute
+  DefaultPrivacyRoute: typeof DefaultPrivacyRoute
   DefaultSettingsRoute: typeof DefaultSettingsRoute
   DefaultIndexRoute: typeof DefaultIndexRoute
   DefaultAdminSchedulesRoute: typeof DefaultAdminSchedulesRoute
@@ -1685,6 +1725,8 @@ interface DefaultRouteRouteChildren {
 }
 
 const DefaultRouteRouteChildren: DefaultRouteRouteChildren = {
+  DefaultCookiesRoute: DefaultCookiesRoute,
+  DefaultPrivacyRoute: DefaultPrivacyRoute,
   DefaultSettingsRoute: DefaultSettingsRoute,
   DefaultIndexRoute: DefaultIndexRoute,
   DefaultAdminSchedulesRoute: DefaultAdminSchedulesRoute,

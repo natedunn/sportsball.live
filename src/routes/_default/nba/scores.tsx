@@ -3,7 +3,7 @@ import { useQuery, type FetchQueryOptions } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
-import { formatDate } from "@/lib/date";
+import { formatDate, getGameDay } from "@/lib/date";
 import { convexScoreboardToGameData } from "@/lib/shared/convex-adapters";
 import {
 	syncLeagueGamesForView,
@@ -33,9 +33,9 @@ export const Route = createFileRoute("/_default/nba/scores")({
 	},
 	loaderDeps: ({ search: { date } }) => ({ date }),
 	loader: async ({ context, deps }) => {
-		const currentDate = deps.date ?? formatDate(new Date(), "YYYY-MM-DD");
+		const currentDate = deps.date ?? getGameDay("YYYY-MM-DD");
 		const formattedDate = formatDate(currentDate, "YYYYMMDD");
-		const today = formatDate(new Date(), "YYYYMMDD");
+		const today = getGameDay("YYYYMMDD");
 
 		const rawGames = await context.queryClient.ensureQueryData(
 			scoreboardQuery(formattedDate),
@@ -57,9 +57,9 @@ export const Route = createFileRoute("/_default/nba/scores")({
 
 function NbaScoresPage() {
 	const { date } = Route.useSearch();
-	const currentDate = date ?? formatDate(new Date(), "YYYY-MM-DD");
+	const currentDate = date ?? getGameDay("YYYY-MM-DD");
 	const formattedDate = formatDate(currentDate, "YYYYMMDD");
-	const today = formatDate(new Date(), "YYYYMMDD");
+	const today = getGameDay("YYYYMMDD");
 	const isToday = formattedDate === today;
 
 	const { data: rawGames, refetch } = useQuery(scoreboardQuery(formattedDate));

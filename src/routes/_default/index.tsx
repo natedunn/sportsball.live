@@ -20,7 +20,7 @@ import {
 	useLiveScoreSync,
 	type RawSyncableGame,
 } from "@/lib/shared/live-score-sync";
-import { formatDate } from "@/lib/date";
+import { getGameDay } from "@/lib/date";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
@@ -30,7 +30,7 @@ import type { GameData } from "@/lib/types";
 export const Route = createFileRoute("/_default/")({
 	component: HomePage,
 	loader: async ({ context }) => {
-		const today = formatDate(new Date(), "YYYYMMDD");
+		const today = getGameDay("YYYYMMDD");
 		const nbaScoreboardQuery = convexQuery(api.nba.queries.getScoreboard, {
 			gameDate: today,
 		});
@@ -168,7 +168,7 @@ interface LeagueGames {
 }
 
 function TodayGames() {
-	const today = formatDate(new Date(), "YYYYMMDD");
+	const today = getGameDay("YYYYMMDD");
 	const { data: rawNba, refetch: refetchNba } = useQuery(
 		convexQuery(api.nba.queries.getScoreboard, { gameDate: today }),
 	);

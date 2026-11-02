@@ -16,6 +16,18 @@ export function Footer() {
 					>
 						About
 					</Link>
+					<Link
+						to="/privacy"
+						className="text-sm text-muted-foreground hover:underline"
+					>
+						Privacy
+					</Link>
+					<Link
+						to="/cookies"
+						className="text-sm text-muted-foreground hover:underline"
+					>
+						Cookies
+					</Link>
 				</div>
 			</div>
 		</footer>

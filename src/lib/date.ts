@@ -1,5 +1,6 @@
-import { addDays, format, parseISO, subDays } from "date-fns";
-import { fromZonedTime } from "date-fns-tz";
+import { addDays, format, parseISO, subDays, subHours } from "date-fns";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { getUserTimeZone } from "@/lib/timezone";
 
 export function formatDate(
   date: Date | string,
@@ -20,6 +21,31 @@ export function formatDate(
   } else {
     return format(dateObj, "yyyy-MM-dd");
   }
+}
+
+// Late games can end after midnight, so the scoreboard keeps showing the
+// previous day's games until this hour in the visitor's time zone.
+const GAME_DAY_ROLLOVER_HOUR = 3;
+
+/** Today's scoreboard date for the visitor, which rolls over at 3am instead of midnight. */
+export function getGameDay(
+  dateFormat: "YYYYMMDD" | "YYYY-MM-DD" = "YYYYMMDD",
+  { now = new Date(), timeZone = getUserTimeZone() }: { now?: Date; timeZone?: string } = {}
+): string {
+  return formatInTimeZone(
+    subHours(now, GAME_DAY_ROLLOVER_HOUR),
+    timeZone,
+    dateFormat === "YYYYMMDD" ? "yyyyMMdd" : "yyyy-MM-dd"
+  );
+}
+
+/** Short time zone name for `date` in `timeZone`, e.g. "EST" or "GMT+1". */
+export function timeZoneAbbreviation(date: Date, timeZone: string): string {
+  return (
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "short" })
+      .formatToParts(date)
+      .find((part) => part.type === "timeZoneName")?.value ?? ""
+  );
 }
 
 const getOrdinalSuffix = (day: number): string => {
@@ -52,48 +78,26 @@ export const formatGameDate = (
     typeof options === "boolean" ? { format: options ? "time-only" : "full" } : options;
   const formatPreset = opts.format ?? "full";
 
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const formatOptions = { timeZone };
-
-  const currentYear = new Date().getFullYear();
-  const dateYear = date.getFullYear();
+  const timeZone = getUserTimeZone();
 
   // Short format: M/D/YY (US) - future: support other locales
   if (formatPreset === "short") {
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const year = String(dateYear).slice(-2);
-    return `${month}/${day}/${year}`;
+    return formatInTimeZone(date, timeZone, "M/d/yy");
   }
 
-  const weekday = date.toLocaleString("en-US", {
-    ...formatOptions,
-    weekday: "long",
-  });
-  const month = date.toLocaleString("en-US", {
-    ...formatOptions,
-    month: "long",
-  });
-  const day = new Date(date.toLocaleString("en-US", formatOptions)).getDate();
-  const suffix = getOrdinalSuffix(day);
-  const time = date.toLocaleString("en-US", {
-    ...formatOptions,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  const tz = date
-    .toLocaleTimeString("en-us", { timeZoneName: "short" })
-    .split(" ")[2];
-
-  const yearSuffix = dateYear !== currentYear ? `, ${dateYear}` : "";
+  const time = formatInTimeZone(date, timeZone, "h:mm a");
+  const tz = timeZoneAbbreviation(date, timeZone);
 
   if (formatPreset === "time-only") {
     return `${time} ${tz}`;
   }
 
-  return `${weekday}, ${month} ${day}${suffix}${yearSuffix} at ${time} ${tz}`;
+  const dateYear = formatInTimeZone(date, timeZone, "yyyy");
+  const currentYear = formatInTimeZone(new Date(), timeZone, "yyyy");
+  const yearSuffix = dateYear !== currentYear ? `, ${dateYear}` : "";
+  const day = Number(formatInTimeZone(date, timeZone, "d"));
+
+  return `${formatInTimeZone(date, timeZone, "EEEE, MMMM")} ${day}${getOrdinalSuffix(day)}${yearSuffix} at ${time} ${tz}`;
 };
 
 type DateParam = string;
@@ -102,13 +106,11 @@ export const moveDate = (
   date: DateParam,
   direction: "prev" | "next" | "today"
 ): DateParam => {
-  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
   if (direction === "today") {
-    const today = new Date();
-    const utcToday = fromZonedTime(today, timeZone);
-    return format(utcToday, "yyyy-MM-dd");
+    return getGameDay("YYYY-MM-DD");
   }
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const utcDate = fromZonedTime(date, timeZone);
   const newDate =

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { scheduleGameDayRefreshes } from "../injuries";
 import { getSeasonDate, requireCurrentSeason } from "../shared/currentSeason";
 import { getTodayDate, formatGameDate, mapApiStateToEventStatus, sleep, getDateRange, getScheduleSyncRange, getNextSeason, parseEspnSeason, seasonFromEspnYear } from "../shared/seasonHelpers";
 import { parseTeamBoxScore, parsePlayerBoxScores, getTotalRecord, parseRosterPlayer, parseCoreDraft } from "../shared/apiParser";
@@ -464,6 +465,9 @@ export const discoverTodaysGames = internalAction({
 			console.error("[NBA] Standings fetch failed:", error);
 		}
 
+		// Tip-offs of games still to start, for the pre-game injury refreshes
+		const tipOffs: number[] = [];
+
 		// Process each game
 		for (const event of events) {
 			const competition = event.competitions[0];
@@ -508,6 +512,7 @@ export const discoverTodaysGames = internalAction({
 
 			// Schedule status check: scheduledStart + 2h15m
 			if (eventStatus === "scheduled") {
+				tipOffs.push(scheduledStart);
 				const checkTime = scheduledStart + 2 * 60 * 60 * 1000 + 15 * 60 * 1000;
 				await ctx.scheduler.runAt(
 					checkTime,
@@ -517,6 +522,8 @@ export const discoverTodaysGames = internalAction({
 				console.log(`[NBA] Scheduled check for game ${event.id} at ${new Date(checkTime).toISOString()}`);
 			}
 		}
+
+		await scheduleGameDayRefreshes(ctx, "nba", tipOffs);
 
 		console.log(`[NBA] Discovery complete: ${events.length} games processed`);
 		await ctx.runMutation(internal.health.recordJobRun, { job: "discoverGames", league: "nba", ok: true, summary: `${events.length} games` });

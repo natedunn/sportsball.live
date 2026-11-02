@@ -12,7 +12,7 @@
 // - standings: W-L records match ESPN's standings
 // and for every league:
 // - rosters: team rosters match ESPN's (for the season the roster sync targets)
-// - jobs: every daily job succeeded in the last 2 days
+// - jobs: every daily job (injury refreshes included) succeeded in the last 2 days
 //
 // Run by hand: npx convex run health:runHealthCheck
 
@@ -61,7 +61,7 @@ const HEALTH_CHECKS_KEPT = 60;
 // Daily jobs per league (see crons.ts), plus the cross-league season sync
 const EXPECTED_JOBS: ExpectedJob[] = [
 	...LEAGUES.flatMap((league) =>
-		["discoverGames", "refreshStandings", "syncSchedule", "refreshPlayers"].map((job) => ({
+		["discoverGames", "refreshStandings", "syncSchedule", "refreshPlayers", "refreshInjuries"].map((job) => ({
 			job,
 			league,
 		})),

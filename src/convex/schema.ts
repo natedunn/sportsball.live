@@ -791,6 +791,26 @@ export default defineSchema({
 		.index("by_league_lastSeenAt", ["league", "lastSeenAt"])
 		.index("by_league_game_type", ["league", "espnGameId", "anomalyType"]),
 
+	// Each league's current injury report from ESPN, replaced whole on every
+	// refresh (see injuries.ts). When it was last refreshed is the league's
+	// "refreshInjuries" row in jobRuns.
+	injuries: defineTable({
+		league: leagueValidator,
+		espnTeamId: v.string(),
+		espnInjuryId: v.string(),
+		espnPlayerId: v.optional(v.string()),
+		name: v.string(),
+		position: v.optional(v.string()),
+		headshot: v.optional(v.string()),
+		status: v.string(),
+		description: v.optional(v.string()),
+		shortComment: v.optional(v.string()),
+		returnDate: v.optional(v.string()),
+		reportedAt: v.optional(v.string()),
+	})
+		.index("by_league", ["league"])
+		.index("by_league_team", ["league", "espnTeamId"]),
+
 	// Latest run of each scheduled job (see health.recordJobRun). The daily
 	// health check flags jobs with no successful run in the last two days.
 	jobRuns: defineTable({

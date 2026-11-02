@@ -6,7 +6,6 @@ export {
 	fetchGLeagueTeamSchedule as fetchTeamSchedule,
 	fetchGLeagueTeamStats as fetchTeamStats,
 	fetchGLeagueTeamLeaders as fetchTeamLeaders,
-	fetchGLeagueTeamInjuries as fetchTeamInjuries,
 } from "@/lib/shared/team.server";
 
 export type {

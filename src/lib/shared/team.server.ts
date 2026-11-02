@@ -1,14 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getTeamStaticData } from "@/lib/teams";
 import type { League } from "./league";
-import { getLeagueSiteApi, getLeagueCoreApi, getLeagueCommonApi } from "./league";
+import { getLeagueSiteApi, getLeagueCommonApi } from "./league";
 import type {
 	TeamOverview,
 	RosterPlayer,
 	ScheduleGame,
 	TeamStats,
 	TeamLeader,
-	InjuredPlayer,
 } from "@/lib/types/team";
 import type {
 	ApiTeamResponse,
@@ -52,7 +51,6 @@ function getTeamColors(
 	}
 	return { darkColor: "000000", lightColor: "000000" };
 }
-
 
 // ============================================================================
 // Internal Handlers
@@ -467,136 +465,6 @@ async function fetchTeamLeadersForLeague(league: League, teamSlug: string): Prom
 	return leaders;
 }
 
-interface V2InjuryRef {
-	$ref: string;
-}
-
-interface V2InjuryDetail {
-	id: string;
-	status: string;
-	date: string;
-	shortComment?: string;
-	longComment?: string;
-	athlete?: { $ref: string };
-	details?: {
-		type?: string;
-		location?: string;
-		detail?: string;
-		side?: string;
-		returnDate?: string;
-	};
-}
-
-interface V2InjuriesResponse {
-	count: number;
-	items: V2InjuryRef[];
-}
-
-async function fetchTeamInjuriesForLeague(
-	league: League,
-	teamSlug: string,
-): Promise<InjuredPlayer[]> {
-	const teamData = getTeamStaticData(league, teamSlug);
-	if (!teamData) {
-		throw new Error(`Team not found: ${teamSlug}`);
-	}
-
-	const teamId = teamData.api.id;
-
-	// Try V2 API first for richer injury data
-	try {
-		const v2Base = getLeagueCoreApi(league);
-		const injuriesResponse = await fetch(`${v2Base}/teams/${teamId}/injuries?limit=50`, {
-			headers: { "Content-Type": "application/json" },
-		});
-
-		if (injuriesResponse.ok) {
-			const injuriesData = (await injuriesResponse.json()) as V2InjuriesResponse;
-
-			if (injuriesData.items && injuriesData.items.length > 0) {
-				// Fetch details for each injury in parallel
-				const injuryDetails = await Promise.all(
-					injuriesData.items.map(async (item): Promise<InjuredPlayer | null> => {
-						try {
-							const detailResponse = await fetch(item.$ref);
-							if (!detailResponse.ok) return null;
-
-							const detail = (await detailResponse.json()) as V2InjuryDetail;
-
-							// Fetch athlete info to get name, position, headshot
-							let athleteName = "Unknown";
-							let athletePosition = "";
-							let athleteHeadshot: string | undefined;
-
-							if (detail.athlete?.$ref) {
-								try {
-									const athleteResponse = await fetch(detail.athlete.$ref);
-									if (athleteResponse.ok) {
-										const athleteData = await athleteResponse.json();
-										athleteName = athleteData.displayName || athleteData.fullName || "Unknown";
-										athletePosition = athleteData.position?.abbreviation || "";
-										athleteHeadshot = athleteData.headshot?.href;
-									}
-								} catch {
-									// Ignore athlete fetch errors
-								}
-							}
-
-							// Build description from details
-							let description: string | undefined;
-							if (detail.details) {
-								const parts: string[] = [];
-								if (detail.details.side) parts.push(detail.details.side);
-								if (detail.details.type) parts.push(detail.details.type);
-								if (detail.details.detail) parts.push(detail.details.detail);
-								if (parts.length > 0) {
-									description = parts.join(" ");
-								}
-							}
-
-							return {
-								id: detail.id,
-								name: athleteName,
-								position: athletePosition,
-								status: detail.status,
-								description,
-								shortComment: detail.shortComment,
-								headshot: athleteHeadshot,
-							};
-						} catch {
-							return null;
-						}
-					}),
-				);
-
-				const validInjuries = injuryDetails.filter((i): i is InjuredPlayer => i !== null);
-				if (validInjuries.length > 0) {
-					return validInjuries;
-				}
-			}
-		}
-	} catch {
-		// V2 API failed, fall back to roster-based injuries
-	}
-
-	// Fallback: get injuries from roster data
-	const roster = await fetchTeamRosterForLeague(league, teamSlug);
-
-	return roster
-		.filter((player) => player.injured)
-		.map(
-			(player): InjuredPlayer => ({
-				id: player.id,
-				name: player.name,
-				position: player.position,
-				status: player.injuryStatus ?? "Injured",
-				description: player.injuryDescription,
-				shortComment: undefined,
-				headshot: player.headshot,
-			}),
-		);
-}
-
 // ============================================================================
 // NBA Server Functions
 // ============================================================================
@@ -629,12 +497,6 @@ export const fetchNbaTeamLeaders = createServerFn({ method: "GET" })
 	.inputValidator((d: string) => d)
 	.handler(async ({ data: teamSlug }): Promise<TeamLeader[]> => {
 		return fetchTeamLeadersForLeague("nba", teamSlug);
-	});
-
-export const fetchNbaTeamInjuries = createServerFn({ method: "GET" })
-	.inputValidator((d: string) => d)
-	.handler(async ({ data: teamSlug }): Promise<InjuredPlayer[]> => {
-		return fetchTeamInjuriesForLeague("nba", teamSlug);
 	});
 
 // ============================================================================
@@ -671,12 +533,6 @@ export const fetchWnbaTeamLeaders = createServerFn({ method: "GET" })
 		return fetchTeamLeadersForLeague("wnba", teamSlug);
 	});
 
-export const fetchWnbaTeamInjuries = createServerFn({ method: "GET" })
-	.inputValidator((d: string) => d)
-	.handler(async ({ data: teamSlug }): Promise<InjuredPlayer[]> => {
-		return fetchTeamInjuriesForLeague("wnba", teamSlug);
-	});
-
 // ============================================================================
 // G-League Server Functions
 // ============================================================================
@@ -711,8 +567,3 @@ export const fetchGLeagueTeamLeaders = createServerFn({ method: "GET" })
 		return fetchTeamLeadersForLeague("gleague", teamSlug);
 	});
 
-export const fetchGLeagueTeamInjuries = createServerFn({ method: "GET" })
-	.inputValidator((d: string) => d)
-	.handler(async ({ data: teamSlug }): Promise<InjuredPlayer[]> => {
-		return fetchTeamInjuriesForLeague("gleague", teamSlug);
-	});

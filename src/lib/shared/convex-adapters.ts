@@ -24,6 +24,7 @@ import type {
 	ScheduleGame,
 	TeamStats,
 	TeamLeader,
+	InjuredPlayer,
 } from "@/lib/types/team";
 import type { TeamGameData } from "@/components/team-details/stats/trend-chart";
 
@@ -32,6 +33,7 @@ type TeamDoc = Doc<"nbaTeam"> | Doc<"wnbaTeam"> | Doc<"gleagueTeam">;
 type PlayerDoc = Doc<"nbaPlayer"> | Doc<"wnbaPlayer"> | Doc<"gleaguePlayer">;
 // One row of a team's game log (each league's getTeamGameLog returns the same shape)
 type GameLogRow = FunctionReturnType<typeof api.nba.queries.getTeamGameLog>[number];
+type TeamInjuryReport = FunctionReturnType<typeof api.injuries.getTeamInjuries>;
 
 // ============================================================
 // Event status → State mapping
@@ -490,37 +492,74 @@ export function convexTeamToStats(
 // Team Page → RosterPlayer[]
 // ============================================================
 
-export function convexRosterToPlayers(players: PlayerDoc[]): RosterPlayer[] {
-	return players.map((p) => ({
-		id: p.espnPlayerId,
-		name: p.name,
-		firstName: p.firstName ?? p.name?.split(" ")[0] ?? "",
-		lastName: p.lastName ?? p.name?.split(" ").slice(1).join(" ") ?? "",
-		jersey: p.jersey ?? "",
-		position: p.position ?? "",
-		height: p.height ?? "",
-		weight: p.weight ?? "",
-		age: p.age,
-		experience: p.experience ?? "",
-		college: p.college,
-		headshot: p.headshot,
-		injured: false, // Injuries still from ESPN
-		injuryStatus: undefined,
-		injuryDescription: undefined,
-		stats: {
-			gp: p.gamesPlayed ?? 0,
-			gs: p.gamesStarted ?? 0,
-			mpg: p.minutesPerGame ?? 0,
-			ppg: p.pointsPerGame ?? 0,
-			rpg: p.reboundsPerGame ?? 0,
-			apg: p.assistsPerGame ?? 0,
-			spg: p.stealsPerGame ?? 0,
-			bpg: p.blocksPerGame ?? 0,
-			topg: p.turnoversPerGame ?? 0,
-			fgPct: p.fieldGoalPct ?? 0,
-			threePct: p.threePointPct ?? 0,
-			ftPct: p.freeThrowPct ?? 0,
-		},
+export function convexRosterToPlayers(
+	players: PlayerDoc[],
+	injuries: InjuredPlayer[] | null = null,
+): RosterPlayer[] {
+	const injuryByPlayer = new Map(
+		(injuries ?? []).flatMap((injury) => (injury.playerId ? [[injury.playerId, injury] as const] : [])),
+	);
+	return players.map((p) => {
+		const injury = injuryByPlayer.get(p.espnPlayerId);
+		return {
+			id: p.espnPlayerId,
+			name: p.name,
+			firstName: p.firstName ?? p.name?.split(" ")[0] ?? "",
+			lastName: p.lastName ?? p.name?.split(" ").slice(1).join(" ") ?? "",
+			jersey: p.jersey ?? "",
+			position: p.position ?? "",
+			height: p.height ?? "",
+			weight: p.weight ?? "",
+			age: p.age,
+			experience: p.experience ?? "",
+			college: p.college,
+			headshot: p.headshot,
+			injured: injury !== undefined,
+			injuryStatus: injury?.status,
+			injuryDescription: injury?.description,
+			stats: {
+				gp: p.gamesPlayed ?? 0,
+				gs: p.gamesStarted ?? 0,
+				mpg: p.minutesPerGame ?? 0,
+				ppg: p.pointsPerGame ?? 0,
+				rpg: p.reboundsPerGame ?? 0,
+				apg: p.assistsPerGame ?? 0,
+				spg: p.stealsPerGame ?? 0,
+				bpg: p.blocksPerGame ?? 0,
+				topg: p.turnoversPerGame ?? 0,
+				fgPct: p.fieldGoalPct ?? 0,
+				threePct: p.threePointPct ?? 0,
+				ftPct: p.freeThrowPct ?? 0,
+			},
+		};
+	});
+}
+
+// ============================================================
+// Team Page → InjuredPlayer[]
+// ============================================================
+
+// Injury reports refresh at least twice a day; past this one is out of date
+export const INJURY_REPORT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A team's injured players, or null when the league's report is missing or
+ * out of date (so the page says so instead of "No injuries to report").
+ */
+export function convexInjuriesToPlayers(
+	report: TeamInjuryReport | undefined,
+	now: number = Date.now(),
+): InjuredPlayer[] | null {
+	if (!report?.updatedAt || now - report.updatedAt > INJURY_REPORT_MAX_AGE_MS) return null;
+	return report.players.map((injury) => ({
+		id: injury.espnInjuryId,
+		playerId: injury.espnPlayerId,
+		name: injury.name,
+		position: injury.position ?? "",
+		status: injury.status,
+		description: injury.description,
+		shortComment: injury.shortComment,
+		headshot: injury.headshot,
 	}));
 }
 

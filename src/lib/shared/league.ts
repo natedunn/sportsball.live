@@ -3,7 +3,7 @@ export type League = "nba" | "wnba" | "gleague";
 
 // Environment variable names for ESPN API endpoints
 // SITE_API: Main site API (scoreboard, games, teams, news, standings, leaders)
-// CORE_API: Core API (detailed injuries)
+// CORE_API: Core API (season phases, player stats; used by Convex)
 // COMMON_API: Common API (roster with player stats)
 
 export const LEAGUE_SITE_API_VARS: Record<League, string> = {

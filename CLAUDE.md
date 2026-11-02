@@ -65,6 +65,7 @@ Each league (NBA, WNBA, G-League) follows the same pattern:
 - **Server Functions**: Use `createServerFn` from TanStack Start for server-side data fetching
 - **Query Integration**: Routes use `loader` with `ensureQueryData` for SSR, components use `useQuery`
 - **Data Health**: Daily jobs record heartbeats; a daily Convex health check compares stored data with ESPN and repairs what it can, and a GitHub Action turns unresolved problems into an issue. See docs/data-health.md
+- **Injury Reports**: Stored in Convex from ESPN's league-wide injuries endpoint (`src/convex/injuries.ts`): refreshed twice a day, plus 50 and 25 minutes before each tip-off and at tip (scheduled by game discovery). The Worker never calls ESPN for them; ESPN answers Cloudflare's servers with 403s
 - **Known Gaps**: Known stats issues and pending product decisions (pace/rating methodology, G League Tip-Off averages, playoff stats view, ESPN quirks) are tracked in docs/known-gaps.md. Check it before changing stats code, and remove entries you fix
 - **Dark/Light Colors**: Teams have both `darkColor` and `lightColor` - components use `useIsDarkMode` hook to select appropriate color
 
@@ -78,6 +79,6 @@ Required variables (see `.env.example`):
 - `VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL` - baked in at build (`pnpm dev` and the deploy scripts set them)
 - ESPN API endpoints (per league: NBA, WNBA, GLEAGUE):
   - `*_SITE_API` - Main site API (scoreboard, games, teams, news)
-  - `*_CORE_API` - Core API (detailed injuries)
+  - `*_CORE_API` - Core API (season phases, player stats; read by Convex)
   - `*_COMMON_API` - Common API (roster with player stats)
 - Auth settings live on the Convex deployments, not in `.env` (docs/auth-environments.md)

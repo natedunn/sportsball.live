@@ -50,18 +50,23 @@ export function FlickeringGrid({
 		const dpr = window.devicePixelRatio || 1;
 		canvas.width = canvasWidth * dpr;
 		canvas.height = canvasHeight * dpr;
-		canvas.style.width = `${canvasWidth}px`;
-		canvas.style.height = `${canvasHeight}px`;
+		// Only pin fixed sizes; a container-sized canvas stays at 100%
+		if (width) canvas.style.width = `${canvasWidth}px`;
+		if (height) canvas.style.height = `${canvasHeight}px`;
 
-		const cols = Math.floor(canvasWidth / (squareSize + gridGap));
-		const rows = Math.floor(canvasHeight / (squareSize + gridGap));
+		const cell = squareSize + gridGap;
+		const cols = Math.floor((canvasWidth + gridGap) / cell);
+		const rows = Math.floor((canvasHeight + gridGap) / cell);
+		// Centre the pattern so leftover space is split between the edges
+		const offsetX = (canvasWidth - (cols * cell - gridGap)) / 2;
+		const offsetY = (canvasHeight - (rows * cell - gridGap)) / 2;
 
 		const squares = new Float32Array(cols * rows);
 		for (let i = 0; i < squares.length; i++) {
 			squares[i] = Math.random() * maxOpacity;
 		}
 
-		return { canvasWidth, canvasHeight, cols, rows, squares, dpr };
+		return { canvasWidth, canvasHeight, cols, rows, squares, dpr, offsetX, offsetY };
 	}, [width, height, squareSize, gridGap, maxOpacity]);
 
 	useEffect(() => {
@@ -74,7 +79,8 @@ export function FlickeringGrid({
 		const setup = setupCanvas();
 		if (!setup) return;
 
-		let { canvasWidth, canvasHeight, cols, rows, squares, dpr } = setup;
+		let { canvasWidth, canvasHeight, cols, rows, squares, dpr, offsetX, offsetY } =
+			setup;
 		let animationFrameId: number;
 		let lastTime = 0;
 
@@ -96,8 +102,8 @@ export function FlickeringGrid({
 					const opacity = squares[i * rows + j];
 					ctx.fillStyle = `${memoizedColor}${opacity})`;
 					ctx.fillRect(
-						i * (squareSize + gridGap) * dpr,
-						j * (squareSize + gridGap) * dpr,
+						(offsetX + i * (squareSize + gridGap)) * dpr,
+						(offsetY + j * (squareSize + gridGap)) * dpr,
 						squareSize * dpr,
 						squareSize * dpr,
 					);
@@ -118,7 +124,8 @@ export function FlickeringGrid({
 		const handleResize = () => {
 			const newSetup = setupCanvas();
 			if (newSetup) {
-				({ canvasWidth, canvasHeight, cols, rows, squares, dpr } = newSetup);
+				({ canvasWidth, canvasHeight, cols, rows, squares, dpr, offsetX, offsetY } =
+					newSetup);
 			}
 		};
 
@@ -130,6 +137,12 @@ export function FlickeringGrid({
 		);
 
 		observer.observe(canvas);
+		// A canvas sized by its container can change size without the window
+		// resizing (such as a layout switch), so watch the canvas itself
+		const resizeObserver = new ResizeObserver(handleResize);
+		if (!width || !height) {
+			resizeObserver.observe(canvas);
+		}
 		window.addEventListener("resize", handleResize);
 
 		if (isInView) {
@@ -140,6 +153,7 @@ export function FlickeringGrid({
 			window.removeEventListener("resize", handleResize);
 			cancelAnimationFrame(animationFrameId);
 			observer.disconnect();
+			resizeObserver.disconnect();
 		};
 	}, [
 		isInView,
@@ -149,6 +163,8 @@ export function FlickeringGrid({
 		gridGap,
 		flickerChance,
 		maxOpacity,
+		width,
+		height,
 	]);
 
 	return (

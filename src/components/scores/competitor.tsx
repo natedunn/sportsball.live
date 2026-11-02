@@ -14,9 +14,15 @@ interface CompetitorProps {
 	homeAway: "home" | "away";
 	league: League;
 	isFavorited?: boolean;
+	/** Show the team's location above its name */
+	showLocation?: boolean;
 	classes?: {
 		wrapper?: string;
+		/** Logo plus name and record */
+		content?: string;
 		logo?: string;
+		/** Name and record */
+		info?: string;
 		team?: string;
 		seasonRecord?: string;
 	};
@@ -27,6 +33,7 @@ export function Competitor({
 	homeAway,
 	league,
 	isFavorited = false,
+	showLocation = false,
 	classes,
 }: CompetitorProps) {
 	const isJazz = team.name === "Jazz";
@@ -41,11 +48,17 @@ export function Competitor({
 				)}
 			/>
 			<TeamFlickeringGrid
+				fill
 				className="absolute inset-0 z-0"
 				dark={team.darkColor}
 				light={team.lightColor}
 			/>
-			<div className="z-10 flex h-full flex-col items-center justify-center gap-2">
+			<div
+				className={cn(
+					"z-10 flex h-full flex-col items-center justify-center gap-2",
+					classes?.content,
+				)}
+			>
 				<div className="relative">
 					<Image
 						src={team.logo}
@@ -64,7 +77,12 @@ export function Competitor({
 						</div>
 					)}
 				</div>
-				<div className="flex flex-col items-center">
+				<div className={cn("flex flex-col items-center", classes?.info)}>
+					{showLocation && team.location && (
+						<span className="text-[0.625rem] font-medium uppercase leading-tight tracking-wider text-muted-foreground max-sm:hidden">
+							{team.location}
+						</span>
+					)}
 					<span
 						className={cn(
 							"text-sm font-bold group-hover:underline decoration-2 decoration-foreground/75",

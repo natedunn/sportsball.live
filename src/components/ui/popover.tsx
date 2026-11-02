@@ -54,6 +54,7 @@ export function PopoverContent({
 				side="bottom"
 				align={align}
 				sideOffset={sideOffset}
+				className="z-50"
 			>
 				<BasePopover.Popup
 					className={cn(

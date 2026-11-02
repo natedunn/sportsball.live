@@ -10,6 +10,7 @@ import {
 	useLiveScoreSync,
 	type RawSyncableGame,
 } from "@/lib/shared/live-score-sync";
+import { getStoredScoresLayout } from "@/lib/scores-layout";
 import {
 	ScoresPageLayout,
 	ScoresPagePending,
@@ -48,6 +49,8 @@ export const Route = createFileRoute("/_default/wnba/scores")({
 			);
 			await context.queryClient.ensureQueryData(scoreboardQuery(formattedDate));
 		}
+
+		return { layout: getStoredScoresLayout() };
 	},
 	pendingComponent: () => (
 		<ScoresPagePending title={TITLE} description={DESCRIPTION} />
@@ -57,6 +60,7 @@ export const Route = createFileRoute("/_default/wnba/scores")({
 
 function WnbaScoresPage() {
 	const { date } = Route.useSearch();
+	const { layout } = Route.useLoaderData();
 	const currentDate = date ?? getGameDay("YYYY-MM-DD");
 	const formattedDate = formatDate(currentDate, "YYYYMMDD");
 	const today = getGameDay("YYYYMMDD");
@@ -85,6 +89,7 @@ function WnbaScoresPage() {
 			title={TITLE}
 			description={DESCRIPTION}
 			queryOptions={scoreboardQuery as (date: string) => FetchQueryOptions<any, any, any, any>}
+			initialLayout={layout}
 			cacheKeyPrefix="wnba"
 		/>
 	);

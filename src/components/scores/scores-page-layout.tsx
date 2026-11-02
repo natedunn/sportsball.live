@@ -1,8 +1,11 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { useQueryClient, type FetchQueryOptions } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { DatePagination } from "./date-pagination";
+import { LayoutSwitcher } from "./layout-switcher";
 import { Scoreboard } from "./scoreboard";
+import { cn } from "@/lib/utils";
+import { storeScoresLayout, type ScoresLayout } from "@/lib/scores-layout";
 import { SeasonalNotice } from "./seasonal-notice";
 import { formatDate, moveDate } from "@/lib/date";
 import { useFavorites } from "@/lib/use-favorites";
@@ -18,6 +21,8 @@ interface ScoresPageLayoutProps {
 	description: string;
 	queryOptions: (date: string) => FetchQueryOptions<any, any, any, any>;
 	cacheKeyPrefix: string;
+	/** Saved layout, read by the route loader so SSR matches the client */
+	initialLayout: ScoresLayout;
 }
 
 export function ScoresPageLayout({
@@ -29,8 +34,15 @@ export function ScoresPageLayout({
 	description,
 	queryOptions,
 	cacheKeyPrefix,
+	initialLayout,
 }: ScoresPageLayoutProps) {
 	const { isFavorited } = useFavorites();
+	const [layout, setLayout] = useState(initialLayout);
+
+	const handleLayoutChange = (next: ScoresLayout) => {
+		setLayout(next);
+		storeScoresLayout(next);
+	};
 	const prevDateRef = useRef<string>(formattedDate);
 	const directionRef = useRef<"next" | "previous">("next");
 
@@ -96,18 +108,24 @@ export function ScoresPageLayout({
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
 			<div className="bg-linear-to-b from-muted/70 to-transparent pt-12 dark:from-muted/30">
-				<div className="flex flex-col items-center justify-between gap-2">
+				<div className="flex flex-col items-center justify-between gap-2 px-4 text-center">
 					<h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-4xl">
 						{title}
 					</h1>
 					<p className="text-muted-foreground/50">{description}</p>
 				</div>
 			</div>
-			<div className="mx-auto w-full max-w-180 px-4">
+			<div className="container">
 				<SeasonalNotice league={league} className="mb-4" />
 				<div className="flex flex-col gap-4">
-					<div className="flex justify-center">
+					<div className="flex flex-wrap items-center justify-center gap-2 border-b border-border pb-4 sm:justify-between">
 						<DatePagination date={currentDate} league={league} />
+						{/* Every layout is one column below md, so only offer it from md up */}
+						<LayoutSwitcher
+							value={layout}
+							onChange={handleLayoutChange}
+							className="max-md:hidden"
+						/>
 					</div>
 					<AnimatePresence mode="wait" custom={direction} initial={false}>
 						<motion.div
@@ -138,14 +156,12 @@ export function ScoresPageLayout({
 							{games.length > 0 ? (
 								<div className="flex flex-col w-full gap-6">
 									{/* Favorite teams' games */}
-									{favoriteGames.map((game) => (
-										<Scoreboard
-											key={game.id}
-											game={game}
-											currentDate={currentDate}
-											league={league}
-										/>
-									))}
+									<GameGroup
+										games={favoriteGames}
+										layout={layout}
+										currentDate={currentDate}
+										league={league}
+									/>
 
 									{/* Divider between favorites and others */}
 									{favoriteGames.length > 0 && otherGames.length > 0 && (
@@ -159,14 +175,12 @@ export function ScoresPageLayout({
 									)}
 
 									{/* Other games */}
-									{otherGames.map((game) => (
-										<Scoreboard
-											key={game.id}
-											game={game}
-											currentDate={currentDate}
-											league={league}
-										/>
-									))}
+									<GameGroup
+										games={otherGames}
+										layout={layout}
+										currentDate={currentDate}
+										league={league}
+									/>
 								</div>
 							) : (
 								<div className="flex flex-col items-center justify-center gap-4">
@@ -183,6 +197,39 @@ export function ScoresPageLayout({
 	);
 }
 
+function GameGroup({
+	games,
+	layout,
+	currentDate,
+	league,
+}: {
+	games: GameData[];
+	layout: ScoresLayout;
+	currentDate: string;
+	league: League;
+}) {
+	if (games.length === 0) return null;
+
+	return (
+		<div
+			className={cn(
+				"grid gap-4",
+				layout === "grid" ? "md:grid-cols-2" : "gap-6",
+			)}
+		>
+			{games.map((game) => (
+				<Scoreboard
+					key={game.id}
+					game={game}
+					currentDate={currentDate}
+					league={league}
+					variant={layout === "grid" ? "compact" : "list"}
+				/>
+			))}
+		</div>
+	);
+}
+
 export function ScoresPagePending({
 	title,
 	description,
@@ -193,7 +240,7 @@ export function ScoresPagePending({
 	return (
 		<div className="flex flex-col gap-8 pb-12 lg:pb-20">
 			<div className="bg-linear-to-b from-muted/70 to-transparent pt-12 dark:from-muted/30">
-				<div className="flex flex-col items-center justify-between gap-2">
+				<div className="flex flex-col items-center justify-between gap-2 px-4 text-center">
 					<h1 className="scroll-m-20 text-3xl font-extrabold tracking-tight lg:text-4xl">
 						{title}
 					</h1>

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +12,9 @@ interface DatePickerProps {
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
 	disabled?: boolean;
+	className?: string;
+	/** Button label for the picked date. Default: date-fns "PPP" */
+	renderValue?: (date: Date) => ReactNode;
 }
 
 export function DatePicker({
@@ -19,6 +23,8 @@ export function DatePicker({
 	open,
 	onOpenChange,
 	disabled,
+	className,
+	renderValue = (date) => format(date, "PPP"),
 }: DatePickerProps) {
 	return (
 		<Popover open={open} onOpenChange={onOpenChange}>
@@ -31,10 +37,11 @@ export function DatePicker({
 						"justify-start text-left font-normal gap-2",
 						!value && "text-muted-foreground",
 						disabled && "opacity-50 cursor-not-allowed",
+						className,
 					)}
 				>
 					<CalendarIcon className="h-4 w-4" />
-					{value ? format(value, "PPP") : "Pick a date"}
+					{value ? renderValue(value) : "Pick a date"}
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent className="w-auto p-0" align="start">

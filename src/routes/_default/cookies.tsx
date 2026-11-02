@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { seo } from "@/lib/seo";
 import { TIME_ZONE_COOKIE } from "@/lib/timezone";
 import { STANDINGS_VIEW_COOKIE } from "@/lib/standings-view";
+import { SCORES_LAYOUT_COOKIE } from "@/lib/scores-layout";
 import { LegalPage, LegalSection } from "./-components/legal-page";
 
 export const Route = createFileRoute("/_default/cookies")({
@@ -31,6 +32,12 @@ const COOKIES: StorageItem[] = [
 		name: STANDINGS_VIEW_COOKIE,
 		purpose:
 			"The standings page you last viewed (a conference or the whole league), so Standings opens on it in every league.",
+		duration: "1 year",
+	},
+	{
+		name: SCORES_LAYOUT_COOKIE,
+		purpose:
+			"The scores layout you last picked (list or grid), so scores pages open with it in every league.",
 		duration: "1 year",
 	},
 ];

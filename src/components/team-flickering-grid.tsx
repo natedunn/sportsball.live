@@ -7,6 +7,8 @@ interface TeamFlickeringGridProps {
 	light: string;
 	grid?: FlickeringGridProps;
 	className?: string;
+	/** Size the grid to its container instead of a fixed box */
+	fill?: boolean;
 }
 
 export function TeamFlickeringGrid({
@@ -14,6 +16,7 @@ export function TeamFlickeringGrid({
 	light,
 	grid = {},
 	className,
+	fill = false,
 }: TeamFlickeringGridProps) {
 	const isDark = useIsDarkMode();
 	const color = `#${isDark ? dark : light}`;
@@ -26,8 +29,8 @@ export function TeamFlickeringGrid({
 			gridGap={grid.gridGap ?? 6}
 			maxOpacity={grid.maxOpacity ?? 0.7}
 			flickerChance={grid.flickerChance ?? 0.1}
-			height={grid.height ?? 130}
-			width={grid.width ?? 130}
+			height={fill ? undefined : (grid.height ?? 130)}
+			width={fill ? undefined : (grid.width ?? 130)}
 		/>
 	);
 }

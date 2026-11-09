@@ -5,9 +5,16 @@
 //
 // Run by hand: npx convex run injuries:refreshAll
 import { v } from "convex/values";
-import { internalAction, internalMutation, query, type ActionCtx } from "./_generated/server";
+import {
+	internalAction,
+	internalMutation,
+	query,
+	type ActionCtx,
+	type QueryCtx,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
 import { leagueValidator } from "./validators";
+import { updateInjuryLog } from "./injuryHistory";
 import {
 	injuryRefreshTimes,
 	parseInjuryReport,
@@ -120,6 +127,7 @@ export const replaceLeague = internalMutation({
 				changed++;
 			}
 		}
+		await updateInjuryLog(ctx, league, injuries);
 		return changed;
 	},
 });
@@ -130,6 +138,38 @@ function sameInjury(row: ParsedInjury, injury: ParsedInjury): boolean {
 	);
 }
 
+async function lastRefreshedAt(ctx: QueryCtx, league: League) {
+	const run = await ctx.db
+		.query("jobRuns")
+		.withIndex("by_job_league", (q) => q.eq("job", JOB).eq("league", league))
+		.unique();
+	return run?.lastOkAt ?? null;
+}
+
+/**
+ * A player's current injury (null if they aren't on the report), and when the
+ * league's report was last refreshed, so a page can tell "healthy" from "we
+ * don't know".
+ */
+export async function loadPlayerInjuryReport(ctx: QueryCtx, league: League, espnPlayerId: string) {
+	const [injury, updatedAt] = await Promise.all([
+		ctx.db
+			.query("injuries")
+			.withIndex("by_league_player", (q) => q.eq("league", league).eq("espnPlayerId", espnPlayerId))
+			.order("desc")
+			.first(),
+		lastRefreshedAt(ctx, league),
+	]);
+	return {
+		updatedAt,
+		injury: injury && {
+			status: injury.status,
+			description: injury.description,
+			shortComment: injury.shortComment,
+		},
+	};
+}
+
 /**
  * A team's injured players, and when the league's report was last refreshed
  * (null if it never has been), so the page can tell an empty report from a
@@ -138,18 +178,15 @@ function sameInjury(row: ParsedInjury, injury: ParsedInjury): boolean {
 export const getTeamInjuries = query({
 	args: { league: leagueValidator, espnTeamId: v.string() },
 	handler: async (ctx, { league, espnTeamId }) => {
-		const [rows, run] = await Promise.all([
+		const [rows, updatedAt] = await Promise.all([
 			ctx.db
 				.query("injuries")
 				.withIndex("by_league_team", (q) => q.eq("league", league).eq("espnTeamId", espnTeamId))
 				.collect(),
-			ctx.db
-				.query("jobRuns")
-				.withIndex("by_job_league", (q) => q.eq("job", JOB).eq("league", league))
-				.unique(),
+			lastRefreshedAt(ctx, league),
 		]);
 		return {
-			updatedAt: run?.lastOkAt ?? null,
+			updatedAt,
 			players: rows.map(({ _id, _creationTime, league: _league, ...injury }) => injury),
 		};
 	},

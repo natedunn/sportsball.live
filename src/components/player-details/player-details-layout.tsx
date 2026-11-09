@@ -1,45 +1,41 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-	ArrowLeft,
-	LayoutDashboard,
-	SplitSquareVertical,
-	ListOrdered,
-	GitCompareArrows,
-} from "lucide-react";
 import { AnimationProvider } from "@/components/team-details/animation-context";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { leaguePlayerRoutes, leaguePlayersRoutes } from "@/lib/league-routes";
+import { cn } from "@/lib/utils";
+import { leaguePlayerRoutes } from "@/lib/league-routes";
 import { tabRoute } from "@/lib/route-tabs";
-import { leagueLabels } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
 import { PlayerHeader } from "./player-header";
 import type { PlayerProfileData } from "@/lib/players/mock-data";
+import type { PlayerStatus } from "@/lib/players/player-status";
 
 /** Player page tabs, each its own child route. The first is the index route. */
-export const PLAYER_TABS = ["overview", "splits", "last-10", "compare"] as const;
+export const PLAYER_TABS = ["overview", "stats", "games", "compare"] as const;
 export type PlayerTab = (typeof PLAYER_TABS)[number];
 
-const TAB_ITEMS: Array<{
-	tab: PlayerTab;
-	label: string;
-	icon: typeof LayoutDashboard;
-}> = [
-	{ tab: "overview", label: "Overview", icon: LayoutDashboard },
-	{ tab: "splits", label: "Splits", icon: SplitSquareVertical },
-	{ tab: "last-10", label: "Last 10", icon: ListOrdered },
-	{ tab: "compare", label: "Comparison", icon: GitCompareArrows },
+const TAB_ITEMS: Array<{ tab: PlayerTab; label: string }> = [
+	{ tab: "overview", label: "Overview" },
+	{ tab: "stats", label: "Stats" },
+	{ tab: "games", label: "Games" },
+	{ tab: "compare", label: "Comparison" },
 ];
 
 export function playerTabRoute(league: League, tab: PlayerTab) {
 	return tabRoute(leaguePlayerRoutes[league], PLAYER_TABS, tab);
 }
 
+/** The full game log, a page under the games tab */
+export function playerGameLogRoute(league: League) {
+	return `${playerTabRoute(league, "games")}/log`;
+}
+
 export interface PlayerDetailsData {
 	player: PlayerProfileData;
 	teammates: PlayerProfileData[];
-	allPlayers: PlayerProfileData[];
+	/** Null when the injury report can't say */
+	status: PlayerStatus | null;
 	league: League;
+	season: string;
 }
 
 const PlayerDetailsContext = createContext<PlayerDetailsData | null>(null);
@@ -63,56 +59,43 @@ export function PlayerDetailsLayout({
 	children,
 	...data
 }: PlayerDetailsLayoutProps) {
-	const { player, league } = data;
+	const { player, league, status } = data;
 
 	return (
 		<PlayerDetailsContext.Provider value={data}>
 			<AnimationProvider activeTab={activeTab}>
 				<div className="flex flex-col pb-16 lg:pb-24">
-					<PlayerHeader player={player} />
+					<PlayerHeader player={player} league={league} status={status} />
 
 					<div className="relative bg-background">
-						{/* Navigation row with full-width border */}
-						<div className="border-b border-border">
+						{/* Tab row, styled like the league section nav */}
+						<nav aria-label="Player sections" className="border-b border-border">
 							<div className="container">
-								<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
-									{/* Back link */}
-									<Link
-										to={leaguePlayersRoutes[league]}
-										className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors sm:w-30"
-									>
-										<ArrowLeft className="h-4 w-4" />
-										<span>Back to {leagueLabels[league]} players</span>
-									</Link>
-
-									{/* Tabs: each links to its own page */}
-									<Tabs value={activeTab} className="w-full sm:w-auto">
-										<TabsList className="w-full sm:w-auto">
-											{TAB_ITEMS.map(({ tab, label, icon: Icon }) => (
-												<TabsTrigger
-													key={tab}
-													value={tab}
-													className="flex-1 sm:flex-initial"
-													render={
-														<Link
-															to={playerTabRoute(league, tab)}
-															params={{ id: player.id }}
-															activeOptions={{ exact: true, includeSearch: false }}
-														/>
-													}
+								<ul className="-mb-px flex items-center gap-1 overflow-x-auto [scrollbar-width:none]">
+									{TAB_ITEMS.map(({ tab, label }) => {
+										const isActive = tab === activeTab;
+										return (
+											<li key={tab} className="shrink-0">
+												<Link
+													to={playerTabRoute(league, tab)}
+													params={{ id: player.id }}
+													activeOptions={{ exact: true, includeSearch: false }}
+													aria-current={isActive ? "page" : undefined}
+													className={cn(
+														"inline-flex border-b-2 px-3 py-2.5 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+														isActive
+															? "border-foreground text-foreground"
+															: "border-transparent text-muted-foreground hover:text-foreground",
+													)}
 												>
-													<Icon className="h-3.5 w-3.5 mr-1.5" />
 													{label}
-												</TabsTrigger>
-											))}
-										</TabsList>
-									</Tabs>
-
-									{/* Empty spacer for alignment */}
-									<div className="hidden sm:flex sm:w-30" />
-								</div>
+												</Link>
+											</li>
+										);
+									})}
+								</ul>
 							</div>
-						</div>
+						</nav>
 
 						<div className="container py-8">{children}</div>
 					</div>

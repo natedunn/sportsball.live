@@ -1,10 +1,17 @@
 import { v } from "convex/values";
-import { query, internalQuery } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import { loadPlayerInjuryReport } from "../injuries";
+import { query, internalQuery, type QueryCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
 import { getSeriesRecordForGame, isPlayoffGame } from "../shared/scoreboardSeries";
+import { buildGameLogRow, type PlayerGameLogRow } from "../shared/playerGameLog";
+import { assemblePlayerGames, playerGamesArgs } from "../shared/playerGames";
 import { countsTowardGameLog, getPreviousSeason } from "../shared/seasonHelpers";
-import { computePlayerSeasonRatings, playedInGame } from "../shared/statsCalculations";
+import {
+	calculateEfgPct,
+	computePlayerSeasonRatings,
+	playedInGame,
+} from "../shared/statsCalculations";
 
 // Get all games for a specific date (scoreboard)
 export const getScoreboard = query({
@@ -273,76 +280,89 @@ export const getTeamRoster = query({
 	},
 });
 
-type EnrichedPlayerEvent = {
-	minutes: number;
-	points: number;
-	rebounds: number;
-	assists: number;
-	blocks: number;
-	fgMade: number;
-	fgAttempted: number;
-	threeMade: number;
-	threeAttempted: number;
-	ftMade: number;
-	ftAttempted: number;
-	isHome: boolean;
-	gameLabel: string;
-	scheduledStart: number;
-};
-
 function safePct(made: number, attempted: number): number {
 	if (attempted <= 0) return 0;
 	return (made / attempted) * 100;
 }
 
-function aggregateEvents(events: EnrichedPlayerEvent[]) {
-	if (events.length === 0) {
-		return {
-			minutes: 0,
-			points: 0,
-			rebounds: 0,
-			assists: 0,
-			blocks: 0,
-			fgMade: 0,
-			fgAttempted: 0,
-			threeMade: 0,
-			threeAttempted: 0,
-			ftMade: 0,
-			ftAttempted: 0,
-		};
-	}
+type SeasonTeams = {
+	teamMap: Map<Id<"wnbaTeam">, Doc<"wnbaTeam">>;
+	abbreviationByEspnId: Map<string, string>;
+};
 
-	return events.reduce(
-		(acc, event) => {
-			acc.minutes += event.minutes;
-			acc.points += event.points;
-			acc.rebounds += event.rebounds;
-			acc.assists += event.assists;
-			acc.blocks += event.blocks;
-			acc.fgMade += event.fgMade;
-			acc.fgAttempted += event.fgAttempted;
-			acc.threeMade += event.threeMade;
-			acc.threeAttempted += event.threeAttempted;
-			acc.ftMade += event.ftMade;
-			acc.ftAttempted += event.ftAttempted;
-			return acc;
-		},
-		{
-			minutes: 0,
-			points: 0,
-			rebounds: 0,
-			assists: 0,
-			blocks: 0,
-			fgMade: 0,
-			fgAttempted: 0,
-			threeMade: 0,
-			threeAttempted: 0,
-			ftMade: 0,
-			ftAttempted: 0,
-		},
-	);
+async function loadSeasonTeams(ctx: QueryCtx, season: string): Promise<SeasonTeams> {
+	const teams = await ctx.db
+		.query("wnbaTeam")
+		.withIndex("by_season", (q) => q.eq("season", season))
+		.collect();
+	return {
+		teamMap: new Map(teams.map((team) => [team._id, team])),
+		abbreviationByEspnId: new Map(teams.map((team) => [team.espnTeamId, team.abbreviation])),
+	};
 }
 
+function toPlayerProfile(
+	entry: Doc<"wnbaPlayer">,
+	{ teamMap, abbreviationByEspnId }: SeasonTeams,
+	overrides?: Record<string, unknown>,
+) {
+	const team = teamMap.get(entry.teamId);
+	return {
+		id: entry.espnPlayerId,
+		name: entry.name,
+		team: team?.abbreviation ?? "UNK",
+		position: entry.position ?? "",
+		headshot: entry.headshot,
+		bio: {
+			birthDate: entry.birthDate,
+			age: entry.age,
+			college: entry.college ?? "Unknown",
+			// undefined: unknown; null: undrafted
+			draft: entry.draft
+				? {
+						year: entry.draft.year,
+						round: entry.draft.round,
+						pick: entry.draft.pick,
+						team: entry.draft.teamEspnId
+							? abbreviationByEspnId.get(entry.draft.teamEspnId)
+							: undefined,
+					}
+				: entry.draft,
+			// ESPN's season count, this one included (0 for rookies)
+			experienceYears:
+				entry.experience !== undefined && Number.isFinite(Number(entry.experience))
+					? Number(entry.experience)
+					: undefined,
+			height: entry.height ?? "Unknown",
+			weight: entry.weight ?? "Unknown",
+		},
+		basicStats: {
+			games: entry.gamesPlayed ?? 0,
+			points: entry.pointsPerGame ?? 0,
+			rebounds: entry.reboundsPerGame ?? 0,
+			assists: entry.assistsPerGame ?? 0,
+			steals: entry.stealsPerGame ?? 0,
+			blocks: entry.blocksPerGame ?? 0,
+			minutes: entry.minutesPerGame ?? 0,
+			turnovers: entry.turnoversPerGame ?? 0,
+		},
+		// From season totals, not averaged per-game percentages
+		shooting: {
+			fieldGoalPct: safePct(entry.totalFgMade ?? 0, entry.totalFgAttempted ?? 0),
+			threePointPct: safePct(entry.totalThreeMade ?? 0, entry.totalThreeAttempted ?? 0),
+			freeThrowPct: safePct(entry.totalFtMade ?? 0, entry.totalFtAttempted ?? 0),
+			effectiveFgPct: calculateEfgPct(
+				entry.totalFgMade ?? 0,
+				entry.totalThreeMade ?? 0,
+				entry.totalFgAttempted ?? 0,
+			),
+		},
+		calculatedStats: computePlayerSeasonRatings(entry),
+		...overrides,
+	};
+}
+
+// Get a player's season profile and their current teammates
 export const getPlayerDetails = query({
 	args: { season: v.string(), espnPlayerId: v.string() },
 	handler: async (ctx, args) => {
@@ -355,172 +375,229 @@ export const getPlayerDetails = query({
 
 		if (!player) return null;
 
-		const allSeasonPlayers = await ctx.db
-			.query("wnbaPlayer")
-			.withIndex("by_season", (q) => q.eq("season", args.season))
-			.collect();
+		const [seasonTeams, teamPlayers, injuryReport] = await Promise.all([
+			loadSeasonTeams(ctx, args.season),
+			ctx.db
+				.query("wnbaPlayer")
+				.withIndex("by_teamId", (q) => q.eq("teamId", player.teamId))
+				.collect(),
+			loadPlayerInjuryReport(ctx, "wnba", args.espnPlayerId),
+		]);
 
-		const teamIds = Array.from(new Set(allSeasonPlayers.map((p) => p.teamId)));
-		const teams = await Promise.all(teamIds.map((teamId) => ctx.db.get(teamId)));
-		const teamMap = new Map(teams.filter(Boolean).map((team) => [team!._id, team!]));
-		const abbreviationByEspnId = new Map(
-			teams.filter(Boolean).map((team) => [team!.espnTeamId, team!.abbreviation]),
+		const teammates = teamPlayers
+			.filter(
+				(p) =>
+					p.season === args.season && p._id !== player._id && p.onRoster !== false,
+			)
+			.map((p) => toPlayerProfile(p, seasonTeams));
+
+		return {
+			player: toPlayerProfile(player, seasonTeams),
+			teammates,
+			injuryReport,
+		};
+	},
+});
+
+// One player's season profile, for the comparison tab
+export const getPlayerProfile = query({
+	args: { season: v.string(), espnPlayerId: v.string() },
+	handler: async (ctx, args) => {
+		const player = await ctx.db
+			.query("wnbaPlayer")
+			.withIndex("by_espnPlayerId_season", (q) =>
+				q.eq("espnPlayerId", args.espnPlayerId).eq("season", args.season),
+			)
+			.unique();
+		if (!player) return null;
+		return toPlayerProfile(player, await loadSeasonTeams(ctx, args.season));
+	},
+});
+
+// One page of the player's games, played and missed, with their availability
+// for the season. Reads their own lines and their team's schedule, not the box
+// scores of every game, so it's cheap enough for the games tab to load every time.
+export const getPlayerGames = query({
+	args: { season: v.string(), espnPlayerId: v.string(), ...playerGamesArgs },
+	handler: async (ctx, { season, espnPlayerId, ...options }) => {
+		const player = await ctx.db
+			.query("wnbaPlayer")
+			.withIndex("by_espnPlayerId_season", (q) =>
+				q.eq("espnPlayerId", espnPlayerId).eq("season", season),
+			)
+			.unique();
+		if (!player) return null;
+
+		const [lines, home, away, absences, reports] = await Promise.all([
+			ctx.db
+				.query("wnbaPlayerEvent")
+				.withIndex("by_playerId", (q) => q.eq("playerId", player._id))
+				.collect(),
+			ctx.db
+				.query("wnbaGameEvent")
+				.withIndex("by_homeTeam_season", (q) => q.eq("homeTeamId", player.teamId).eq("season", season))
+				.collect(),
+			ctx.db
+				.query("wnbaGameEvent")
+				.withIndex("by_awayTeam_season", (q) => q.eq("awayTeamId", player.teamId).eq("season", season))
+				.collect(),
+			ctx.db
+				.query("gameAbsences")
+				.withIndex("by_league_season_player", (q) =>
+					q.eq("league", "wnba").eq("season", season).eq("espnPlayerId", espnPlayerId),
+				)
+				.collect(),
+			ctx.db
+				.query("injuryLog")
+				.withIndex("by_league_player", (q) => q.eq("league", "wnba").eq("espnPlayerId", espnPlayerId))
+				.collect(),
+		]);
+
+		const schedule = [...home, ...away];
+		const scheduleById = new Map(schedule.map((game) => [game._id, game]));
+		const played = await Promise.all(
+			lines.filter(playedInGame).map(async (line) => {
+				// Only a game for a former team isn't on the schedule
+				const game = scheduleById.get(line.gameEventId) ?? (await ctx.db.get(line.gameEventId));
+				return countsTowardGameLog(game) ? [{ game, line }] : [];
+			}),
 		);
 
-		const mapToProfile = (entry: Doc<"wnbaPlayer">, overrides?: Record<string, unknown>) => {
-			const team = teamMap.get(entry.teamId);
-			return {
-				id: entry.espnPlayerId,
-				name: entry.name,
-				team: team?.abbreviation ?? "UNK",
-				position: entry.position ?? "",
-				bio: {
-					birthDate: entry.birthDate,
-					age: entry.age,
-					college: entry.college ?? "Unknown",
-					// undefined: unknown; null: undrafted
-					draft: entry.draft
-						? {
-								year: entry.draft.year,
-								round: entry.draft.round,
-								pick: entry.draft.pick,
-								team: entry.draft.teamEspnId
-									? abbreviationByEspnId.get(entry.draft.teamEspnId)
-									: undefined,
-							}
-						: entry.draft,
-					// ESPN's season count, this one included (0 for rookies)
-					experienceYears:
-						entry.experience !== undefined && Number.isFinite(Number(entry.experience))
-							? Number(entry.experience)
-							: undefined,
-					height: entry.height ?? "Unknown",
-					weight: entry.weight ?? "Unknown",
-					status: "Active" as const,
-				},
-				basicStats: {
-					games: entry.gamesPlayed ?? 0,
-					points: entry.pointsPerGame ?? 0,
-					rebounds: entry.reboundsPerGame ?? 0,
-					assists: entry.assistsPerGame ?? 0,
-					steals: entry.stealsPerGame ?? 0,
-					blocks: entry.blocksPerGame ?? 0,
-				},
-				calculatedStats: computePlayerSeasonRatings(entry),
-				splits: [],
-				lastTen: [],
-				teammateIds: [],
-				...overrides,
-			};
-		};
+		const scheduledIds = new Set(schedule.map((game) => game.espnGameId));
+		const formerGames = await Promise.all(
+			absences
+				.filter((absence) => !scheduledIds.has(absence.espnGameId))
+				.map(async (absence) => {
+					const game = await ctx.db
+						.query("wnbaGameEvent")
+						.withIndex("by_espnGameId", (q) => q.eq("espnGameId", absence.espnGameId))
+						.unique();
+					if (!game) return [];
+					const homeTeam = await ctx.db.get(game.homeTeamId);
+					const teamId = homeTeam?.espnTeamId === absence.espnTeamId ? game.homeTeamId : game.awayTeamId;
+					return [{ game, teamId }];
+				}),
+		);
 
-		const teammateIds = allSeasonPlayers
-			.filter((p) => p.teamId === player.teamId && p._id !== player._id && p.onRoster !== false)
-			.map((p) => p.espnPlayerId);
+		return assemblePlayerGames({
+			currentTeamId: player.teamId,
+			played: played.flat(),
+			schedule,
+			formerGames: formerGames.flat(),
+			absences,
+			reports,
+			options,
+			abbreviationFor: async (teamId) => (await ctx.db.get(teamId))?.abbreviation,
+		});
+	},
+});
 
-		const playerEvents = await ctx.db
+// Every game the player appeared in this season, with both teams' box score
+// totals, for the stats tab and the game performance dialog
+export const getPlayerGameLog = query({
+	args: { season: v.string(), espnPlayerId: v.string() },
+	handler: async (ctx, args) => {
+		const player = await ctx.db
+			.query("wnbaPlayer")
+			.withIndex("by_espnPlayerId_season", (q) =>
+				q.eq("espnPlayerId", args.espnPlayerId).eq("season", args.season),
+			)
+			.unique();
+		if (!player) return null;
+
+		const lines = await ctx.db
 			.query("wnbaPlayerEvent")
 			.withIndex("by_playerId", (q) => q.eq("playerId", player._id))
 			.collect();
 
-		const enrichedEvents: EnrichedPlayerEvent[] = (
-			await Promise.all(
-				playerEvents.map(async (event) => {
-					// Splits and the game log cover every game the player appeared in,
-					// playoffs included
-					if (!playedInGame(event)) return null;
-					const game = await ctx.db.get(event.gameEventId);
-					if (!countsTowardGameLog(game)) return null;
-
-					const isHome = game.homeTeamId === player.teamId;
-					const opponentId = isHome ? game.awayTeamId : game.homeTeamId;
-					const opponent = await ctx.db.get(opponentId);
-
-					return {
-						minutes: event.minutes,
-						points: event.points,
-						rebounds: event.totalRebounds,
-						assists: event.assists,
-						blocks: event.blocks,
-						fgMade: event.fieldGoalsMade,
-						fgAttempted: event.fieldGoalsAttempted,
-						threeMade: event.threePointMade,
-						threeAttempted: event.threePointAttempted,
-						ftMade: event.freeThrowsMade,
-						ftAttempted: event.freeThrowsAttempted,
-						isHome,
-						gameLabel: `${isHome ? "vs" : "@"} ${opponent?.abbreviation ?? "UNK"}`,
-						scheduledStart: game.scheduledStart,
-					};
-				}),
-			)
-		).filter((event): event is EnrichedPlayerEvent => event !== null);
-
-		enrichedEvents.sort((a, b) => b.scheduledStart - a.scheduledStart);
-		const lastGame = enrichedEvents[0];
-		const last10Events = enrichedEvents.slice(0, 10);
-		const homeEvents = enrichedEvents.filter((event) => event.isHome);
-		const roadEvents = enrichedEvents.filter((event) => !event.isHome);
-
-		const makeSplit = (label: string, events: EnrichedPlayerEvent[]) => {
-			const totals = aggregateEvents(events);
-			const count = Math.max(events.length, 1);
-			return {
-				label,
-				minutes: totals.minutes / count,
-				points: totals.points / count,
-				rebounds: totals.rebounds / count,
-				assists: totals.assists / count,
-				fieldGoalPct: safePct(totals.fgMade, totals.fgAttempted),
-				threePointPct: safePct(totals.threeMade, totals.threeAttempted),
-				freeThrowPct: safePct(totals.ftMade, totals.ftAttempted),
-			};
+		const teamAbbreviations = new Map<string, string>();
+		const abbreviationFor = async (teamId: Id<"wnbaTeam">) => {
+			const cached = teamAbbreviations.get(teamId);
+			if (cached) return cached;
+			const team = await ctx.db.get(teamId);
+			const abbreviation = team?.abbreviation ?? "UNK";
+			teamAbbreviations.set(teamId, abbreviation);
+			return abbreviation;
 		};
 
-		const splits = [
-			lastGame
-				? {
-						label: "Last Game",
-						minutes: lastGame.minutes,
-						points: lastGame.points,
-						rebounds: lastGame.rebounds,
-						assists: lastGame.assists,
-						fieldGoalPct: safePct(lastGame.fgMade, lastGame.fgAttempted),
-						threePointPct: safePct(lastGame.threeMade, lastGame.threeAttempted),
-						freeThrowPct: safePct(lastGame.ftMade, lastGame.ftAttempted),
-					}
-				: makeSplit("Last Game", []),
-			makeSplit("Last 10", last10Events),
-			makeSplit("Home", homeEvents),
-			makeSplit("Road", roadEvents),
-		];
+		const rows = await Promise.all(
+			lines.map(async (line) => {
+				if (!playedInGame(line)) return null;
+				const game = await ctx.db.get(line.gameEventId);
+				if (!countsTowardGameLog(game)) return null;
 
-		const lastTen = last10Events.map((event) => ({
-			gameLabel: event.gameLabel,
-			minutes: event.minutes,
-			fieldGoalPct: safePct(event.fgMade, event.fgAttempted),
-			threePointPct: safePct(event.threeMade, event.threeAttempted),
-			freeThrowPct: safePct(event.ftMade, event.ftAttempted),
-			rebounds: event.rebounds,
-			assists: event.assists,
-			blocks: event.blocks,
-			points: event.points,
-		}));
+				// The team the player played for that night (they may have been traded since)
+				const isHome = game.homeTeamId === line.teamId;
+				const opponentId = isHome ? game.awayTeamId : game.homeTeamId;
+				const [teamEvents, gameLines, opponent, team] = await Promise.all([
+					ctx.db
+						.query("wnbaTeamEvent")
+						.withIndex("by_gameEventId", (q) => q.eq("gameEventId", game._id))
+						.collect(),
+					ctx.db
+						.query("wnbaPlayerEvent")
+						.withIndex("by_gameEventId", (q) => q.eq("gameEventId", game._id))
+						.collect(),
+					abbreviationFor(opponentId),
+					abbreviationFor(line.teamId),
+				]);
+				const teamEvent = teamEvents.find((event) => event.teamId === line.teamId);
+				const oppEvent = teamEvents.find((event) => event.teamId === opponentId);
+				if (!teamEvent || !oppEvent) return null;
 
-		const playerProfile = mapToProfile(player, {
-			teammateIds,
-			splits,
-			lastTen,
-		});
+				const minutesFor = (teamId: Id<"wnbaTeam">) =>
+					gameLines
+						.filter((entry) => entry.teamId === teamId)
+						.reduce((sum, entry) => sum + entry.minutes, 0);
 
-		const allPlayers = allSeasonPlayers.map((entry) => mapToProfile(entry));
+				return buildGameLogRow({
+					game,
+					line,
+					isHome,
+					team,
+					opponent,
+					teamEvent,
+					oppEvent,
+					teamMinutes: minutesFor(line.teamId),
+					oppMinutes: minutesFor(opponentId),
+				});
+			}),
+		);
 
-		return {
-			player: playerProfile,
-			allPlayers,
-		};
+		return rows
+			.filter((row): row is PlayerGameLogRow => row !== null)
+			.sort((a, b) => b.scheduledStart - a.scheduledStart);
 	},
 });
+
+// Players matching a name, for the comparison tab's search
+export const searchPlayers = query({
+	args: { season: v.string(), term: v.string() },
+	handler: async (ctx, args) => {
+		const term = args.term.trim();
+		if (!term) return [];
+
+		const players = await ctx.db
+			.query("wnbaPlayer")
+			.withSearchIndex("search_name", (q) =>
+				q.search("name", term).eq("season", args.season),
+			)
+			.take(10);
+
+		return Promise.all(
+			players.map(async (player) => {
+				const team = await ctx.db.get(player.teamId);
+				return {
+					id: player.espnPlayerId,
+					name: player.name,
+					team: team?.abbreviation ?? "UNK",
+					position: player.position ?? "",
+				};
+			}),
+		);
+	},
+});
+
 
 export const getPlayersPaginated = query({
 	args: {

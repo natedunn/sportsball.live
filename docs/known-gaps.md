@@ -63,6 +63,8 @@ Unit tests cover parsing and calculations. The sync, recalculation and roster ac
 - **Postponed games come through as "post" with an all-zero box score.** This is now handled (`mapApiStateToEventStatus`), and the health check flags any game final here but not on ESPN.
 - **A suspended game can stay "in progress" on ESPN forever.** G League 401819319 (2026-02-24, WES at CLC) shows 4:55 left in the 1st quarter. We mirror ESPN, so it doesn't count.
 
+- **A player's reason for missing a game can be unknown.** ESPN's box score lists a reason only for players who dressed; long-term injured and two-way players on assignment aren't on it, and ESPN keeps no injury history. The player page's games tab falls back to our injury log, then to "likely injury" for usual starters, then "reason unknown". There's no record of when a player joined a team, so a late signing shows as missing the team's earlier games. The log starts when it was deployed, so only the box score explains earlier games.
+
 ## Data left as is
 
 - **NBA 2025-26 Cup final (401809839)** was stored before `competitionType` existed, so it counts toward 2025-26 regular-season averages. Past seasons aren't shown in the app. Re-syncing that date through the schedule sync would tag it.

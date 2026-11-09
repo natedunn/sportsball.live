@@ -67,8 +67,8 @@ import { Route as DefaultWnbaTeamTeamIdTrendsRouteImport } from './routes/_defau
 import { Route as DefaultWnbaTeamTeamIdStatsRouteImport } from './routes/_default/wnba/team/$teamId/stats'
 import { Route as DefaultWnbaTeamTeamIdRosterRouteImport } from './routes/_default/wnba/team/$teamId/roster'
 import { Route as DefaultWnbaTeamTeamIdGamesRouteImport } from './routes/_default/wnba/team/$teamId/games'
-import { Route as DefaultWnbaPlayerIdSplitsRouteImport } from './routes/_default/wnba/player/$id/splits'
-import { Route as DefaultWnbaPlayerIdLast10RouteImport } from './routes/_default/wnba/player/$id/last-10'
+import { Route as DefaultWnbaPlayerIdStatsRouteImport } from './routes/_default/wnba/player/$id/stats'
+import { Route as DefaultWnbaPlayerIdGamesRouteImport } from './routes/_default/wnba/player/$id/games'
 import { Route as DefaultWnbaPlayerIdCompareRouteImport } from './routes/_default/wnba/player/$id/compare'
 import { Route as DefaultWnbaGameGameIdTeamStatsRouteImport } from './routes/_default/wnba/game/$gameId/team-stats'
 import { Route as DefaultWnbaGameGameIdMatchupsRouteImport } from './routes/_default/wnba/game/$gameId/matchups'
@@ -76,8 +76,8 @@ import { Route as DefaultNbaTeamTeamIdTrendsRouteImport } from './routes/_defaul
 import { Route as DefaultNbaTeamTeamIdStatsRouteImport } from './routes/_default/nba/team/$teamId/stats'
 import { Route as DefaultNbaTeamTeamIdRosterRouteImport } from './routes/_default/nba/team/$teamId/roster'
 import { Route as DefaultNbaTeamTeamIdGamesRouteImport } from './routes/_default/nba/team/$teamId/games'
-import { Route as DefaultNbaPlayerIdSplitsRouteImport } from './routes/_default/nba/player/$id/splits'
-import { Route as DefaultNbaPlayerIdLast10RouteImport } from './routes/_default/nba/player/$id/last-10'
+import { Route as DefaultNbaPlayerIdStatsRouteImport } from './routes/_default/nba/player/$id/stats'
+import { Route as DefaultNbaPlayerIdGamesRouteImport } from './routes/_default/nba/player/$id/games'
 import { Route as DefaultNbaPlayerIdCompareRouteImport } from './routes/_default/nba/player/$id/compare'
 import { Route as DefaultNbaGameGameIdTeamStatsRouteImport } from './routes/_default/nba/game/$gameId/team-stats'
 import { Route as DefaultNbaGameGameIdMatchupsRouteImport } from './routes/_default/nba/game/$gameId/matchups'
@@ -85,11 +85,15 @@ import { Route as DefaultGleagueTeamTeamIdTrendsRouteImport } from './routes/_de
 import { Route as DefaultGleagueTeamTeamIdStatsRouteImport } from './routes/_default/gleague/team/$teamId/stats'
 import { Route as DefaultGleagueTeamTeamIdRosterRouteImport } from './routes/_default/gleague/team/$teamId/roster'
 import { Route as DefaultGleagueTeamTeamIdGamesRouteImport } from './routes/_default/gleague/team/$teamId/games'
-import { Route as DefaultGleaguePlayerIdSplitsRouteImport } from './routes/_default/gleague/player/$id/splits'
-import { Route as DefaultGleaguePlayerIdLast10RouteImport } from './routes/_default/gleague/player/$id/last-10'
+import { Route as DefaultGleaguePlayerIdStatsRouteImport } from './routes/_default/gleague/player/$id/stats'
+import { Route as DefaultGleaguePlayerIdGamesRouteImport } from './routes/_default/gleague/player/$id/games'
 import { Route as DefaultGleaguePlayerIdCompareRouteImport } from './routes/_default/gleague/player/$id/compare'
 import { Route as DefaultGleagueGameGameIdTeamStatsRouteImport } from './routes/_default/gleague/game/$gameId/team-stats'
 import { Route as DefaultGleagueGameGameIdMatchupsRouteImport } from './routes/_default/gleague/game/$gameId/matchups'
+import { Route as DefaultWnbaPlayerIdGamesLogRouteImport } from './routes/_default/wnba/player/$id/games_.log'
+import { Route as DefaultNbaPlayerIdGamesLogRouteImport } from './routes/_default/nba/player/$id/games_.log'
+import { Route as DefaultGleaguePlayerIdGamesLogRouteImport } from './routes/_default/gleague/player/$id/games_.log'
+import { Route as ApiOgLeaguePlayerPlayerIdGameGameIdRouteImport } from './routes/api/og/$league/player/$playerId/game/$gameId'
 
 const DefaultRouteRoute = DefaultRouteRouteImport.update({
   id: '/_default',
@@ -405,16 +409,16 @@ const DefaultWnbaTeamTeamIdGamesRoute =
     path: '/games',
     getParentRoute: () => DefaultWnbaTeamTeamIdRouteRoute,
   } as any)
-const DefaultWnbaPlayerIdSplitsRoute =
-  DefaultWnbaPlayerIdSplitsRouteImport.update({
-    id: '/splits',
-    path: '/splits',
+const DefaultWnbaPlayerIdStatsRoute =
+  DefaultWnbaPlayerIdStatsRouteImport.update({
+    id: '/stats',
+    path: '/stats',
     getParentRoute: () => DefaultWnbaPlayerIdRouteRoute,
   } as any)
-const DefaultWnbaPlayerIdLast10Route =
-  DefaultWnbaPlayerIdLast10RouteImport.update({
-    id: '/last-10',
-    path: '/last-10',
+const DefaultWnbaPlayerIdGamesRoute =
+  DefaultWnbaPlayerIdGamesRouteImport.update({
+    id: '/games',
+    path: '/games',
     getParentRoute: () => DefaultWnbaPlayerIdRouteRoute,
   } as any)
 const DefaultWnbaPlayerIdCompareRoute =
@@ -459,18 +463,16 @@ const DefaultNbaTeamTeamIdGamesRoute =
     path: '/games',
     getParentRoute: () => DefaultNbaTeamTeamIdRouteRoute,
   } as any)
-const DefaultNbaPlayerIdSplitsRoute =
-  DefaultNbaPlayerIdSplitsRouteImport.update({
-    id: '/splits',
-    path: '/splits',
-    getParentRoute: () => DefaultNbaPlayerIdRouteRoute,
-  } as any)
-const DefaultNbaPlayerIdLast10Route =
-  DefaultNbaPlayerIdLast10RouteImport.update({
-    id: '/last-10',
-    path: '/last-10',
-    getParentRoute: () => DefaultNbaPlayerIdRouteRoute,
-  } as any)
+const DefaultNbaPlayerIdStatsRoute = DefaultNbaPlayerIdStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => DefaultNbaPlayerIdRouteRoute,
+} as any)
+const DefaultNbaPlayerIdGamesRoute = DefaultNbaPlayerIdGamesRouteImport.update({
+  id: '/games',
+  path: '/games',
+  getParentRoute: () => DefaultNbaPlayerIdRouteRoute,
+} as any)
 const DefaultNbaPlayerIdCompareRoute =
   DefaultNbaPlayerIdCompareRouteImport.update({
     id: '/compare',
@@ -513,16 +515,16 @@ const DefaultGleagueTeamTeamIdGamesRoute =
     path: '/games',
     getParentRoute: () => DefaultGleagueTeamTeamIdRouteRoute,
   } as any)
-const DefaultGleaguePlayerIdSplitsRoute =
-  DefaultGleaguePlayerIdSplitsRouteImport.update({
-    id: '/splits',
-    path: '/splits',
+const DefaultGleaguePlayerIdStatsRoute =
+  DefaultGleaguePlayerIdStatsRouteImport.update({
+    id: '/stats',
+    path: '/stats',
     getParentRoute: () => DefaultGleaguePlayerIdRouteRoute,
   } as any)
-const DefaultGleaguePlayerIdLast10Route =
-  DefaultGleaguePlayerIdLast10RouteImport.update({
-    id: '/last-10',
-    path: '/last-10',
+const DefaultGleaguePlayerIdGamesRoute =
+  DefaultGleaguePlayerIdGamesRouteImport.update({
+    id: '/games',
+    path: '/games',
     getParentRoute: () => DefaultGleaguePlayerIdRouteRoute,
   } as any)
 const DefaultGleaguePlayerIdCompareRoute =
@@ -542,6 +544,30 @@ const DefaultGleagueGameGameIdMatchupsRoute =
     id: '/matchups',
     path: '/matchups',
     getParentRoute: () => DefaultGleagueGameGameIdRouteRoute,
+  } as any)
+const DefaultWnbaPlayerIdGamesLogRoute =
+  DefaultWnbaPlayerIdGamesLogRouteImport.update({
+    id: '/games_/log',
+    path: '/games/log',
+    getParentRoute: () => DefaultWnbaPlayerIdRouteRoute,
+  } as any)
+const DefaultNbaPlayerIdGamesLogRoute =
+  DefaultNbaPlayerIdGamesLogRouteImport.update({
+    id: '/games_/log',
+    path: '/games/log',
+    getParentRoute: () => DefaultNbaPlayerIdRouteRoute,
+  } as any)
+const DefaultGleaguePlayerIdGamesLogRoute =
+  DefaultGleaguePlayerIdGamesLogRouteImport.update({
+    id: '/games_/log',
+    path: '/games/log',
+    getParentRoute: () => DefaultGleaguePlayerIdRouteRoute,
+  } as any)
+const ApiOgLeaguePlayerPlayerIdGameGameIdRoute =
+  ApiOgLeaguePlayerPlayerIdGameGameIdRouteImport.update({
+    id: '/api/og/$league/player/$playerId/game/$gameId',
+    path: '/api/og/$league/player/$playerId/game/$gameId',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -590,8 +616,8 @@ export interface FileRoutesByFullPath {
   '/gleague/game/$gameId/matchups': typeof DefaultGleagueGameGameIdMatchupsRoute
   '/gleague/game/$gameId/team-stats': typeof DefaultGleagueGameGameIdTeamStatsRoute
   '/gleague/player/$id/compare': typeof DefaultGleaguePlayerIdCompareRoute
-  '/gleague/player/$id/last-10': typeof DefaultGleaguePlayerIdLast10Route
-  '/gleague/player/$id/splits': typeof DefaultGleaguePlayerIdSplitsRoute
+  '/gleague/player/$id/games': typeof DefaultGleaguePlayerIdGamesRoute
+  '/gleague/player/$id/stats': typeof DefaultGleaguePlayerIdStatsRoute
   '/gleague/team/$teamId/games': typeof DefaultGleagueTeamTeamIdGamesRoute
   '/gleague/team/$teamId/roster': typeof DefaultGleagueTeamTeamIdRosterRoute
   '/gleague/team/$teamId/stats': typeof DefaultGleagueTeamTeamIdStatsRoute
@@ -599,8 +625,8 @@ export interface FileRoutesByFullPath {
   '/nba/game/$gameId/matchups': typeof DefaultNbaGameGameIdMatchupsRoute
   '/nba/game/$gameId/team-stats': typeof DefaultNbaGameGameIdTeamStatsRoute
   '/nba/player/$id/compare': typeof DefaultNbaPlayerIdCompareRoute
-  '/nba/player/$id/last-10': typeof DefaultNbaPlayerIdLast10Route
-  '/nba/player/$id/splits': typeof DefaultNbaPlayerIdSplitsRoute
+  '/nba/player/$id/games': typeof DefaultNbaPlayerIdGamesRoute
+  '/nba/player/$id/stats': typeof DefaultNbaPlayerIdStatsRoute
   '/nba/team/$teamId/games': typeof DefaultNbaTeamTeamIdGamesRoute
   '/nba/team/$teamId/roster': typeof DefaultNbaTeamTeamIdRosterRoute
   '/nba/team/$teamId/stats': typeof DefaultNbaTeamTeamIdStatsRoute
@@ -608,8 +634,8 @@ export interface FileRoutesByFullPath {
   '/wnba/game/$gameId/matchups': typeof DefaultWnbaGameGameIdMatchupsRoute
   '/wnba/game/$gameId/team-stats': typeof DefaultWnbaGameGameIdTeamStatsRoute
   '/wnba/player/$id/compare': typeof DefaultWnbaPlayerIdCompareRoute
-  '/wnba/player/$id/last-10': typeof DefaultWnbaPlayerIdLast10Route
-  '/wnba/player/$id/splits': typeof DefaultWnbaPlayerIdSplitsRoute
+  '/wnba/player/$id/games': typeof DefaultWnbaPlayerIdGamesRoute
+  '/wnba/player/$id/stats': typeof DefaultWnbaPlayerIdStatsRoute
   '/wnba/team/$teamId/games': typeof DefaultWnbaTeamTeamIdGamesRoute
   '/wnba/team/$teamId/roster': typeof DefaultWnbaTeamTeamIdRosterRoute
   '/wnba/team/$teamId/stats': typeof DefaultWnbaTeamTeamIdStatsRoute
@@ -625,6 +651,10 @@ export interface FileRoutesByFullPath {
   '/wnba/game/$gameId/': typeof DefaultWnbaGameGameIdIndexRoute
   '/wnba/player/$id/': typeof DefaultWnbaPlayerIdIndexRoute
   '/wnba/team/$teamId/': typeof DefaultWnbaTeamTeamIdIndexRoute
+  '/gleague/player/$id/games/log': typeof DefaultGleaguePlayerIdGamesLogRoute
+  '/nba/player/$id/games/log': typeof DefaultNbaPlayerIdGamesLogRoute
+  '/wnba/player/$id/games/log': typeof DefaultWnbaPlayerIdGamesLogRoute
+  '/api/og/$league/player/$playerId/game/$gameId': typeof ApiOgLeaguePlayerPlayerIdGameGameIdRoute
 }
 export interface FileRoutesByTo {
   '/cookies': typeof DefaultCookiesRoute
@@ -663,8 +693,8 @@ export interface FileRoutesByTo {
   '/gleague/game/$gameId/matchups': typeof DefaultGleagueGameGameIdMatchupsRoute
   '/gleague/game/$gameId/team-stats': typeof DefaultGleagueGameGameIdTeamStatsRoute
   '/gleague/player/$id/compare': typeof DefaultGleaguePlayerIdCompareRoute
-  '/gleague/player/$id/last-10': typeof DefaultGleaguePlayerIdLast10Route
-  '/gleague/player/$id/splits': typeof DefaultGleaguePlayerIdSplitsRoute
+  '/gleague/player/$id/games': typeof DefaultGleaguePlayerIdGamesRoute
+  '/gleague/player/$id/stats': typeof DefaultGleaguePlayerIdStatsRoute
   '/gleague/team/$teamId/games': typeof DefaultGleagueTeamTeamIdGamesRoute
   '/gleague/team/$teamId/roster': typeof DefaultGleagueTeamTeamIdRosterRoute
   '/gleague/team/$teamId/stats': typeof DefaultGleagueTeamTeamIdStatsRoute
@@ -672,8 +702,8 @@ export interface FileRoutesByTo {
   '/nba/game/$gameId/matchups': typeof DefaultNbaGameGameIdMatchupsRoute
   '/nba/game/$gameId/team-stats': typeof DefaultNbaGameGameIdTeamStatsRoute
   '/nba/player/$id/compare': typeof DefaultNbaPlayerIdCompareRoute
-  '/nba/player/$id/last-10': typeof DefaultNbaPlayerIdLast10Route
-  '/nba/player/$id/splits': typeof DefaultNbaPlayerIdSplitsRoute
+  '/nba/player/$id/games': typeof DefaultNbaPlayerIdGamesRoute
+  '/nba/player/$id/stats': typeof DefaultNbaPlayerIdStatsRoute
   '/nba/team/$teamId/games': typeof DefaultNbaTeamTeamIdGamesRoute
   '/nba/team/$teamId/roster': typeof DefaultNbaTeamTeamIdRosterRoute
   '/nba/team/$teamId/stats': typeof DefaultNbaTeamTeamIdStatsRoute
@@ -681,8 +711,8 @@ export interface FileRoutesByTo {
   '/wnba/game/$gameId/matchups': typeof DefaultWnbaGameGameIdMatchupsRoute
   '/wnba/game/$gameId/team-stats': typeof DefaultWnbaGameGameIdTeamStatsRoute
   '/wnba/player/$id/compare': typeof DefaultWnbaPlayerIdCompareRoute
-  '/wnba/player/$id/last-10': typeof DefaultWnbaPlayerIdLast10Route
-  '/wnba/player/$id/splits': typeof DefaultWnbaPlayerIdSplitsRoute
+  '/wnba/player/$id/games': typeof DefaultWnbaPlayerIdGamesRoute
+  '/wnba/player/$id/stats': typeof DefaultWnbaPlayerIdStatsRoute
   '/wnba/team/$teamId/games': typeof DefaultWnbaTeamTeamIdGamesRoute
   '/wnba/team/$teamId/roster': typeof DefaultWnbaTeamTeamIdRosterRoute
   '/wnba/team/$teamId/stats': typeof DefaultWnbaTeamTeamIdStatsRoute
@@ -698,6 +728,10 @@ export interface FileRoutesByTo {
   '/wnba/game/$gameId': typeof DefaultWnbaGameGameIdIndexRoute
   '/wnba/player/$id': typeof DefaultWnbaPlayerIdIndexRoute
   '/wnba/team/$teamId': typeof DefaultWnbaTeamTeamIdIndexRoute
+  '/gleague/player/$id/games/log': typeof DefaultGleaguePlayerIdGamesLogRoute
+  '/nba/player/$id/games/log': typeof DefaultNbaPlayerIdGamesLogRoute
+  '/wnba/player/$id/games/log': typeof DefaultWnbaPlayerIdGamesLogRoute
+  '/api/og/$league/player/$playerId/game/$gameId': typeof ApiOgLeaguePlayerPlayerIdGameGameIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -747,8 +781,8 @@ export interface FileRoutesById {
   '/_default/gleague/game/$gameId/matchups': typeof DefaultGleagueGameGameIdMatchupsRoute
   '/_default/gleague/game/$gameId/team-stats': typeof DefaultGleagueGameGameIdTeamStatsRoute
   '/_default/gleague/player/$id/compare': typeof DefaultGleaguePlayerIdCompareRoute
-  '/_default/gleague/player/$id/last-10': typeof DefaultGleaguePlayerIdLast10Route
-  '/_default/gleague/player/$id/splits': typeof DefaultGleaguePlayerIdSplitsRoute
+  '/_default/gleague/player/$id/games': typeof DefaultGleaguePlayerIdGamesRoute
+  '/_default/gleague/player/$id/stats': typeof DefaultGleaguePlayerIdStatsRoute
   '/_default/gleague/team/$teamId/games': typeof DefaultGleagueTeamTeamIdGamesRoute
   '/_default/gleague/team/$teamId/roster': typeof DefaultGleagueTeamTeamIdRosterRoute
   '/_default/gleague/team/$teamId/stats': typeof DefaultGleagueTeamTeamIdStatsRoute
@@ -756,8 +790,8 @@ export interface FileRoutesById {
   '/_default/nba/game/$gameId/matchups': typeof DefaultNbaGameGameIdMatchupsRoute
   '/_default/nba/game/$gameId/team-stats': typeof DefaultNbaGameGameIdTeamStatsRoute
   '/_default/nba/player/$id/compare': typeof DefaultNbaPlayerIdCompareRoute
-  '/_default/nba/player/$id/last-10': typeof DefaultNbaPlayerIdLast10Route
-  '/_default/nba/player/$id/splits': typeof DefaultNbaPlayerIdSplitsRoute
+  '/_default/nba/player/$id/games': typeof DefaultNbaPlayerIdGamesRoute
+  '/_default/nba/player/$id/stats': typeof DefaultNbaPlayerIdStatsRoute
   '/_default/nba/team/$teamId/games': typeof DefaultNbaTeamTeamIdGamesRoute
   '/_default/nba/team/$teamId/roster': typeof DefaultNbaTeamTeamIdRosterRoute
   '/_default/nba/team/$teamId/stats': typeof DefaultNbaTeamTeamIdStatsRoute
@@ -765,8 +799,8 @@ export interface FileRoutesById {
   '/_default/wnba/game/$gameId/matchups': typeof DefaultWnbaGameGameIdMatchupsRoute
   '/_default/wnba/game/$gameId/team-stats': typeof DefaultWnbaGameGameIdTeamStatsRoute
   '/_default/wnba/player/$id/compare': typeof DefaultWnbaPlayerIdCompareRoute
-  '/_default/wnba/player/$id/last-10': typeof DefaultWnbaPlayerIdLast10Route
-  '/_default/wnba/player/$id/splits': typeof DefaultWnbaPlayerIdSplitsRoute
+  '/_default/wnba/player/$id/games': typeof DefaultWnbaPlayerIdGamesRoute
+  '/_default/wnba/player/$id/stats': typeof DefaultWnbaPlayerIdStatsRoute
   '/_default/wnba/team/$teamId/games': typeof DefaultWnbaTeamTeamIdGamesRoute
   '/_default/wnba/team/$teamId/roster': typeof DefaultWnbaTeamTeamIdRosterRoute
   '/_default/wnba/team/$teamId/stats': typeof DefaultWnbaTeamTeamIdStatsRoute
@@ -782,6 +816,10 @@ export interface FileRoutesById {
   '/_default/wnba/game/$gameId/': typeof DefaultWnbaGameGameIdIndexRoute
   '/_default/wnba/player/$id/': typeof DefaultWnbaPlayerIdIndexRoute
   '/_default/wnba/team/$teamId/': typeof DefaultWnbaTeamTeamIdIndexRoute
+  '/_default/gleague/player/$id/games_/log': typeof DefaultGleaguePlayerIdGamesLogRoute
+  '/_default/nba/player/$id/games_/log': typeof DefaultNbaPlayerIdGamesLogRoute
+  '/_default/wnba/player/$id/games_/log': typeof DefaultWnbaPlayerIdGamesLogRoute
+  '/api/og/$league/player/$playerId/game/$gameId': typeof ApiOgLeaguePlayerPlayerIdGameGameIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -831,8 +869,8 @@ export interface FileRouteTypes {
     | '/gleague/game/$gameId/matchups'
     | '/gleague/game/$gameId/team-stats'
     | '/gleague/player/$id/compare'
-    | '/gleague/player/$id/last-10'
-    | '/gleague/player/$id/splits'
+    | '/gleague/player/$id/games'
+    | '/gleague/player/$id/stats'
     | '/gleague/team/$teamId/games'
     | '/gleague/team/$teamId/roster'
     | '/gleague/team/$teamId/stats'
@@ -840,8 +878,8 @@ export interface FileRouteTypes {
     | '/nba/game/$gameId/matchups'
     | '/nba/game/$gameId/team-stats'
     | '/nba/player/$id/compare'
-    | '/nba/player/$id/last-10'
-    | '/nba/player/$id/splits'
+    | '/nba/player/$id/games'
+    | '/nba/player/$id/stats'
     | '/nba/team/$teamId/games'
     | '/nba/team/$teamId/roster'
     | '/nba/team/$teamId/stats'
@@ -849,8 +887,8 @@ export interface FileRouteTypes {
     | '/wnba/game/$gameId/matchups'
     | '/wnba/game/$gameId/team-stats'
     | '/wnba/player/$id/compare'
-    | '/wnba/player/$id/last-10'
-    | '/wnba/player/$id/splits'
+    | '/wnba/player/$id/games'
+    | '/wnba/player/$id/stats'
     | '/wnba/team/$teamId/games'
     | '/wnba/team/$teamId/roster'
     | '/wnba/team/$teamId/stats'
@@ -866,6 +904,10 @@ export interface FileRouteTypes {
     | '/wnba/game/$gameId/'
     | '/wnba/player/$id/'
     | '/wnba/team/$teamId/'
+    | '/gleague/player/$id/games/log'
+    | '/nba/player/$id/games/log'
+    | '/wnba/player/$id/games/log'
+    | '/api/og/$league/player/$playerId/game/$gameId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/cookies'
@@ -904,8 +946,8 @@ export interface FileRouteTypes {
     | '/gleague/game/$gameId/matchups'
     | '/gleague/game/$gameId/team-stats'
     | '/gleague/player/$id/compare'
-    | '/gleague/player/$id/last-10'
-    | '/gleague/player/$id/splits'
+    | '/gleague/player/$id/games'
+    | '/gleague/player/$id/stats'
     | '/gleague/team/$teamId/games'
     | '/gleague/team/$teamId/roster'
     | '/gleague/team/$teamId/stats'
@@ -913,8 +955,8 @@ export interface FileRouteTypes {
     | '/nba/game/$gameId/matchups'
     | '/nba/game/$gameId/team-stats'
     | '/nba/player/$id/compare'
-    | '/nba/player/$id/last-10'
-    | '/nba/player/$id/splits'
+    | '/nba/player/$id/games'
+    | '/nba/player/$id/stats'
     | '/nba/team/$teamId/games'
     | '/nba/team/$teamId/roster'
     | '/nba/team/$teamId/stats'
@@ -922,8 +964,8 @@ export interface FileRouteTypes {
     | '/wnba/game/$gameId/matchups'
     | '/wnba/game/$gameId/team-stats'
     | '/wnba/player/$id/compare'
-    | '/wnba/player/$id/last-10'
-    | '/wnba/player/$id/splits'
+    | '/wnba/player/$id/games'
+    | '/wnba/player/$id/stats'
     | '/wnba/team/$teamId/games'
     | '/wnba/team/$teamId/roster'
     | '/wnba/team/$teamId/stats'
@@ -939,6 +981,10 @@ export interface FileRouteTypes {
     | '/wnba/game/$gameId'
     | '/wnba/player/$id'
     | '/wnba/team/$teamId'
+    | '/gleague/player/$id/games/log'
+    | '/nba/player/$id/games/log'
+    | '/wnba/player/$id/games/log'
+    | '/api/og/$league/player/$playerId/game/$gameId'
   id:
     | '__root__'
     | '/_default'
@@ -987,8 +1033,8 @@ export interface FileRouteTypes {
     | '/_default/gleague/game/$gameId/matchups'
     | '/_default/gleague/game/$gameId/team-stats'
     | '/_default/gleague/player/$id/compare'
-    | '/_default/gleague/player/$id/last-10'
-    | '/_default/gleague/player/$id/splits'
+    | '/_default/gleague/player/$id/games'
+    | '/_default/gleague/player/$id/stats'
     | '/_default/gleague/team/$teamId/games'
     | '/_default/gleague/team/$teamId/roster'
     | '/_default/gleague/team/$teamId/stats'
@@ -996,8 +1042,8 @@ export interface FileRouteTypes {
     | '/_default/nba/game/$gameId/matchups'
     | '/_default/nba/game/$gameId/team-stats'
     | '/_default/nba/player/$id/compare'
-    | '/_default/nba/player/$id/last-10'
-    | '/_default/nba/player/$id/splits'
+    | '/_default/nba/player/$id/games'
+    | '/_default/nba/player/$id/stats'
     | '/_default/nba/team/$teamId/games'
     | '/_default/nba/team/$teamId/roster'
     | '/_default/nba/team/$teamId/stats'
@@ -1005,8 +1051,8 @@ export interface FileRouteTypes {
     | '/_default/wnba/game/$gameId/matchups'
     | '/_default/wnba/game/$gameId/team-stats'
     | '/_default/wnba/player/$id/compare'
-    | '/_default/wnba/player/$id/last-10'
-    | '/_default/wnba/player/$id/splits'
+    | '/_default/wnba/player/$id/games'
+    | '/_default/wnba/player/$id/stats'
     | '/_default/wnba/team/$teamId/games'
     | '/_default/wnba/team/$teamId/roster'
     | '/_default/wnba/team/$teamId/stats'
@@ -1022,6 +1068,10 @@ export interface FileRouteTypes {
     | '/_default/wnba/game/$gameId/'
     | '/_default/wnba/player/$id/'
     | '/_default/wnba/team/$teamId/'
+    | '/_default/gleague/player/$id/games_/log'
+    | '/_default/nba/player/$id/games_/log'
+    | '/_default/wnba/player/$id/games_/log'
+    | '/api/og/$league/player/$playerId/game/$gameId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1034,6 +1084,7 @@ export interface RootRouteChildren {
   ApiWnbaLogoIdRoute: typeof ApiWnbaLogoIdRoute
   ApiOgLeagueGameGameIdRoute: typeof ApiOgLeagueGameGameIdRoute
   ApiOgLeagueTeamTeamIdRoute: typeof ApiOgLeagueTeamTeamIdRoute
+  ApiOgLeaguePlayerPlayerIdGameGameIdRoute: typeof ApiOgLeaguePlayerPlayerIdGameGameIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1444,18 +1495,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultWnbaTeamTeamIdGamesRouteImport
       parentRoute: typeof DefaultWnbaTeamTeamIdRouteRoute
     }
-    '/_default/wnba/player/$id/splits': {
-      id: '/_default/wnba/player/$id/splits'
-      path: '/splits'
-      fullPath: '/wnba/player/$id/splits'
-      preLoaderRoute: typeof DefaultWnbaPlayerIdSplitsRouteImport
+    '/_default/wnba/player/$id/stats': {
+      id: '/_default/wnba/player/$id/stats'
+      path: '/stats'
+      fullPath: '/wnba/player/$id/stats'
+      preLoaderRoute: typeof DefaultWnbaPlayerIdStatsRouteImport
       parentRoute: typeof DefaultWnbaPlayerIdRouteRoute
     }
-    '/_default/wnba/player/$id/last-10': {
-      id: '/_default/wnba/player/$id/last-10'
-      path: '/last-10'
-      fullPath: '/wnba/player/$id/last-10'
-      preLoaderRoute: typeof DefaultWnbaPlayerIdLast10RouteImport
+    '/_default/wnba/player/$id/games': {
+      id: '/_default/wnba/player/$id/games'
+      path: '/games'
+      fullPath: '/wnba/player/$id/games'
+      preLoaderRoute: typeof DefaultWnbaPlayerIdGamesRouteImport
       parentRoute: typeof DefaultWnbaPlayerIdRouteRoute
     }
     '/_default/wnba/player/$id/compare': {
@@ -1507,18 +1558,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultNbaTeamTeamIdGamesRouteImport
       parentRoute: typeof DefaultNbaTeamTeamIdRouteRoute
     }
-    '/_default/nba/player/$id/splits': {
-      id: '/_default/nba/player/$id/splits'
-      path: '/splits'
-      fullPath: '/nba/player/$id/splits'
-      preLoaderRoute: typeof DefaultNbaPlayerIdSplitsRouteImport
+    '/_default/nba/player/$id/stats': {
+      id: '/_default/nba/player/$id/stats'
+      path: '/stats'
+      fullPath: '/nba/player/$id/stats'
+      preLoaderRoute: typeof DefaultNbaPlayerIdStatsRouteImport
       parentRoute: typeof DefaultNbaPlayerIdRouteRoute
     }
-    '/_default/nba/player/$id/last-10': {
-      id: '/_default/nba/player/$id/last-10'
-      path: '/last-10'
-      fullPath: '/nba/player/$id/last-10'
-      preLoaderRoute: typeof DefaultNbaPlayerIdLast10RouteImport
+    '/_default/nba/player/$id/games': {
+      id: '/_default/nba/player/$id/games'
+      path: '/games'
+      fullPath: '/nba/player/$id/games'
+      preLoaderRoute: typeof DefaultNbaPlayerIdGamesRouteImport
       parentRoute: typeof DefaultNbaPlayerIdRouteRoute
     }
     '/_default/nba/player/$id/compare': {
@@ -1570,18 +1621,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DefaultGleagueTeamTeamIdGamesRouteImport
       parentRoute: typeof DefaultGleagueTeamTeamIdRouteRoute
     }
-    '/_default/gleague/player/$id/splits': {
-      id: '/_default/gleague/player/$id/splits'
-      path: '/splits'
-      fullPath: '/gleague/player/$id/splits'
-      preLoaderRoute: typeof DefaultGleaguePlayerIdSplitsRouteImport
+    '/_default/gleague/player/$id/stats': {
+      id: '/_default/gleague/player/$id/stats'
+      path: '/stats'
+      fullPath: '/gleague/player/$id/stats'
+      preLoaderRoute: typeof DefaultGleaguePlayerIdStatsRouteImport
       parentRoute: typeof DefaultGleaguePlayerIdRouteRoute
     }
-    '/_default/gleague/player/$id/last-10': {
-      id: '/_default/gleague/player/$id/last-10'
-      path: '/last-10'
-      fullPath: '/gleague/player/$id/last-10'
-      preLoaderRoute: typeof DefaultGleaguePlayerIdLast10RouteImport
+    '/_default/gleague/player/$id/games': {
+      id: '/_default/gleague/player/$id/games'
+      path: '/games'
+      fullPath: '/gleague/player/$id/games'
+      preLoaderRoute: typeof DefaultGleaguePlayerIdGamesRouteImport
       parentRoute: typeof DefaultGleaguePlayerIdRouteRoute
     }
     '/_default/gleague/player/$id/compare': {
@@ -1604,6 +1655,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/gleague/game/$gameId/matchups'
       preLoaderRoute: typeof DefaultGleagueGameGameIdMatchupsRouteImport
       parentRoute: typeof DefaultGleagueGameGameIdRouteRoute
+    }
+    '/_default/wnba/player/$id/games_/log': {
+      id: '/_default/wnba/player/$id/games_/log'
+      path: '/games/log'
+      fullPath: '/wnba/player/$id/games/log'
+      preLoaderRoute: typeof DefaultWnbaPlayerIdGamesLogRouteImport
+      parentRoute: typeof DefaultWnbaPlayerIdRouteRoute
+    }
+    '/_default/nba/player/$id/games_/log': {
+      id: '/_default/nba/player/$id/games_/log'
+      path: '/games/log'
+      fullPath: '/nba/player/$id/games/log'
+      preLoaderRoute: typeof DefaultNbaPlayerIdGamesLogRouteImport
+      parentRoute: typeof DefaultNbaPlayerIdRouteRoute
+    }
+    '/_default/gleague/player/$id/games_/log': {
+      id: '/_default/gleague/player/$id/games_/log'
+      path: '/games/log'
+      fullPath: '/gleague/player/$id/games/log'
+      preLoaderRoute: typeof DefaultGleaguePlayerIdGamesLogRouteImport
+      parentRoute: typeof DefaultGleaguePlayerIdRouteRoute
+    }
+    '/api/og/$league/player/$playerId/game/$gameId': {
+      id: '/api/og/$league/player/$playerId/game/$gameId'
+      path: '/api/og/$league/player/$playerId/game/$gameId'
+      fullPath: '/api/og/$league/player/$playerId/game/$gameId'
+      preLoaderRoute: typeof ApiOgLeaguePlayerPlayerIdGameGameIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -1630,17 +1709,19 @@ const DefaultGleagueGameGameIdRouteRouteWithChildren =
 
 interface DefaultGleaguePlayerIdRouteRouteChildren {
   DefaultGleaguePlayerIdCompareRoute: typeof DefaultGleaguePlayerIdCompareRoute
-  DefaultGleaguePlayerIdLast10Route: typeof DefaultGleaguePlayerIdLast10Route
-  DefaultGleaguePlayerIdSplitsRoute: typeof DefaultGleaguePlayerIdSplitsRoute
+  DefaultGleaguePlayerIdGamesRoute: typeof DefaultGleaguePlayerIdGamesRoute
+  DefaultGleaguePlayerIdStatsRoute: typeof DefaultGleaguePlayerIdStatsRoute
   DefaultGleaguePlayerIdIndexRoute: typeof DefaultGleaguePlayerIdIndexRoute
+  DefaultGleaguePlayerIdGamesLogRoute: typeof DefaultGleaguePlayerIdGamesLogRoute
 }
 
 const DefaultGleaguePlayerIdRouteRouteChildren: DefaultGleaguePlayerIdRouteRouteChildren =
   {
     DefaultGleaguePlayerIdCompareRoute: DefaultGleaguePlayerIdCompareRoute,
-    DefaultGleaguePlayerIdLast10Route: DefaultGleaguePlayerIdLast10Route,
-    DefaultGleaguePlayerIdSplitsRoute: DefaultGleaguePlayerIdSplitsRoute,
+    DefaultGleaguePlayerIdGamesRoute: DefaultGleaguePlayerIdGamesRoute,
+    DefaultGleaguePlayerIdStatsRoute: DefaultGleaguePlayerIdStatsRoute,
     DefaultGleaguePlayerIdIndexRoute: DefaultGleaguePlayerIdIndexRoute,
+    DefaultGleaguePlayerIdGamesLogRoute: DefaultGleaguePlayerIdGamesLogRoute,
   }
 
 const DefaultGleaguePlayerIdRouteRouteWithChildren =
@@ -1690,17 +1771,19 @@ const DefaultNbaGameGameIdRouteRouteWithChildren =
 
 interface DefaultNbaPlayerIdRouteRouteChildren {
   DefaultNbaPlayerIdCompareRoute: typeof DefaultNbaPlayerIdCompareRoute
-  DefaultNbaPlayerIdLast10Route: typeof DefaultNbaPlayerIdLast10Route
-  DefaultNbaPlayerIdSplitsRoute: typeof DefaultNbaPlayerIdSplitsRoute
+  DefaultNbaPlayerIdGamesRoute: typeof DefaultNbaPlayerIdGamesRoute
+  DefaultNbaPlayerIdStatsRoute: typeof DefaultNbaPlayerIdStatsRoute
   DefaultNbaPlayerIdIndexRoute: typeof DefaultNbaPlayerIdIndexRoute
+  DefaultNbaPlayerIdGamesLogRoute: typeof DefaultNbaPlayerIdGamesLogRoute
 }
 
 const DefaultNbaPlayerIdRouteRouteChildren: DefaultNbaPlayerIdRouteRouteChildren =
   {
     DefaultNbaPlayerIdCompareRoute: DefaultNbaPlayerIdCompareRoute,
-    DefaultNbaPlayerIdLast10Route: DefaultNbaPlayerIdLast10Route,
-    DefaultNbaPlayerIdSplitsRoute: DefaultNbaPlayerIdSplitsRoute,
+    DefaultNbaPlayerIdGamesRoute: DefaultNbaPlayerIdGamesRoute,
+    DefaultNbaPlayerIdStatsRoute: DefaultNbaPlayerIdStatsRoute,
     DefaultNbaPlayerIdIndexRoute: DefaultNbaPlayerIdIndexRoute,
+    DefaultNbaPlayerIdGamesLogRoute: DefaultNbaPlayerIdGamesLogRoute,
   }
 
 const DefaultNbaPlayerIdRouteRouteWithChildren =
@@ -1750,17 +1833,19 @@ const DefaultWnbaGameGameIdRouteRouteWithChildren =
 
 interface DefaultWnbaPlayerIdRouteRouteChildren {
   DefaultWnbaPlayerIdCompareRoute: typeof DefaultWnbaPlayerIdCompareRoute
-  DefaultWnbaPlayerIdLast10Route: typeof DefaultWnbaPlayerIdLast10Route
-  DefaultWnbaPlayerIdSplitsRoute: typeof DefaultWnbaPlayerIdSplitsRoute
+  DefaultWnbaPlayerIdGamesRoute: typeof DefaultWnbaPlayerIdGamesRoute
+  DefaultWnbaPlayerIdStatsRoute: typeof DefaultWnbaPlayerIdStatsRoute
   DefaultWnbaPlayerIdIndexRoute: typeof DefaultWnbaPlayerIdIndexRoute
+  DefaultWnbaPlayerIdGamesLogRoute: typeof DefaultWnbaPlayerIdGamesLogRoute
 }
 
 const DefaultWnbaPlayerIdRouteRouteChildren: DefaultWnbaPlayerIdRouteRouteChildren =
   {
     DefaultWnbaPlayerIdCompareRoute: DefaultWnbaPlayerIdCompareRoute,
-    DefaultWnbaPlayerIdLast10Route: DefaultWnbaPlayerIdLast10Route,
-    DefaultWnbaPlayerIdSplitsRoute: DefaultWnbaPlayerIdSplitsRoute,
+    DefaultWnbaPlayerIdGamesRoute: DefaultWnbaPlayerIdGamesRoute,
+    DefaultWnbaPlayerIdStatsRoute: DefaultWnbaPlayerIdStatsRoute,
     DefaultWnbaPlayerIdIndexRoute: DefaultWnbaPlayerIdIndexRoute,
+    DefaultWnbaPlayerIdGamesLogRoute: DefaultWnbaPlayerIdGamesLogRoute,
   }
 
 const DefaultWnbaPlayerIdRouteRouteWithChildren =
@@ -1885,6 +1970,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiWnbaLogoIdRoute: ApiWnbaLogoIdRoute,
   ApiOgLeagueGameGameIdRoute: ApiOgLeagueGameGameIdRoute,
   ApiOgLeagueTeamTeamIdRoute: ApiOgLeagueTeamTeamIdRoute,
+  ApiOgLeaguePlayerPlayerIdGameGameIdRoute:
+    ApiOgLeaguePlayerPlayerIdGameGameIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

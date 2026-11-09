@@ -15,11 +15,12 @@ export function tabRoute<T extends string>(
 	return tab === tabs[0] ? basePath : `${basePath}/${tab}`;
 }
 
-/** The tab whose child route is showing, read from the last URL segment */
+/**
+ * The tab whose child route is showing, read from the last URL segment, or the
+ * one before it for a page under a tab such as `$id/games/log`.
+ */
 export function useRouteTab<T extends string>(tabs: readonly T[]): T {
-	const segment = useRouterState({
-		select: (state) =>
-			state.location.pathname.replace(/\/+$/, "").split("/").pop() ?? "",
-	});
-	return tabs.find((tab) => tab === segment) ?? tabs[0];
+	const pathname = useRouterState({ select: (state) => state.location.pathname });
+	const [last, parent] = pathname.replace(/\/+$/, "").split("/").reverse();
+	return tabs.find((tab) => tab === last) ?? tabs.find((tab) => tab === parent) ?? tabs[0];
 }

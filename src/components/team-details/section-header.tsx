@@ -10,7 +10,7 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ icon: Icon, title, badge, action }: SectionHeaderProps) {
 	return (
-		<div className="flex items-center justify-between mb-4">
+		<div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
 			<h2 className="text-lg font-semibold flex items-center gap-2">
 				{Icon && <Icon className="size-4.5 text-muted-foreground" />}
 				{title}

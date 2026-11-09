@@ -1,4 +1,7 @@
 import { v } from "convex/values";
+import { parseGameAbsences } from "../shared/injuries";
+import { gameLogPhase } from "../shared/playerGameLog";
+import { ESPN_SEASON_TYPE } from "../shared/seasonHelpers";
 import { action, internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { scheduleGameDayRefreshes } from "../injuries";
@@ -990,6 +993,21 @@ async function syncBoxScoreData(
 
 	await processPlayerBoxScores(homePlayerBoxScores, game.homeTeamId);
 	await processPlayerBoxScores(awayPlayerBoxScores, game.awayTeamId);
+
+	// Preseason absences say little: teams sit healthy players
+	if (game.seasonType !== ESPN_SEASON_TYPE.preseason) {
+		await ctx.runMutation(internal.injuryHistory.recordGameAbsences, {
+			league: "wnba",
+			season,
+			espnGameId,
+			gameDate: game.gameDate,
+			phase: gameLogPhase(game),
+			absences: parseGameAbsences([
+				{ espnTeamId: headerHome.team.id, players: homePlayerBoxScores },
+				{ espnTeamId: headerAway.team.id, players: awayPlayerBoxScores },
+			]),
+		});
+	}
 
 	return boxScoreChanged;
 }

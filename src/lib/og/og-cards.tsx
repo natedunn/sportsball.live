@@ -584,3 +584,171 @@ export function GameCard({ data }: { data: GameCardData }) {
 		</Frame>
 	);
 }
+
+// ============================================================
+// Player game performance
+// ============================================================
+
+// The one card with numbers on it: the game log only has finished games, so
+// the line can't change after a chat app saves the preview
+
+export interface PerformanceCardData {
+	playerName: string;
+	headshotUrl?: string;
+	/** Hex without `#`, readable on black */
+	color: string;
+	team: string;
+	teamLogoUrl?: string;
+	opponent: string;
+	opponentLogoUrl?: string;
+	/** Home games read "PHX vs GS", road games "PHX @ GS" */
+	isHome: boolean;
+	date: string;
+	win: boolean;
+	/** The player's team first, e.g. "113-116" */
+	score: string;
+	points: number;
+	rebounds: number;
+	assists: number;
+	/** e.g. "8-18 FG · 2-4 3P · 8-8 FT · 35 MIN" */
+	line: string;
+}
+
+/** ESPN headshots are 350×254 */
+const HEADSHOT = { width: 600, height: 436 };
+
+function MatchupTeam({ abbreviation, logoUrl }: { abbreviation: string; logoUrl?: string }) {
+	return (
+		<div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+			{logoUrl && <img src={logoUrl} width={44} height={44} style={{ objectFit: "contain" }} />}
+			<span style={{ fontSize: 26, fontWeight: 700 }}>{abbreviation}</span>
+		</div>
+	);
+}
+
+function PerformanceStat({ value, label }: { value: number; label: string }) {
+	return (
+		<div style={{ display: "flex", flexDirection: "column" }}>
+			<span style={{ fontSize: 112, fontWeight: 800, letterSpacing: -4, lineHeight: 1 }}>
+				{String(value)}
+			</span>
+			<span
+				style={{
+					marginTop: 8,
+					fontSize: 24,
+					fontWeight: 600,
+					color: colors.muted,
+					textTransform: "uppercase",
+					letterSpacing: 3,
+				}}
+			>
+				{label}
+			</span>
+		</div>
+	);
+}
+
+export function PerformanceCard({ data }: { data: PerformanceCardData }) {
+	const color = `#${data.color}`;
+	// Keeps the name on one line in the column beside the headshot
+	const nameLength = data.playerName.length;
+	const nameSize = nameLength > 18 ? 48 : nameLength > 14 ? 56 : 68;
+	return (
+		<Frame
+			background={
+				<>
+					<DotGrid
+						color={color}
+						seed={data.playerName}
+						fade={`linear-gradient(90deg, rgba(0,0,0,0.45) 0%, ${colors.background} 55%)`}
+					/>
+					<div
+						style={{
+							position: "absolute",
+							left: -160,
+							top: 40,
+							width: 820,
+							height: 820,
+							backgroundImage: `radial-gradient(circle at 50% 50%, ${color}40 0%, ${color}00 60%)`,
+						}}
+					/>
+					{data.headshotUrl && (
+						<img
+							src={data.headshotUrl}
+							width={HEADSHOT.width}
+							height={HEADSHOT.height}
+							style={{ position: "absolute", left: -10, bottom: 0, objectFit: "cover" }}
+						/>
+					)}
+					{/* Sets the headshot into the bottom edge */}
+					<div
+						style={{
+							position: "absolute",
+							left: 0,
+							bottom: 0,
+							width: HEADSHOT.width,
+							height: 120,
+							backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0) 0%, ${colors.background} 100%)`,
+						}}
+					/>
+				</>
+			}
+		>
+			<TopBar />
+
+			<div
+				style={{
+					display: "flex",
+					flexDirection: "column",
+					justifyContent: "center",
+					flex: 1,
+					marginLeft: 500,
+				}}
+			>
+				<div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+					<MatchupTeam abbreviation={data.team} logoUrl={data.teamLogoUrl} />
+					<span style={{ fontSize: 26, fontWeight: 600, color: colors.muted }}>
+						{data.isHome ? "vs" : "@"}
+					</span>
+					<MatchupTeam abbreviation={data.opponent} logoUrl={data.opponentLogoUrl} />
+					<span style={{ marginLeft: 6, fontSize: 26, fontWeight: 600, color: colors.muted }}>
+						{data.date}
+					</span>
+				</div>
+				<span
+					style={{
+						marginTop: 10,
+						fontSize: nameSize,
+						fontWeight: 800,
+						letterSpacing: -2,
+						lineHeight: 1.05,
+					}}
+				>
+					{data.playerName}
+				</span>
+				<div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18 }}>
+					<span
+						style={{
+							padding: "6px 16px",
+							borderRadius: 999,
+							fontSize: 22,
+							fontWeight: 600,
+							backgroundColor: data.win ? "rgba(34,197,94,0.16)" : "rgba(239,68,68,0.16)",
+							color: data.win ? "#4ade80" : "#f87171",
+						}}
+					>
+						{data.win ? "Win" : "Loss"}
+					</span>
+					<span style={{ fontSize: 26, fontWeight: 600 }}>{data.score}</span>
+				</div>
+				<div style={{ display: "flex", gap: 64, marginTop: 36 }}>
+					<PerformanceStat value={data.points} label="Points" />
+					<PerformanceStat value={data.rebounds} label="Rebounds" />
+					<PerformanceStat value={data.assists} label="Assists" />
+				</div>
+				<div style={{ display: "flex", marginTop: 28, height: 4, width: 72, borderRadius: 999, backgroundColor: color }} />
+				<span style={{ marginTop: 18, fontSize: 26, color: colors.muted }}>{data.line}</span>
+			</div>
+		</Frame>
+	);
+}

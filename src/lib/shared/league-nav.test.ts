@@ -50,7 +50,7 @@ describe("switchLeagueHref", () => {
 	it("goes to the overview from team, game and player pages", () => {
 		expect(switchLeagueHref("/nba/team/1/roster", "wnba")).toBe("/wnba");
 		expect(switchLeagueHref("/wnba/game/401", "nba")).toBe("/nba");
-		expect(switchLeagueHref("/nba/player/5/splits", "gleague")).toBe("/gleague");
+		expect(switchLeagueHref("/nba/player/5/stats", "gleague")).toBe("/gleague");
 	});
 
 	it("goes to the overview from non-league pages", () => {

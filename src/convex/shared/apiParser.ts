@@ -37,6 +37,9 @@ export interface ApiPlayerStats {
 	stats: string[];
 	starter?: boolean;
 	active?: boolean;
+	didNotPlay?: boolean;
+	/** Why they sat, e.g. "RIGHT ACL SURGERY" or "COACH'S DECISION" */
+	reason?: string;
 }
 
 export interface ApiPlayerStatCategory {
@@ -317,6 +320,8 @@ export interface ParsedPlayerBoxScore {
 	position: string;
 	starter: boolean;
 	active: boolean;
+	/** ESPN's reason, only for a player who didn't play */
+	didNotPlayReason?: string;
 	minutes: number;
 	points: number;
 	totalRebounds: number;
@@ -453,6 +458,7 @@ export function parsePlayerBoxScores(boxscorePlayers: ApiBoxscorePlayers | undef
 			position: playerData.athlete.position?.abbreviation ?? "",
 			starter: playerData.starter ?? false,
 			active: playerData.active ?? false,
+			didNotPlayReason: playerData.didNotPlay ? playerData.reason : undefined,
 			minutes,
 			points: getStatNum(ptsIdx),
 			totalRebounds: getStatNum(rebIdx),

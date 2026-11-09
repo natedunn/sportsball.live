@@ -37,6 +37,23 @@ export interface ApiInjuriesResponse {
 	}>;
 }
 
+/**
+ * Who sat out a game and the reason ESPN gave, from each team's box score.
+ * Long-term injured players aren't on the box score, so they aren't here.
+ */
+export function parseGameAbsences(
+	teams: Array<{
+		espnTeamId: string;
+		players: Array<{ espnPlayerId: string; didNotPlayReason?: string }>;
+	}>,
+) {
+	return teams.flatMap(({ espnTeamId, players }) =>
+		players.flatMap(({ espnPlayerId, didNotPlayReason }) =>
+			didNotPlayReason ? [{ espnPlayerId, espnTeamId, reason: didNotPlayReason }] : [],
+		),
+	);
+}
+
 export interface ParsedInjury {
 	espnTeamId: string;
 	espnInjuryId: string;

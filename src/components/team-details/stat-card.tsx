@@ -14,6 +14,7 @@ interface StatCardProps {
 	rank?: number; // If provided, generates subtitle like "3rd in league"
 	teamCount?: number; // Teams in the league rankings; sizes the green/red tiers
 	neutral?: boolean; // Show the rank without green/red (pace: neither end is good or bad)
+	tone?: "good" | "bad"; // Green or red for a stat with no league rank to judge it by
 	rawValue?: number; // If provided with formatValue, animates counting
 	formatValue?: (v: number) => string;
 	delay?: number; // Stagger delay for animation (ms)
@@ -29,13 +30,14 @@ export function StatCard({
 	rank,
 	teamCount,
 	neutral,
+	tone,
 	rawValue,
 	formatValue,
 	delay,
 }: StatCardProps) {
 	const tier = neutral ? undefined : getRankTier(rank, teamCount);
-	const isTop = tier === "top";
-	const isBottom = tier === "bottom";
+	const isTop = tone === "good" || tier === "top";
+	const isBottom = tone === "bad" || tier === "bottom";
 	const hasTabAnimated = useHasTabAnimated();
 	// Lock in at mount time — tab switches don't re-trigger
 	const animate = useRef(!hasTabAnimated && delay !== undefined).current;

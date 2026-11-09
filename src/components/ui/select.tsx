@@ -63,6 +63,7 @@ interface SelectTriggerProps {
 	className?: string;
 	placeholder?: string;
 	size?: "sm" | "default" | "lg";
+	"aria-label"?: string;
 }
 
 const triggerSizeClasses = {
@@ -78,14 +79,17 @@ const iconSizeClasses = {
 };
 
 export function SelectTrigger({
+	children,
 	className,
 	placeholder,
 	size = "sm",
+	"aria-label": ariaLabel,
 }: SelectTriggerProps) {
 	const { options } = React.useContext(SelectContext);
 
 	return (
 		<BaseSelect.Trigger
+			aria-label={ariaLabel}
 			className={cn(
 				"inline-flex items-center justify-between rounded border border-border bg-background",
 				"hover:border-foreground/50 transition-colors cursor-pointer",
@@ -96,14 +100,15 @@ export function SelectTrigger({
 			)}
 		>
 			<span className="truncate">
-				<BaseSelect.Value placeholder={placeholder}>
+				{/* Explicit children win: options only register once the popup has rendered */}
+				{children ?? <BaseSelect.Value placeholder={placeholder}>
 					{(value) => {
 						const option = options.find((o) => o.value === value);
 						if (option?.label) return option.label;
 						// Fallback: capitalize first letter
 						return typeof value === "string" ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 					}}
-				</BaseSelect.Value>
+				</BaseSelect.Value>}
 			</span>
 			<BaseSelect.Icon className="flex-shrink-0">
 				<ChevronDown className={cn("text-muted-foreground", iconSizeClasses[size])} />

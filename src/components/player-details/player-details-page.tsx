@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { useMemo, type ReactNode } from "react";
+import { playerStatus } from "@/lib/players/player-status";
+import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { leaguePlayersRoutes } from "@/lib/league-routes";
@@ -12,6 +13,7 @@ import {
 	PlayerDetailsPending,
 } from "@/components/player-details/player-details-layout";
 import { api } from "~api";
+import type { PlayerGamesOptions } from "@convex/shared/playerGames";
 
 interface PlayerDetailsPageProps {
 	league: League;
@@ -37,6 +39,36 @@ export function playerDetailsQuery(
 	return convexQuery(playerDetailsQueries[league], { season, espnPlayerId });
 }
 
+const playerGameLogQueries = {
+	nba: api.nba.queries.getPlayerGameLog,
+	wnba: api.wnba.queries.getPlayerGameLog,
+	gleague: api.gleague.queries.getPlayerGameLog,
+};
+
+const playerGamesQueries = {
+	nba: api.nba.queries.getPlayerGames,
+	wnba: api.wnba.queries.getPlayerGames,
+	gleague: api.gleague.queries.getPlayerGames,
+};
+
+/** The latest games shown on the games tab */
+export const GAMES_PREVIEW_SIZE = 20;
+
+/** One page of the player's games, with their availability for the season */
+export function playerGamesQuery(
+	league: League,
+	season: string,
+	espnPlayerId: string,
+	options: PlayerGamesOptions,
+) {
+	return convexQuery(playerGamesQueries[league], { season, espnPlayerId, ...options });
+}
+
+/** Every game with both teams' box scores. Costly: load it only when it's needed */
+export function playerGameLogQuery(league: League, season: string, espnPlayerId: string) {
+	return convexQuery(playerGameLogQueries[league], { season, espnPlayerId });
+}
+
 export function PlayerDetailsPage({
 	league,
 	playerId,
@@ -50,14 +82,8 @@ export function PlayerDetailsPage({
 	});
 
 	const player = data?.player;
-	const allPlayers = data?.allPlayers ?? [];
-	const teammates = useMemo(() => {
-		if (!player) return [];
-		const allById = new Map(allPlayers.map((entry: any) => [entry.id, entry]));
-		return player.teammateIds
-			.map((teammateId: string) => allById.get(teammateId))
-			.filter(Boolean);
-	}, [allPlayers, player]);
+	const teammates = data?.teammates ?? [];
+	const status = playerStatus(data?.injuryReport);
 
 	if (isLoading) {
 		return <PlayerDetailsPending />;
@@ -84,8 +110,9 @@ export function PlayerDetailsPage({
 		<PlayerDetailsLayout
 			player={player}
 			teammates={teammates}
-			allPlayers={allPlayers}
+			status={status}
 			league={league}
+			season={season ?? ""}
 			activeTab={activeTab}
 		>
 			{children}

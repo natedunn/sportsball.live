@@ -5,7 +5,15 @@ import type { League } from "@/lib/shared/league";
 import { NBA_TEAM_LOGOS } from "@/lib/nba/team-logos";
 import { WNBA_TEAM_LOGOS } from "@/lib/wnba/team-logos";
 import { GLEAGUE_TEAM_LOGOS } from "@/lib/gleague/team-logos";
-import type { GameCardData, GameCardTeam, StandingsCardData, TeamCardData } from "./og-cards";
+import type {
+	GameCardData,
+	GameCardTeam,
+	PerformanceCardData,
+	StandingsCardData,
+	TeamCardData,
+} from "./og-cards";
+import { readableTeamColor } from "@/lib/shared/team-color-contrast";
+import { isWin } from "@/lib/players/game-log-stats";
 import {
 	formatGameDate,
 	formatGameTime,
@@ -150,5 +158,65 @@ export async function getGameCardData(
 		time: formatGameTime(meta.scheduledStart),
 		away,
 		home,
+	};
+}
+
+const PLAYER_QUERIES = {
+	nba: { profile: api.nba.queries.getPlayerProfile, gameLog: api.nba.queries.getPlayerGameLog },
+	wnba: { profile: api.wnba.queries.getPlayerProfile, gameLog: api.wnba.queries.getPlayerGameLog },
+	gleague: {
+		profile: api.gleague.queries.getPlayerProfile,
+		gameLog: api.gleague.queries.getPlayerGameLog,
+	},
+};
+
+/** "20261102" → "Nov 2, 2026" */
+function formatGameLogDate(gameDate: string) {
+	const date = new Date(
+		Number(gameDate.slice(0, 4)),
+		Number(gameDate.slice(4, 6)) - 1,
+		Number(gameDate.slice(6, 8)),
+	);
+	return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** One player's line in one finished game of the current season */
+export async function getPerformanceCardData(
+	league: League,
+	espnPlayerId: string,
+	espnGameId: string,
+): Promise<PerformanceCardData | null> {
+	const client = convex();
+	const season = await client.query(api.seasons.getCurrentName, { league });
+	if (!season) return null;
+	const queries = PLAYER_QUERIES[league];
+	const [player, gameLog] = await Promise.all([
+		client.query(queries.profile, { season, espnPlayerId }),
+		client.query(queries.gameLog, { season, espnPlayerId }),
+	]);
+	const row = gameLog?.find((entry) => entry.espnGameId === espnGameId);
+	if (!player || !row) return null;
+
+	const team = getTeamStaticData(league, row.teamAbbreviation);
+	const opponent = getTeamStaticData(league, row.opponent);
+	const headshotPath = player.headshot ? new URL(player.headshot).pathname : undefined;
+	return {
+		playerName: player.name,
+		headshotUrl: headshotPath
+			? `https://a.espncdn.com/combiner/i?img=${headshotPath}&w=600&h=436`
+			: undefined,
+		color: team ? readableTeamColor(team.colors.display.dark, "dark", "graphic") : "a3a3a3",
+		team: row.teamAbbreviation,
+		teamLogoUrl: team && logoUrl(league, team.logoSlug, 88),
+		opponent: row.opponent,
+		opponentLogoUrl: opponent && logoUrl(league, opponent.logoSlug, 88),
+		isHome: row.isHome,
+		date: formatGameLogDate(row.gameDate),
+		win: isWin(row),
+		score: `${row.teamScore}-${row.oppScore}`,
+		points: row.pts,
+		rebounds: row.reb,
+		assists: row.ast,
+		line: `${row.fgm}-${row.fga} FG · ${row.tpm}-${row.tpa} 3P · ${row.ftm}-${row.fta} FT · ${row.min} MIN`,
 	};
 }

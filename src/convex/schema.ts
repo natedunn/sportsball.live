@@ -184,7 +184,8 @@ export default defineSchema({
 		.index("by_season", ["season"])
 		.index("by_season_pointsPerGame", ["season", "pointsPerGame"])
 		.index("by_season_assistsPerGame", ["season", "assistsPerGame"])
-		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"]),
+		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"])
+		.searchIndex("search_name", { searchField: "name", filterFields: ["season"] }),
 
 	// NBA Game Event — individual game tracking
 	nbaGameEvent: defineTable({
@@ -417,7 +418,8 @@ export default defineSchema({
 		.index("by_season", ["season"])
 		.index("by_season_pointsPerGame", ["season", "pointsPerGame"])
 		.index("by_season_assistsPerGame", ["season", "assistsPerGame"])
-		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"]),
+		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"])
+		.searchIndex("search_name", { searchField: "name", filterFields: ["season"] }),
 
 	wnbaGameEvent: defineTable({
 		espnGameId: v.string(),
@@ -642,7 +644,8 @@ export default defineSchema({
 		.index("by_season", ["season"])
 		.index("by_season_pointsPerGame", ["season", "pointsPerGame"])
 		.index("by_season_assistsPerGame", ["season", "assistsPerGame"])
-		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"]),
+		.index("by_season_fieldGoalPct", ["season", "fieldGoalPct"])
+		.searchIndex("search_name", { searchField: "name", filterFields: ["season"] }),
 
 	gleagueGameEvent: defineTable({
 		espnGameId: v.string(),
@@ -811,7 +814,44 @@ export default defineSchema({
 		reportedAt: v.optional(v.string()),
 	})
 		.index("by_league", ["league"])
-		.index("by_league_team", ["league", "espnTeamId"]),
+		.index("by_league_team", ["league", "espnTeamId"])
+		.index("by_league_player", ["league", "espnPlayerId"]),
+
+	// Our own history of the report above, which only knows today. Every version
+	// of a player's entry is a row, closed when any detail changes, so a status
+	// going from Out to Questionable to cleared is all kept (see injuryHistory.ts).
+	injuryLog: defineTable({
+		league: leagueValidator,
+		espnPlayerId: v.string(),
+		espnTeamId: v.string(),
+		name: v.string(),
+		status: v.string(),
+		description: v.optional(v.string()),
+		shortComment: v.optional(v.string()),
+		returnDate: v.optional(v.string()),
+		reportedAt: v.optional(v.string()),
+		firstSeenAt: v.number(),
+		// Set when this version is replaced or they leave the report
+		clearedAt: v.optional(v.number()),
+	})
+		.index("by_league_player", ["league", "espnPlayerId"])
+		.index("by_league_clearedAt", ["league", "clearedAt"]),
+
+	// Who sat out a game and why, from the box score: the only reason ESPN keeps
+	// for past games. A generic table, not a field on the league event tables,
+	// so seasons we don't store games for can be added later.
+	gameAbsences: defineTable({
+		league: leagueValidator,
+		season: v.string(),
+		espnGameId: v.string(),
+		gameDate: v.string(),
+		phase: v.union(v.literal("regular"), v.literal("playoffs"), v.literal("tournament")),
+		espnPlayerId: v.string(),
+		espnTeamId: v.string(),
+		reason: v.string(),
+	})
+		.index("by_league_game", ["league", "espnGameId"])
+		.index("by_league_season_player", ["league", "season", "espnPlayerId"]),
 
 	// Latest run of each scheduled job (see health.recordJobRun). The daily
 	// health check flags jobs with no successful run in the last two days.

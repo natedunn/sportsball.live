@@ -1,9 +1,8 @@
-import { Link } from "@tanstack/react-router";
-import { GitCompareArrows, Gauge, Sparkles, Target, Trophy } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Gauge, Sparkles, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SectionHeader } from "@/components/team-details/section-header";
 import { leaguePlayerRoutes } from "@/lib/league-routes";
 import { leagueLabels } from "@/lib/teams";
 import type { League } from "@/lib/shared/league";
@@ -11,6 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "~api";
 import { useCurrentSeasonName } from "@/lib/use-current-season";
+import { PlayerSearch } from "./player-search";
 
 export type RankingView = "scoring" | "playmaking" | "efficiency";
 const PAGE_SIZE = 25;
@@ -48,6 +48,7 @@ export function PlayersPageLayout({
 	onViewChange,
 }: PlayersPageLayoutProps) {
 	const season = useCurrentSeasonName(league);
+	const navigate = useNavigate();
 	const queryRef = useMemo(() => {
 		const queryMap = {
 			nba: (api as any).nba.queries.getPlayersPaginated,
@@ -62,8 +63,6 @@ export function PlayersPageLayout({
 	const [seenCursors, setSeenCursors] = useState<Set<string>>(new Set());
 	const [nextCursor, setNextCursor] = useState<string | null>(null);
 	const [isDone, setIsDone] = useState(false);
-	const [leftPlayerId, setLeftPlayerId] = useState("");
-	const [rightPlayerId, setRightPlayerId] = useState("");
 	const cursorKey = cursor ?? "__start__";
 
 	const { data: pageData, isLoading, isFetching } = useQuery({
@@ -103,35 +102,6 @@ export function PlayersPageLayout({
 		});
 	}, [cursorKey, pageData, seenCursors]);
 
-	useEffect(() => {
-		if (players.length === 0) {
-			setLeftPlayerId("");
-			setRightPlayerId("");
-			return;
-		}
-
-		setLeftPlayerId((prev) => {
-			if (prev && players.some((player) => player.id === prev)) {
-				return prev;
-			}
-			return players[0]!.id;
-		});
-
-		setRightPlayerId((prev) => {
-			if (
-				prev &&
-				players.some((player) => player.id === prev) &&
-				prev !== leftPlayerId
-			) {
-				return prev;
-			}
-			const fallback = players.find((player) => player.id !== leftPlayerId);
-			return fallback?.id ?? players[0]!.id;
-		});
-	}, [players, leftPlayerId]);
-
-	const leftPlayer = players.find((player) => player.id === leftPlayerId);
-	const rightPlayer = players.find((player) => player.id === rightPlayerId);
 	const playerRoute = leaguePlayerRoutes[league];
 
 	return (
@@ -160,20 +130,32 @@ export function PlayersPageLayout({
 					onValueChange={(next) => onViewChange(next as RankingView)}
 					className="w-full"
 				>
-					<TabsList>
-						<TabsTrigger value="scoring">
-							<Target className="h-3.5 w-3.5 mr-1.5" />
-							Scoring
-						</TabsTrigger>
-						<TabsTrigger value="playmaking">
-							<Sparkles className="h-3.5 w-3.5 mr-1.5" />
-							Playmaking
-						</TabsTrigger>
-						<TabsTrigger value="efficiency">
-							<Gauge className="h-3.5 w-3.5 mr-1.5" />
-							Efficiency
-						</TabsTrigger>
-					</TabsList>
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+						<TabsList>
+							<TabsTrigger value="scoring">
+								<Target className="h-3.5 w-3.5 mr-1.5" />
+								Scoring
+							</TabsTrigger>
+							<TabsTrigger value="playmaking">
+								<Sparkles className="h-3.5 w-3.5 mr-1.5" />
+								Playmaking
+							</TabsTrigger>
+							<TabsTrigger value="efficiency">
+								<Gauge className="h-3.5 w-3.5 mr-1.5" />
+								Efficiency
+							</TabsTrigger>
+						</TabsList>
+						<PlayerSearch
+							league={league}
+							season={season ?? ""}
+							value={null}
+							onValueChange={(player) => {
+								if (player) navigate({ to: playerRoute, params: { id: player.id } });
+							}}
+							placeholder="Search players"
+							className="w-full sm:w-72"
+						/>
+					</div>
 					<TabsContent value="scoring">
 						<span className="sr-only">Scoring rankings</span>
 					</TabsContent>
@@ -201,7 +183,6 @@ export function PlayersPageLayout({
 									<th className="px-3 py-2">FG%</th>
 									<th className="px-3 py-2">MIN</th>
 									<th className="px-3 py-2">STL</th>
-									<th className="px-3 py-2">Profile</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -233,28 +214,18 @@ export function PlayersPageLayout({
 										<td className="px-3 py-2">{player.fieldGoalPct.toFixed(1)}%</td>
 										<td className="px-3 py-2">{player.minutes.toFixed(1)}</td>
 										<td className="px-3 py-2">{player.steals.toFixed(1)}</td>
-										<td className="px-3 py-2">
-											<Link
-												to={playerRoute}
-												params={{ id: player.id }}
-												className="inline-flex items-center gap-1 text-xs text-orange-600 hover:underline dark:text-orange-400"
-											>
-												<Trophy className="h-3.5 w-3.5" />
-												Details
-											</Link>
-										</td>
 									</tr>
 								))}
 								{isLoading && (
 									<tr>
-										<td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">
+										<td colSpan={11} className="px-3 py-6 text-center text-muted-foreground">
 											Loading players...
 										</td>
 									</tr>
 								)}
 								{!isLoading && players.length === 0 && (
 									<tr>
-										<td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">
+										<td colSpan={11} className="px-3 py-6 text-center text-muted-foreground">
 											No players found for this view yet.
 										</td>
 									</tr>
@@ -282,52 +253,6 @@ export function PlayersPageLayout({
 					)}
 				</div>
 
-				<section>
-					<SectionHeader icon={GitCompareArrows} title="Comparison Starter" />
-					<Card>
-						<div className="p-4 w-full space-y-4">
-							<p className="text-sm text-muted-foreground">
-								Pick two players and jump into a detail page with the second
-								player preselected for async comparison.
-							</p>
-							<div className="flex flex-col gap-3 md:flex-row md:items-center">
-								<select
-									value={leftPlayerId}
-									onChange={(event) => setLeftPlayerId(event.target.value)}
-									className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-								>
-									{players.map((player) => (
-										<option key={player.id} value={player.id}>
-											{player.name}
-										</option>
-									))}
-								</select>
-								<span className="text-xs text-muted-foreground">vs</span>
-								<select
-									value={rightPlayerId}
-									onChange={(event) => setRightPlayerId(event.target.value)}
-									className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-								>
-									{players.map((player) => (
-										<option key={player.id} value={player.id}>
-											{player.name}
-										</option>
-									))}
-								</select>
-								{leftPlayer && rightPlayer ? (
-									<Link
-										to={playerRoute}
-										params={{ id: leftPlayer.id }}
-										search={{ compare: rightPlayer.id }}
-										className="inline-flex items-center justify-center rounded-md border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-sm font-medium text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
-									>
-										Open comparison
-									</Link>
-								) : null}
-							</div>
-						</div>
-					</Card>
-				</section>
 			</div>
 		</div>
 	);

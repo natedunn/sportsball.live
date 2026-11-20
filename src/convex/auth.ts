@@ -5,9 +5,10 @@ import { components, internal } from "./_generated/api";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { viaGateway } from "./authGateway";
 
-// Convex Auth v2 (beta). The core owns sessions, accounts, and JWT minting.
-// Our `profile` table is the users table: every provider's `createUser`
-// returns a profile id, and the JWT subject is that id.
+// Convex Auth v2. The core owns sessions and access tokens; each sign-in
+// method's component maps its accounts to users. Our `profile` table is the
+// users table: every method's `createUser` returns a profile id. The JWT
+// subject is the session id; `getAuthUserId` resolves it to the profile.
 const auth = setupConvexAuth({
 	component: components.auth,
 	usersTable: "profile",

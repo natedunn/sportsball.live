@@ -5,8 +5,6 @@ import google from "@convex-dev/auth/components/google/convex.config.js";
 
 const app = defineApp({
 	env: {
-		AUTH_PRIVATE_KEY: v.string(),
-		AUTH_JWKS: v.string(),
 		AUTH_GOOGLE_CLIENT_ID: v.string(),
 		AUTH_GOOGLE_CLIENT_SECRET: v.string(),
 		// The OAuth gateway's Google callback, e.g.
@@ -16,16 +14,13 @@ const app = defineApp({
 	},
 });
 
-// Core: sessions, accounts, and JWT minting. Serves the JWKS at /auth/.well-known/jwks.json.
-app.use(auth, {
-	httpPrefix: "/auth",
-	env: {
-		AUTH_PRIVATE_KEY: app.env.AUTH_PRIVATE_KEY,
-		AUTH_JWKS: app.env.AUTH_JWKS,
-	},
-});
+// Core: sessions and access tokens. Tokens are signed with the deployment's own
+// key (served at <CONVEX_CLOUD_URL>/.well-known/jwks.json), so there are no
+// signing keys to manage. Must stay mounted as `auth` (convexAuthProvider and
+// getAuthUserId assume that name).
+app.use(auth);
 
-// Google OAuth. Google redirects to the tier's gateway, which forwards to this
+// Google OAuth, including the Google account -> profile mapping. Google redirects to the tier's gateway, which forwards to this
 // deployment's `/oauth/google/callback` (docs/auth-environments.md).
 app.use(google, {
 	httpPrefix: "/oauth/google",

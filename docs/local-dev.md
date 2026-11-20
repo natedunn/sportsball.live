@@ -23,8 +23,7 @@ cd ../sportsball-lists && pnpm dev
 On the first run `scripts/dev.sh` installs dependencies and creates the local
 backend. Then `scripts/dev-seed.sh` copies from cloud dev (`brilliant-wren-578`):
 
-- **Settings:** Google OAuth client, dev gateway, signing keys, ESPN endpoints,
-  `SUPER_ADMIN`.
+- **Settings:** Google OAuth client, dev gateway, ESPN endpoints, `SUPER_ADMIN`.
 - **League data:** teams, players, games, box scores and seasons (about 10 MB).
   Users, favorites and cached images are not copied.
 

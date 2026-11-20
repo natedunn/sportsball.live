@@ -30,9 +30,9 @@ The branch name becomes one DNS label: lowercased, anything outside
   (docs/auth-environments.md).
 - **Convex previews start from defaults.** Every new preview copies the
   project's preview defaults (`npx convex env default list --type preview`).
-  These are written by `scripts/preview-defaults.sh`: cloud dev's settings
-  plus a signing key pair just for previews. The build script then sets the
-  one value that differs per branch, `SITE_URL`.
+  These are written by `scripts/preview-defaults.sh` from cloud dev's
+  settings. The build script then sets the one value that differs per branch,
+  `SITE_URL`.
 - **Previews fetch their own data.** On a preview's first deploy,
   `--preview-run bootstrap:fullBootstrap` loads teams, today's games and
   rosters from ESPN, and the crons keep it current. History before that day

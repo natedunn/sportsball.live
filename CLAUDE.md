@@ -37,7 +37,7 @@ pnpm test:watch     # Watch mode
 - **Framework**: TanStack Start (React meta-framework with file-based routing)
 - **Routing**: TanStack Router with SSR query integration
 - **State/Data**: TanStack Query + Convex (real-time database)
-- **Auth**: Convex Auth v2 (beta, patched) with Google OAuth through a per-tier gateway Worker (`workers/gateway`). See docs/auth-environments.md
+- **Auth**: Convex Auth v2 (2.0.0, patched) with Google OAuth through a per-tier gateway Worker (`workers/gateway`). See docs/auth-environments.md
 - **Styling**: Tailwind CSS v4
 - **Deployment**: Cloudflare Workers (via Vite plugin), via Workers Builds: `main` → prod, other branches → Worker Previews with a Convex preview each. See docs/deploy.md
 

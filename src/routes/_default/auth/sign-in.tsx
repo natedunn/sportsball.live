@@ -5,6 +5,7 @@ import {
 } from "@convex-dev/auth/methods/google/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useConvexAuth } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "~api";
 
 import { Button } from "@/components/ui/button";
@@ -92,11 +93,13 @@ function flowErrorMessage(
 			return "That sign-in took too long. Please try again.";
 		case "INVALID_FLOW":
 			return "This sign-in can't be completed here. Please try again.";
-		case "REJECTED":
-			return typeof flowError.data === "string"
-				? flowError.data
-				: "Sign-in was declined.";
 		case "OTHER_ERROR":
+			// Our backend turns a sign-in down with a ConvexError (users.createUser).
+			if (flowError.cause instanceof ConvexError) {
+				return typeof flowError.cause.data === "string"
+					? flowError.cause.data
+					: "Sign-in was declined.";
+			}
 			console.error("Google sign-in failed:", flowError.cause);
 			return "Something went wrong during sign-in. Please try again.";
 		default:

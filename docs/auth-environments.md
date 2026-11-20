@@ -1,6 +1,6 @@
 # Auth environments
 
-Sign-in is Google only, through Convex Auth v2 (`@convex-dev/auth@2.0.0-beta.0`,
+Sign-in is Google only, through Convex Auth v2 (`@convex-dev/auth@2.0.0`,
 pinned and patched). The setup follows Onda's: one OAuth client per tier, and
 a gateway Worker per tier that forwards Google's callback to whichever Convex
 deployment started the sign-in.
@@ -38,6 +38,13 @@ and never store Google's tokens.
    origin that started the sign-in. That origin must be in the deployment's
    `SITE_URL` (exact match; comma-separate several).
 
+The core component (`auth`) keeps sessions and mints access tokens with the
+deployment's own signing key (`ctx.auth.signJwt`; public keys at
+`<CONVEX_CLOUD_URL>/.well-known/jwks.json`, `auth.config.ts` uses
+`convexAuthProvider()`). The token's subject is the session id, and
+`getAuthUserId` resolves it to the `profile` id. The Google component
+(`authGoogle`) keeps the Google account -> profile mapping.
+
 `createUser` (`src/convex/users.ts`) links a Google account to an existing
 `profile` row by verified email, so profiles from Better Auth carry over.
 
@@ -62,7 +69,6 @@ in the password manager. Pipe secrets in so they stay out of shell history.
 
 | Variable | Cloud dev | Prod |
 |---|---|---|
-| `AUTH_PRIVATE_KEY`, `AUTH_JWKS` | dev key pair | its own key pair |
 | `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET` | dev client | prod client |
 | `AUTH_GATEWAY_SECRET` | dev routing secret | prod routing secret |
 | `AUTH_GOOGLE_CALLBACK_URL` | `https://gateway-dev.sportsball.live/oauth/google/callback` | `https://gateway.sportsball.live/oauth/google/callback` |
@@ -80,23 +86,34 @@ previews (`scripts/preview-defaults.sh`). Each preview's `SITE_URL` is
 
 ### Signing keys
 
-`AUTH_PRIVATE_KEY` is a base64-encoded PKCS#8 PEM and `AUTH_JWKS` the matching
-public JWKS. Generate a pair for a deployment with:
+None to manage since 2.0: Convex signs with each deployment's own key. Old
+`AUTH_PRIVATE_KEY` and `AUTH_JWKS` settings are unused and can be removed.
+
+### Upgrading a deployment from 2.0.0-beta.0
+
+2.0 changed the core's tables, and the push fails on rows from the beta
+(`Object contains extra field expiresAt`). Once per deployment that ran the
+beta, right before pushing 2.0 (this signs everyone out):
 
 ```sh
-node -e '
-const {generateKeyPairSync, randomUUID} = require("crypto");
-const {publicKey, privateKey} = generateKeyPairSync("rsa", {modulusLength: 2048});
-const jwk = publicKey.export({format: "jwk"});
-require("fs").writeFileSync("auth-private-key", Buffer.from(privateKey.export({type: "pkcs8", format: "pem"})).toString("base64"));
-require("fs").writeFileSync("auth-jwks", JSON.stringify({keys: [{kty: jwk.kty, n: jwk.n, e: jwk.e, kid: randomUUID(), alg: "RS256", use: "sig"}]}));
-'
-npx convex env set --prod AUTH_PRIVATE_KEY < auth-private-key
-npx convex env set --prod AUTH_JWKS < auth-jwks
-/bin/rm auth-private-key auth-jwks
+D=harmless-coyote-806   # or brilliant-wren-578, a preview, ...
+: > /tmp/empty.jsonl
+npx convex import --deployment $D --component auth --table refreshTokens --replace -y /tmp/empty.jsonl
+npx convex import --deployment $D --component auth --table sessions --replace -y /tmp/empty.jsonl
 ```
 
-A new key pair signs everyone out of that deployment.
+After the push, copy the Google accounts into the Google component, so the
+links don't depend on the email match in `createUser`:
+
+```sh
+npx convex data accounts --deployment $D --component auth --format jsonLines |
+	node -e 'require("readline").createInterface({input: process.stdin}).on("line", (l) => { const d = JSON.parse(l); if (d.provider === "google") console.log(JSON.stringify({providerAccountId: d.providerAccountId, userId: d.userId})); })' > /tmp/google-accounts.jsonl
+npx convex import --deployment $D --component authGoogle --table accounts --append -y /tmp/google-accounts.jsonl
+```
+
+The core's old `accounts` table stays behind, outside the schema; clear it
+from the dashboard when convenient. A new local backend (`pnpm dev`) needs
+none of this; an existing one does, against its own deployment.
 
 ### Gateways
 

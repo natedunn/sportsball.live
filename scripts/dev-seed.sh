@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Run by scripts/dev.sh once the local backend is up. A new backend gets the
-# dev settings (Google OAuth client, dev gateway, signing keys, ESPN endpoints)
+# dev settings (Google OAuth client, dev gateway, ESPN endpoints)
 # and the league data copied from cloud dev, brilliant-wren-578; every run sets
 # SITE_URL to this checkout's URL, the one origin sign-in may return to. Until
 # the settings are in, Convex holds the first push and retries it by itself.
@@ -22,8 +22,8 @@ dir="$(mktemp -d)"
 trap '/bin/rm -rf "$dir"' EXIT
 
 # `env get` rather than `env list`: the CLI lists names only when it detects an agent.
-if [ -z "$(npx convex env get AUTH_JWKS 2>/dev/null)" ]; then
-	npx convex env list --include-values --deployment "$source_deployment" | grep -vE '^(SITE_URL|VITE_CONVEX_URL|VITE_CONVEX_SITE_URL|BETTER_AUTH_SECRET|CONVEX_ZEN_SECRET|GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)=' > "$dir/env"
+if [ -z "$(npx convex env get AUTH_GOOGLE_CLIENT_ID 2>/dev/null)" ]; then
+	npx convex env list --include-values --deployment "$source_deployment" | grep -vE '^(SITE_URL|AUTH_PRIVATE_KEY|AUTH_JWKS|VITE_CONVEX_URL|VITE_CONVEX_SITE_URL|BETTER_AUTH_SECRET|CONVEX_ZEN_SECRET|GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)=' > "$dir/env"
 	npx convex env set --from-file "$dir/env" > /dev/null
 	echo "dev-seed: copied dev settings from $source_deployment"
 fi

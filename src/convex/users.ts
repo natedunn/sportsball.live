@@ -3,9 +3,8 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { generateRandomUsername } from "./randomUsername";
 
-const vGoogleProvider = v.object({
+const vGoogleMethod = v.object({
 	name: v.literal("google"),
-	accountId: v.string(),
 	profile: vGoogleProfile,
 });
 
@@ -17,10 +16,10 @@ const vGoogleProvider = v.object({
  * favorites (keyed by the old Better Auth user id) move to the profile id.
  */
 export const createUser = internalMutation({
-	args: { provider: vGoogleProvider },
+	args: { method: vGoogleMethod },
 	returns: v.id("profile"),
 	handler: async (ctx, args) => {
-		const { email, emailVerified, name, picture } = args.provider.profile;
+		const { email, emailVerified, name, picture } = args.method.profile;
 		if (!email) {
 			throw new ConvexError("Your Google account has no email address.");
 		}
@@ -68,11 +67,11 @@ export const createUser = internalMutation({
 
 /** Runs on every sign-in. Keeps the avatar in sync with Google; the name is the user's to edit. */
 export const onSignIn = internalMutation({
-	args: { provider: vGoogleProvider, userId: v.id("profile") },
+	args: { method: vGoogleMethod, userId: v.id("profile") },
 	returns: v.null(),
 	handler: async (ctx, args) => {
 		const profile = await ctx.db.get(args.userId);
-		const { picture } = args.provider.profile;
+		const { picture } = args.method.profile;
 		if (profile && picture && profile.image !== picture) {
 			await ctx.db.patch(profile._id, { image: picture, updatedAt: Date.now() });
 		}
